@@ -26,7 +26,11 @@ export async function setProjectPrompt(context: vscode.ExtensionContext): Promis
 }
 
 /** Prompt de sistema para el autocompletado inline, según el nivel de aprendizaje. */
-export function buildSystemPrompt(level: LearningLevel, projectPrompt: string): string {
+export function buildSystemPrompt(
+  level: LearningLevel,
+  projectPrompt: string,
+  guidance: boolean
+): string {
   const base = [
     'Eres AutoCompleteHelp, un motor de autocompletado de código dentro de un IDE.',
     'Recibirás el código ANTES del cursor (PREFIX) y DESPUÉS del cursor (SUFFIX).',
@@ -38,7 +42,16 @@ export function buildSystemPrompt(level: LearningLevel, projectPrompt: string): 
   ];
 
   if (projectPrompt) {
-    base.push(`Contexto del proyecto definido por el usuario: ${projectPrompt}`);
+    base.push(
+      `PROMPT DEL PROYECTO (fuente de verdad): ${projectPrompt}`,
+      'TODO el autocompletado está al servicio de ese prompt: cada sugerencia debe acercar el archivo actual al objetivo del proyecto.',
+      'Si el PREFIX está vacío o casi vacío, este archivo es nuevo: propone el esqueleto inicial que le corresponde SEGÚN SU NOMBRE/RUTA y el prompt del proyecto (imports, estructura base, primera pieza).'
+    );
+    if (guidance) {
+      base.push(
+        'GUÍA DEL PROYECTO: termina SIEMPRE la sugerencia con una línea de comentario (sintaxis del lenguaje) que empiece con "➜ Siguiente paso:" indicando la próxima pieza concreta que falta del proyecto según el prompt (otra ruta, otro archivo, un modelo, un test…). Una sola línea.'
+      );
+    }
   }
 
   switch (level) {
