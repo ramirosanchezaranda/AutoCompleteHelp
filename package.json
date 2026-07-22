@@ -1,0 +1,160 @@
+{
+  "name": "autocompletehelp",
+  "displayName": "AutoCompleteHelp",
+  "description": "Autocompletado guiado por prompt con múltiples LLMs. Aprende mientras escribes: el asistente completa, explica y te da pistas para que entiendas cada parte de tu proyecto.",
+  "version": "0.1.0",
+  "publisher": "ramirosanchezaranda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ramirosanchezaranda/AutoCompleteHelp.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Education",
+    "Other"
+  ],
+  "keywords": [
+    "autocomplete",
+    "ai",
+    "llm",
+    "copilot",
+    "aprendizaje",
+    "inline completion"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "autocompletehelp.setProjectPrompt",
+        "title": "AutoCompleteHelp: Definir prompt del proyecto"
+      },
+      {
+        "command": "autocompletehelp.selectModel",
+        "title": "AutoCompleteHelp: Elegir proveedor y modelo"
+      },
+      {
+        "command": "autocompletehelp.setApiKey",
+        "title": "AutoCompleteHelp: Configurar API key"
+      },
+      {
+        "command": "autocompletehelp.selectLearningLevel",
+        "title": "AutoCompleteHelp: Elegir nivel de aprendizaje"
+      },
+      {
+        "command": "autocompletehelp.explainSelection",
+        "title": "AutoCompleteHelp: Explicar código seleccionado"
+      },
+      {
+        "command": "autocompletehelp.toggle",
+        "title": "AutoCompleteHelp: Activar / desactivar autocompletado"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "autocompletehelp.explainSelection",
+          "when": "editorHasSelection",
+          "group": "autocompletehelp"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AutoCompleteHelp",
+      "properties": {
+        "autocompletehelp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Activa o desactiva el autocompletado inline."
+        },
+        "autocompletehelp.provider": {
+          "type": "string",
+          "default": "anthropic",
+          "enum": [
+            "anthropic",
+            "openai",
+            "google",
+            "mistral",
+            "deepseek",
+            "xai",
+            "groq",
+            "openrouter",
+            "ollama",
+            "custom"
+          ],
+          "enumDescriptions": [
+            "Anthropic (Claude)",
+            "OpenAI (GPT)",
+            "Google (Gemini)",
+            "Mistral AI (Codestral)",
+            "DeepSeek",
+            "xAI (Grok)",
+            "Groq",
+            "OpenRouter (agregador multi-modelo)",
+            "Ollama (modelos locales, sin API key)",
+            "Endpoint personalizado compatible con OpenAI"
+          ],
+          "description": "Proveedor de LLM a utilizar."
+        },
+        "autocompletehelp.model": {
+          "type": "string",
+          "default": "",
+          "description": "ID del modelo. Vacío = modelo por defecto del proveedor. Usa el comando 'Elegir proveedor y modelo' para ver opciones."
+        },
+        "autocompletehelp.learningLevel": {
+          "type": "string",
+          "default": "guiado",
+          "enum": [
+            "completo",
+            "guiado",
+            "pista"
+          ],
+          "enumDescriptions": [
+            "Completo: sugiere el código directamente (máxima velocidad, mínimo aprendizaje).",
+            "Guiado: sugiere el código con comentarios breves que explican el porqué de cada parte.",
+            "Pista: no escribe la solución; sugiere solo comentarios con pasos y pistas para que TÚ escribas el código."
+          ],
+          "description": "Cuánto te ayuda la IA. Los niveles 'guiado' y 'pista' están pensados para aprender y no depender de la IA."
+        },
+        "autocompletehelp.maxTokens": {
+          "type": "number",
+          "default": 400,
+          "description": "Máximo de tokens por sugerencia."
+        },
+        "autocompletehelp.debounceMs": {
+          "type": "number",
+          "default": 350,
+          "description": "Milisegundos de espera tras dejar de escribir antes de pedir una sugerencia."
+        },
+        "autocompletehelp.ollamaUrl": {
+          "type": "string",
+          "default": "http://localhost:11434/v1",
+          "description": "URL base de Ollama (API compatible con OpenAI)."
+        },
+        "autocompletehelp.customBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "URL base para el proveedor 'custom' (debe exponer /chat/completions compatible con OpenAI)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
