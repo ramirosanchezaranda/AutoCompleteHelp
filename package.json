@@ -123,6 +123,16 @@
           ],
           "description": "Cuánto te ayuda la IA. Los niveles 'guiado' y 'pista' están pensados para aprender y no depender de la IA."
         },
+        "autocompletehelp.streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Recibe las sugerencias en streaming (SSE) con corte temprano: menor latencia percibida."
+        },
+        "autocompletehelp.projectGuidance": {
+          "type": "boolean",
+          "default": true,
+          "description": "Guía del proyecto: cada sugerencia termina con un comentario '➜ Siguiente paso:' indicando la próxima pieza que falta según tu prompt."
+        },
         "autocompletehelp.maxTokens": {
           "type": "number",
           "default": 400,
