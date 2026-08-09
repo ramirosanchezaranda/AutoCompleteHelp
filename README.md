@@ -27,7 +27,7 @@ Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la
   - DeepSeek, xAI (Grok), Groq
   - OpenRouter (acceso a cientos de modelos con una sola clave)
   - **Ollama** (modelos locales, gratis y sin API key)
-  - Endpoint personalizado compatible con OpenAI
+  - **Tus propias IAs**: el comando *Agregar IA* registra cualquier endpoint OpenAI-compatible (vLLM, LM Studio, Azure OpenAI, proxys corporativos…) con su API key
 - **API keys seguras**: se guardan en el `SecretStorage` del IDE (keychain del sistema), nunca en settings.json.
 
 ## 🚀 Uso rápido

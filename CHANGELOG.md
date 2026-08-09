@@ -17,6 +17,10 @@ Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 - **Comando «Recomendar stack para mi proyecto»**: el LLM propone el stack más
   adecuado para aprender (con alternativas, estructura inicial y ruta de
   aprendizaje) y permite fijarlo en el prompt del proyecto.
+- **Comando «Agregar IA»**: registra cualquier endpoint OpenAI-compatible
+  propio (vLLM, LM Studio, Azure OpenAI, proxys corporativos…) con nombre,
+  URL, modelo y API key cifrada; queda disponible en el selector como
+  «Nombre (tu IA)».
 - Aviso único para definir el prompt del proyecto si aún no existe.
 
 ## [0.1.0] — 2026-07-22

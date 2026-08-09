@@ -1,15 +1,14 @@
 import * as vscode from 'vscode';
-import { PROVIDERS, ProviderInfo, getProvider } from './providers/catalog';
+import { allProviders, ProviderInfo, getProvider } from './providers/catalog';
 
-const keyFor = (providerId: string) => `autocompletehelp.apiKey.${providerId}`;
+export const keyFor = (providerId: string) => `autocompletehelp.apiKey.${providerId}`;
 
 export async function getApiKey(
   context: vscode.ExtensionContext,
   provider: ProviderInfo
 ): Promise<string | undefined> {
-  if (!provider.needsKey) {
-    return undefined;
-  }
+  // Siempre consultamos el SecretStorage: las IAs propias y Ollama remoto
+  // pueden tener clave aunque needsKey sea false (se envía solo si existe).
   return context.secrets.get(keyFor(provider.id));
 }
 
@@ -23,7 +22,9 @@ export async function setApiKeyCommand(
     provider = getProvider(providerId);
   } else {
     const pick = await vscode.window.showQuickPick(
-      PROVIDERS.filter((p) => p.needsKey).map((p) => ({ label: p.label, id: p.id })),
+      allProviders()
+        .filter((p) => p.id !== 'ollama')
+        .map((p) => ({ label: p.label, id: p.id })),
       { title: '¿De qué proveedor quieres configurar la API key?' }
     );
     if (!pick) {

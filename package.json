@@ -57,6 +57,10 @@
         "title": "AutoCompleteHelp: Recomendar stack para mi proyecto"
       },
       {
+        "command": "autocompletehelp.addProvider",
+        "title": "AutoCompleteHelp: Agregar IA (endpoint + API key)"
+      },
+      {
         "command": "autocompletehelp.toggle",
         "title": "AutoCompleteHelp: Activar / desactivar autocompletado"
       }
@@ -81,31 +85,31 @@
         "autocompletehelp.provider": {
           "type": "string",
           "default": "anthropic",
-          "enum": [
-            "anthropic",
-            "openai",
-            "google",
-            "mistral",
-            "deepseek",
-            "xai",
-            "groq",
-            "openrouter",
-            "ollama",
-            "custom"
-          ],
-          "enumDescriptions": [
-            "Anthropic (Claude)",
-            "OpenAI (GPT)",
-            "Google (Gemini)",
-            "Mistral AI (Codestral)",
-            "DeepSeek",
-            "xAI (Grok)",
-            "Groq",
-            "OpenRouter (agregador multi-modelo)",
-            "Ollama (modelos locales, sin API key)",
-            "Endpoint personalizado compatible con OpenAI"
-          ],
-          "description": "Proveedor de LLM a utilizar."
+          "description": "Proveedor de LLM: anthropic | openai | google | mistral | deepseek | xai | groq | openrouter | ollama | custom, o el id de una IA agregada por ti ('custom:Nombre'). Usa el comando 'Elegir proveedor y modelo'."
+        },
+        "autocompletehelp.customProviders": {
+          "type": "array",
+          "default": [],
+          "description": "Tus IAs propias (endpoints OpenAI-compatibles con API key). Créalas con el comando 'Agregar IA'; las claves van al SecretStorage, nunca aquí.",
+          "items": {
+            "type": "object",
+            "required": ["name", "baseUrl"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Nombre para mostrar (su id será 'custom:Nombre')."
+              },
+              "baseUrl": {
+                "type": "string",
+                "description": "URL base que expone /chat/completions."
+              },
+              "models": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "IDs de modelos disponibles en este endpoint."
+              }
+            }
+          }
         },
         "autocompletehelp.model": {
           "type": "string",

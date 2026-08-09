@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { PROVIDERS, getProvider, resolveActiveConfig } from './providers/catalog';
+import { allProviders, getProvider, resolveActiveConfig } from './providers/catalog';
+import { addProvider } from './addProvider';
 import { AutoCompleteHelpProvider } from './inlineProvider';
 import { setApiKeyCommand, ensureApiKey } from './secrets';
 import { setProjectPrompt, LearningLevel } from './prompts';
@@ -48,6 +49,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('autocompletehelp.recommendStack', () =>
       recommendStack(context)
     ),
+    vscode.commands.registerCommand('autocompletehelp.addProvider', () =>
+      addProvider(context)
+    ),
     vscode.commands.registerCommand('autocompletehelp.selectModel', () =>
       selectModel(context)
     ),
@@ -83,15 +87,24 @@ async function selectModel(context: vscode.ExtensionContext): Promise<void> {
   const cfg = vscode.workspace.getConfiguration('autocompletehelp');
   const currentProviderId = cfg.get<string>('provider', 'anthropic');
 
+  const ADD_AI = '__add_ai__';
   const providerPick = await vscode.window.showQuickPick(
-    PROVIDERS.map((p) => ({
-      label: p.label,
-      description: p.id === currentProviderId ? '(actual)' : undefined,
-      id: p.id
-    })),
+    [
+      ...allProviders().map((p) => ({
+        label: p.label,
+        description: p.id === currentProviderId ? '(actual)' : undefined,
+        id: p.id
+      })),
+      { label: '$(add) Agregar IA (endpoint + API key)…', id: ADD_AI }
+    ],
     { title: 'Paso 1/2 — Elige el proveedor de LLM' }
   );
   if (!providerPick) {
+    return;
+  }
+  if (providerPick.id === ADD_AI) {
+    await vscode.commands.executeCommand('autocompletehelp.addProvider');
+    refreshStatusBar();
     return;
   }
   const provider = getProvider(providerPick.id);
