@@ -4,6 +4,7 @@ import { AutoCompleteHelpProvider } from './inlineProvider';
 import { setApiKeyCommand, ensureApiKey } from './secrets';
 import { setProjectPrompt, LearningLevel } from './prompts';
 import { explainSelection } from './explain';
+import { recommendStack } from './stackAdvisor';
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -43,6 +44,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('autocompletehelp.explainSelection', () =>
       explainSelection(context)
+    ),
+    vscode.commands.registerCommand('autocompletehelp.recommendStack', () =>
+      recommendStack(context)
     ),
     vscode.commands.registerCommand('autocompletehelp.selectModel', () =>
       selectModel(context)
@@ -127,6 +131,11 @@ async function selectModel(context: vscode.ExtensionContext): Promise<void> {
 async function selectLearningLevel(): Promise<void> {
   const pick = await vscode.window.showQuickPick(
     [
+      {
+        label: 'educame',
+        description: 'Desde cero 🌱 — cada línea explicada como un profesor paciente',
+        detail: 'Para quien está empezando: conceptos definidos la primera vez, una idea nueva por sugerencia.'
+      },
       {
         label: 'pista',
         description: 'Solo pistas en comentarios — tú escribes el código (máximo aprendizaje)',

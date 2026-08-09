@@ -8,12 +8,16 @@ Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la
 
 - **Autocompletado inline** (texto fantasma) en cualquier lenguaje, aceptas con `Tab`.
 - **Prompt del proyecto**: define qué estás construyendo y cómo quieres que te ayude; cada sugerencia usa ese contexto.
-- **3 niveles de aprendizaje** (el corazón de la extensión):
+- **4 niveles de aprendizaje** (el corazón de la extensión):
   | Nivel | Qué hace | Para qué |
   |---|---|---|
+  | `educame` | Cada línea explicada desde cero, una idea nueva por sugerencia | Empezar sin saber programar |
   | `pista` | Solo comentarios con pasos y pistas — **tú escribes el código** | Máximo aprendizaje |
   | `guiado` *(por defecto)* | Código + comentarios que explican el **porqué** | Aprender mientras avanzas |
   | `completo` | Código directo | Máxima velocidad |
+- **Guía del proyecto**: los archivos vacíos reciben su esqueleto según tu prompt, y cada sugerencia termina con «➜ Siguiente paso», la próxima pieza que falta del proyecto.
+- **Streaming (SSE)** con corte temprano: sugerencias más rápidas y menos tokens.
+- **Recomendar stack**: ¿no sabes con qué tecnologías hacer tu proyecto? El comando analiza tu prompt y propone el mejor stack para aprender, con alternativas, estructura inicial y ruta de aprendizaje — y lo fija en tu prompt si lo aceptas.
 - **Explicar código seleccionado**: clic derecho → obtén una explicación pedagógica en español con una pregunta de comprensión.
 - **Multi-LLM**: elige empresa y modelo desde la barra de estado:
   - Anthropic (Claude Opus 4.8, Sonnet 5, Sonnet 4.6, Haiku 4.5)

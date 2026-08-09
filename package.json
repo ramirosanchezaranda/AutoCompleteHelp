@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Autocompletado guiado por prompt con múltiples LLMs. Aprende mientras escribes: el asistente completa, explica y te da pistas para que entiendas cada parte de tu proyecto.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -51,6 +51,10 @@
       {
         "command": "autocompletehelp.explainSelection",
         "title": "AutoCompleteHelp: Explicar código seleccionado"
+      },
+      {
+        "command": "autocompletehelp.recommendStack",
+        "title": "AutoCompleteHelp: Recomendar stack para mi proyecto"
       },
       {
         "command": "autocompletehelp.toggle",
@@ -114,14 +118,16 @@
           "enum": [
             "completo",
             "guiado",
-            "pista"
+            "pista",
+            "educame"
           ],
           "enumDescriptions": [
             "Completo: sugiere el código directamente (máxima velocidad, mínimo aprendizaje).",
             "Guiado: sugiere el código con comentarios breves que explican el porqué de cada parte.",
-            "Pista: no escribe la solución; sugiere solo comentarios con pasos y pistas para que TÚ escribas el código."
+            "Pista: no escribe la solución; sugiere solo comentarios con pasos y pistas para que TÚ escribas el código.",
+            "Edúcame: para empezar desde cero — cada línea explicada con conceptos básicos, una idea nueva por sugerencia."
           ],
-          "description": "Cuánto te ayuda la IA. Los niveles 'guiado' y 'pista' están pensados para aprender y no depender de la IA."
+          "description": "Cuánto te ayuda la IA. 'guiado' y 'pista' para aprender sin depender de la IA; 'educame' para arrancar desde cero con un lenguaje."
         },
         "autocompletehelp.streaming": {
           "type": "boolean",

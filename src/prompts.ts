@@ -1,11 +1,18 @@
 import * as vscode from 'vscode';
 
-export type LearningLevel = 'completo' | 'guiado' | 'pista';
+export type LearningLevel = 'completo' | 'guiado' | 'pista' | 'educame';
 
 const PROJECT_PROMPT_KEY = 'autocompletehelp.projectPrompt';
 
 export function getProjectPrompt(context: vscode.ExtensionContext): string {
   return context.workspaceState.get<string>(PROJECT_PROMPT_KEY, '');
+}
+
+export async function saveProjectPrompt(
+  context: vscode.ExtensionContext,
+  value: string
+): Promise<void> {
+  await context.workspaceState.update(PROJECT_PROMPT_KEY, value);
 }
 
 export async function setProjectPrompt(context: vscode.ExtensionContext): Promise<void> {
@@ -55,6 +62,14 @@ export function buildSystemPrompt(
   }
 
   switch (level) {
+    case 'educame':
+      base.push(
+        'MODO EDÚCAME (el usuario está empezando desde cero): asume que todavía NO sabe programar.',
+        'Sugiere el código en pasos muy pequeños y, antes de CADA línea, escribe un comentario en español muy simple que explique qué hace y qué concepto usa (variable, función, import, ruta…), como un profesor paciente.',
+        'La primera vez que aparezca un concepto, defínelo en una frase sencilla. Nada de jerga sin explicar.',
+        'Introduce como máximo una idea nueva por sugerencia: mejor corto y entendido que largo y mágico.'
+      );
+      break;
     case 'guiado':
       base.push(
         'MODO GUIADO (objetivo: que el usuario aprenda): antes de cada parte no trivial del código que sugieras, agrega un comentario corto en español (una línea) explicando POR QUÉ se hace así. Usa la sintaxis de comentarios del lenguaje del archivo.'
@@ -90,6 +105,20 @@ export function buildUserPrompt(
     suffix,
     '</SUFFIX>',
     'Inserta la continuación en el cursor (entre PREFIX y SUFFIX):'
+  ].join('\n');
+}
+
+/** Prompt de sistema para el comando "Recomendar stack para mi proyecto". */
+export function buildStackSystemPrompt(): string {
+  return [
+    'Eres un mentor de arquitectura de software especializado en personas que están aprendiendo a programar.',
+    'Te darán la descripción de un proyecto. Recomienda el stack tecnológico más adecuado priorizando: curva de aprendizaje amable, comunidad y documentación en español, y que sirva para aprender fundamentos transferibles.',
+    'Responde en español, en Markdown, con esta estructura exacta:',
+    '## Recomendación principal — el stack elegido y POR QUÉ es el mejor para aprender con este proyecto',
+    '## Alternativas — 2 opciones con sus pros y contras en una línea cada uno',
+    '## Estructura inicial — los primeros 4-6 archivos/carpetas del proyecto y qué va en cada uno',
+    '## Ruta de aprendizaje — 4-5 pasos ordenados: qué construir primero y qué concepto aprendes en cada paso',
+    'Cierra SIEMPRE con una última línea que empiece exactamente con "STACK RECOMENDADO:" seguida del stack en una sola frase corta.'
   ].join('\n');
 }
 

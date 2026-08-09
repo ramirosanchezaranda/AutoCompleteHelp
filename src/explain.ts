@@ -34,7 +34,11 @@ export async function explainSelection(context: vscode.ExtensionContext): Promis
           user: `Lenguaje: ${editor.document.languageId}\n\nExplícame este código:\n\n${code}`,
           maxTokens: 1500
         });
-        showExplanationPanel(markdown, editor.document.languageId);
+        showMarkdownPanel(
+          'AutoCompleteHelp — Explicación',
+          markdown,
+          `Lenguaje: ${editor.document.languageId}`
+        );
       } catch (err: any) {
         vscode.window.showErrorMessage(`AutoCompleteHelp: ${err?.message ?? err}`);
       }
@@ -42,18 +46,19 @@ export async function explainSelection(context: vscode.ExtensionContext): Promis
   );
 }
 
-function showExplanationPanel(markdown: string, languageId: string): void {
+/** Muestra Markdown renderizado en un panel lateral. Reutilizado por varios comandos. */
+export function showMarkdownPanel(title: string, markdown: string, subtitle?: string): void {
   const panel = vscode.window.createWebviewPanel(
-    'autocompletehelp.explain',
-    'AutoCompleteHelp — Explicación',
+    'autocompletehelp.panel',
+    title,
     vscode.ViewColumn.Beside,
     {}
   );
-  panel.webview.html = renderHtml(markdown, languageId);
+  panel.webview.html = renderHtml(markdown, subtitle);
 }
 
 /** Render mínimo de Markdown (títulos, listas, negrita, código) sin dependencias. */
-function renderHtml(markdown: string, languageId: string): string {
+function renderHtml(markdown: string, subtitle?: string): string {
   const escaped = markdown
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -89,7 +94,7 @@ function renderHtml(markdown: string, languageId: string): string {
   li { margin: 4px 0; }
 </style></head>
 <body>
-  <p><em>Lenguaje: ${languageId}</em></p>
+  ${subtitle ? `<p><em>${subtitle}</em></p>` : ''}
   ${html}
 </body>
 </html>`;
