@@ -4,6 +4,7 @@ import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
 import { buildStackSystemPrompt, getProjectPrompt, saveProjectPrompt } from './prompts';
 import { showMarkdownPanel } from './explain';
+import { PROFILES, StackProfile, getProfile, matchProfile } from './stackProfiles';
 import {
   PROJECT_FILE,
   ProjectFile,
@@ -36,16 +37,12 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
     await saveProjectPrompt(context, value);
   }
 
-  const preferred = await vscode.window.showInputBox({
-    title: '¿Ya tienes un stack en mente?',
-    prompt:
-      'Escríbelo si ya lo elegiste (ej: "Python con FastAPI y PostgreSQL"). Déjalo vacío y te recomiendo el mejor para aprender con este proyecto.',
-    value: getProject()?.stack?.resumen ?? '',
-    ignoreFocusOut: true
-  });
-  if (preferred === undefined) {
+  const choice = await chooseStack();
+  if (!choice) {
     return;
   }
+  const { preferred } = choice;
+  let profile = choice.profile;
 
   const { provider, model, baseUrl } = resolveActiveConfig();
   const apiKey = await ensureApiKey(context, provider);
@@ -54,11 +51,12 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
   }
 
   let answer = '';
+  let failure = '';
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: preferred.trim()
-        ? `AutoCompleteHelp: preparando el proyecto con ${preferred.trim()}…`
+      title: preferred
+        ? `AutoCompleteHelp: planificando el proyecto con ${preferred}…`
         : 'AutoCompleteHelp: analizando tu proyecto y eligiendo el mejor stack…'
     },
     async () => {
@@ -68,45 +66,59 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
           baseUrl,
           model,
           apiKey,
-          system: buildStackSystemPrompt(preferred.trim() || undefined),
+          system: buildStackSystemPrompt(preferred, profile),
           user: `Mi proyecto: ${projectPrompt}\n\n${
-            preferred.trim() ? 'Concreta y planifica mi stack.' : 'Recomiéndame el stack.'
+            preferred ? 'Concreta y planifica mi stack.' : 'Recomiéndame el stack.'
           }`,
           maxTokens: 2500
         });
       } catch (err: any) {
-        vscode.window.showErrorMessage(`AutoCompleteHelp: ${err?.message ?? err}`);
+        failure = err?.message ?? String(err);
       }
     }
   );
-  if (!answer) {
+
+  let proposal: StackProposal | undefined;
+  if (answer) {
+    const split = splitStackAnswer(answer);
+    showMarkdownPanel('AutoCompleteHelp — Stack del proyecto', split.markdown);
+    proposal = split.proposal;
+    // Recomendación libre: si coincide con un perfil curado, lo adoptamos.
+    profile ??= matchProfile(
+      [proposal?.stack?.resumen, proposal?.stack?.framework].filter(Boolean).join(' ')
+    );
+  } else if (profile) {
+    // Sin conexión con el modelo, un perfil curado igual sirve: su plan base.
+    const action = await vscode.window.showWarningMessage(
+      `AutoCompleteHelp: no pude consultar al modelo (${failure}). ¿Guardo ${profile.nombre} con su plan base?`,
+      'Usar el plan base'
+    );
+    if (!action) {
+      return;
+    }
+  } else {
+    vscode.window.showErrorMessage(`AutoCompleteHelp: ${failure || 'el modelo no respondió.'}`);
     return;
   }
 
-  const { markdown, proposal } = splitStackAnswer(answer);
-  showMarkdownPanel('AutoCompleteHelp — Stack del proyecto', markdown);
-
-  if (!proposal?.stack) {
+  const final = mergeWithProfile(proposal, profile);
+  if (!final) {
     vscode.window.showWarningMessage(
       'AutoCompleteHelp: no pude leer el stack estructurado de la respuesta. Vuelve a intentarlo o edita autocompletehelp.json a mano.'
     );
     return;
   }
 
-  const summary = proposal.stack.resumen ?? Object.values(proposal.stack).join(' + ');
-  const steps = proposal.plan?.length ?? 0;
+  const summary = final.stack.resumen ?? Object.values(final.stack).join(' + ');
+  const steps = final.plan?.length ?? 0;
   const action = await vscode.window.showInformationMessage(
-    `Stack: ${summary}${steps ? ` · plan de ${steps} pasos` : ''}`,
+    `Stack: ${summary}${steps ? ` · plan de ${steps} pasos` : ''}${profile ? ' · perfil curado' : ''}`,
     `Guardar en ${PROJECT_FILE}`
   );
   if (!action) {
     return;
   }
-  const inFile = await saveProject(context, {
-    stack: proposal.stack,
-    convenciones: proposal.convenciones,
-    plan: proposal.plan
-  });
+  const inFile = await saveProject(context, final);
   if (!inFile) {
     vscode.window.showWarningMessage(
       'AutoCompleteHelp: abre una carpeta de proyecto para guardar el stack en autocompletehelp.json.'
@@ -114,12 +126,83 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
     return;
   }
   const next = await vscode.window.showInformationMessage(
-    'AutoCompleteHelp: stack y plan guardados. Desde ahora cada sugerencia usa estas versiones y convenciones.',
+    'AutoCompleteHelp: stack y plan guardados; el plan aparece en el panel «Plan del proyecto». ¿Creo la estructura de carpetas y archivos?',
+    'Crear estructura',
     'Abrir archivo'
   );
-  if (next) {
+  if (next === 'Crear estructura') {
+    await vscode.commands.executeCommand('autocompletehelp.createStructure');
+  } else if (next) {
     await openProjectFile();
   }
+}
+
+type StackProposal = Omit<ProjectFile, 'prompt'>;
+
+/**
+ * Primer paso del comando: stacks curados, uno escrito por el usuario, o
+ * "recomiéndame". Devuelve undefined si se cancela.
+ */
+async function chooseStack(): Promise<
+  { preferred?: string; profile?: StackProfile } | undefined
+> {
+  const OTHER = 'other';
+  const RECOMMEND = 'recommend';
+  const items: (vscode.QuickPickItem & { id: string })[] = [
+    ...PROFILES.map((p) => ({ label: p.nombre, description: p.para, detail: p.porQue, id: p.id })),
+    { label: '', kind: vscode.QuickPickItemKind.Separator, id: '' },
+    { label: '$(edit) Otro stack…', description: 'escribe el que quieras usar', id: OTHER },
+    { label: '$(lightbulb) No sé, recomiéndame uno', description: 'según tu proyecto, para aprender', id: RECOMMEND }
+  ];
+  const pick = await vscode.window.showQuickPick(items, {
+    title: 'Elegir stack del proyecto',
+    placeHolder: 'Stacks curados para aprender, otro a tu elección, o una recomendación',
+    matchOnDescription: true
+  });
+  if (!pick) {
+    return undefined;
+  }
+  if (pick.id === RECOMMEND) {
+    return {};
+  }
+  if (pick.id === OTHER) {
+    const text = await vscode.window.showInputBox({
+      title: '¿Qué stack quieres usar?',
+      prompt: 'Ej: "Go con Gin y PostgreSQL", "Vue 3 con Vite". Lo concreto con versiones, convenciones y un plan.',
+      value: getProject()?.stack?.resumen ?? '',
+      ignoreFocusOut: true
+    });
+    if (!text?.trim()) {
+      return undefined;
+    }
+    return { preferred: text.trim(), profile: matchProfile(text) };
+  }
+  const profile = getProfile(pick.id);
+  return profile ? { preferred: profile.nombre, profile } : undefined;
+}
+
+/**
+ * Combina la propuesta del modelo con el perfil curado. El perfil manda en
+ * stack y convenciones (consistencia entre archivos); el modelo aporta el
+ * plan adaptado al proyecto. Sin propuesta, el plan base del perfil.
+ * Función pura: se prueba aislada.
+ */
+export function mergeWithProfile(
+  proposal: StackProposal | undefined,
+  profile: StackProfile | undefined
+): (StackProposal & { stack: NonNullable<StackProposal['stack']> }) | undefined {
+  if (profile) {
+    return {
+      perfil: profile.id,
+      stack: { ...profile.stack },
+      convenciones: [...profile.convenciones],
+      plan: proposal?.plan?.length ? proposal.plan : profile.planBase.map((s) => ({ ...s }))
+    };
+  }
+  if (!proposal?.stack) {
+    return undefined;
+  }
+  return { ...proposal, stack: proposal.stack, perfil: undefined };
 }
 
 /**

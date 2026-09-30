@@ -9,7 +9,10 @@ import { recommendStack } from './stackAdvisor';
 import { showMarkdownPanel } from './explain';
 import { progressReport, recordAccepted, resetLedger } from './conceptLedger';
 import { initProjectFile, openProjectFile } from './projectFile';
-import { ProjectContext, commentSyntax } from './projectContext';
+import { ProjectContext } from './projectContext';
+import { insertInstruction } from './instructions';
+import { registerPlanView } from './planView';
+import { createStructure } from './scaffold';
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -31,6 +34,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       new AutoCompleteHelpProvider(context, output, projectContext)
     )
   );
+
+  // Panel «Plan del proyecto» en el explorador.
+  registerPlanView(context);
 
   // Barra de estado con proveedor/modelo/nivel activos.
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -66,7 +72,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('autocompletehelp.showProgress', () =>
       showProgress(context)
     ),
-    vscode.commands.registerCommand('autocompletehelp.instruct', insertInstruction),
+    vscode.commands.registerCommand('autocompletehelp.instruct', () => insertInstruction()),
+    vscode.commands.registerCommand('autocompletehelp.createStructure', () =>
+      createStructure(context)
+    ),
     vscode.commands.registerCommand('autocompletehelp.openProjectFile', openProjectFile),
     // Interno: lo dispara el propio InlineCompletionItem al ser aceptado.
     vscode.commands.registerCommand(
@@ -195,43 +204,6 @@ async function selectLearningLevel(): Promise<void> {
     .getConfiguration('autocompletehelp')
     .update('learningLevel', pick.label as LearningLevel, vscode.ConfigurationTarget.Global);
   refreshStatusBar();
-}
-
-/**
- * Pide qué construir y lo inserta como comentario `ach:` en la línea actual,
- * con la sintaxis del lenguaje; luego dispara la sugerencia. Es el mismo
- * gesto que escribir el comentario a mano, para quien no recuerde el prefijo.
- */
-async function insertInstruction(): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    return;
-  }
-  const text = await vscode.window.showInputBox({
-    title: 'AutoCompleteHelp — ¿Qué quieres construir aquí?',
-    prompt:
-      'Ej: "ruta para listar productos con paginación". Se inserta como comentario ach: y la sugerencia sigue tu nivel de aprendizaje.',
-    ignoreFocusOut: true
-  });
-  if (!text?.trim()) {
-    return;
-  }
-  const { open, close } = commentSyntax(editor.document.languageId);
-  const line = editor.document.lineAt(editor.selection.active.line);
-  const indent = line.text.match(/^\s*/)?.[0] ?? '';
-  const comment = `${indent}${open} ach: ${text.trim()}${close}\n${indent}`;
-  await editor.edit((edit) => {
-    if (line.isEmptyOrWhitespace) {
-      edit.replace(line.range, comment);
-    } else {
-      edit.insert(line.range.end, `\n${comment}`);
-    }
-  });
-  // Cursor en la línea en blanco debajo de la instrucción: ahí se detecta.
-  const cursorLine = line.lineNumber + (line.isEmptyOrWhitespace ? 1 : 2);
-  const cursor = new vscode.Position(cursorLine, indent.length);
-  editor.selection = new vscode.Selection(cursor, cursor);
-  await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
 }
 
 /** Panel con los conceptos registrados y cuánto escribió el usuario por su cuenta. */

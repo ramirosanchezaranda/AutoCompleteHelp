@@ -76,5 +76,59 @@ eq('C /* */ quita el cierre', extractConcepts('/* @ach-concepts: punteros */\nin
 eq('sin marcador (stream cortado)', extractConcepts('const x = 1;'), { text: 'const x = 1;', concepts: [] });
 eq('máximo 4', extractConcepts('// @ach-concepts: a, b, c, d, e\nx();').concepts.length, 4);
 
+console.log('— fase 2: perfiles de stack');
+const { PROFILES, matchProfile, packageName, getProfile } = require(out + 'stackProfiles.js');
+const id = (t) => matchProfile(t)?.id;
+eq('matchProfile casos claros',
+  [id('Node.js con Express y MongoDB'), id('quiero usar fastapi'), id('React con Vite'), id('Django'), id('HTML y CSS puro')],
+  ['node-express', 'python-fastapi', 'react-vite', 'django', 'web-basica']);
+eq('matchProfile ambiguo o desconocido → sin perfil',
+  [id('python'), id('Go con Gin'), id('un frontend en Vue'), id(''), id(undefined)],
+  [undefined, undefined, undefined, undefined, undefined]);
+eq('packageName válido para npm', [packageName('Mi Tienda Ñandú!'), packageName('---')], ['mi-tienda-nandu', 'mi-proyecto']);
+const jsonSchema = require(require('path').join(__dirname, '..', 'schemas', 'autocompletehelp.schema.json'));
+eq('esquema y perfiles sincronizados', jsonSchema.properties.perfil.enum.slice().sort(), PROFILES.map((x) => x.id).sort());
+eq('manifiestos JSON de los perfiles son válidos', PROFILES.every((pr) => pr.base.every((b) => !b.archivo.endsWith('.json') || JSON.parse(b.contenido))), true);
+eq('django no pre-crea archivos del plan (romperían startproject)', getProfile('django').crearArchivosDelPlan, false);
+
+console.log('— fase 2: instrucciones de pasos');
+const { stepInstruction, languageForPath, stepFileContent } = require(out + 'instructions.js');
+eq('stepInstruction', stepInstruction({ paso: 'Listar productos', concepto: 'paginación' }), 'Listar productos (enseña: paginación)');
+eq('languageForPath', ['a/b.py', 'x.JSX', 'index.html', 'Makefile', 'c.json'].map(languageForPath), ['python', 'javascriptreact', 'html', undefined, undefined]);
+eq('archivo nuevo: solo la instrucción, con sintaxis del lenguaje', [
+  stepFileContent('app/main.py', { paso: 'App base' }),
+  stepFileContent('index.html', { paso: 'Estructura' }),
+  stepFileContent('css/e.css', { paso: 'Estilos' }),
+  stepFileContent('package.json', { paso: 'x' })
+], ['# ach: App base\n', '<!-- ach: Estructura -->\n', '/* ach: Estilos */\n', '']);
+eq('la instrucción del archivo nuevo dispara la sugerencia (detectInstruction)',
+  detectInstruction(stepFileContent('routes/items.js', { paso: 'Listar', concepto: 'rutas' })), 'Listar (enseña: rutas)');
+
+console.log('— fase 2: crear estructura');
+const { scaffoldEntries } = require(out + 'scaffold.js');
+const planNode = { prompt: 'x', plan: [
+  { paso: 'Servidor', archivo: 'server.js' }, { paso: 'Modelo', archivo: 'models/item.js' },
+  { paso: 'Errores', archivo: './server.js' }, { paso: 'Malicioso', archivo: '../fuera.js' }, { paso: 'Sin archivo' } ] };
+const ent = scaffoldEntries(planNode, getProfile('node-express'), 'Mi Tienda');
+eq('node: base + .gitignore + archivos del plan sin duplicados ni rutas fuera del proyecto',
+  ent.map((e) => e.archivo), ['package.json', '.env.example', '.env', '.gitignore', 'server.js', 'models/item.js']);
+eq('package.json con el nombre de la carpeta', JSON.parse(ent[0].contenido).name, 'mi-tienda');
+eq('.gitignore protege secretos y dependencias', ent[3].contenido, 'node_modules/\n.env\n');
+eq('archivos de código nacen vacíos salvo la instrucción', ent[4].contenido, '// ach: Servidor\n');
+eq('django: solo archivos base', scaffoldEntries(planNode, getProfile('django'), 'x').map((e) => e.archivo), ['requirements.txt', '.gitignore']);
+eq('sin perfil: solo archivos del plan', scaffoldEntries(planNode, undefined, 'x').map((e) => e.archivo), ['server.js', 'models/item.js']);
+
+console.log('— fase 2: combinar propuesta del modelo con el perfil');
+const { mergeWithProfile } = require(out + 'stackAdvisor.js');
+const llm = { stack: { resumen: 'Node + Express 4' }, convenciones: ['ESM'], plan: [{ paso: 'Carrito', archivo: 'routes/carrito.js' }] };
+const merged = mergeWithProfile(llm, getProfile('node-express'));
+eq('el perfil manda en stack y convenciones; el plan es el del modelo',
+  [merged.perfil, merged.stack.framework, merged.convenciones[0], merged.plan[0].paso], ['node-express', 'Express 5', 'CommonJS (require/module.exports)', 'Carrito']);
+eq('sin respuesta del modelo → plan base del perfil', mergeWithProfile(undefined, getProfile('react-vite')).plan.length, getProfile('react-vite').planBase.length);
+eq('sin perfil → propuesta tal cual; sin stack → nada', [mergeWithProfile(llm, undefined).stack.resumen, mergeWithProfile({ plan: [] }, undefined)], ['Node + Express 4', undefined]);
+eq('parseProjectFile lee el perfil', parseProjectFile('{"prompt":"x","perfil":"django"}').perfil, 'django');
+const { buildStackSystemPrompt } = require(out + 'prompts.js');
+eq('prompt del asesor incluye el perfil curado', buildStackSystemPrompt('Django', getProfile('django')).includes('PERFIL CURADO'), true);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);

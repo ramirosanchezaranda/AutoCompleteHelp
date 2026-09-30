@@ -7,9 +7,11 @@ Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 
 1. **Describe el proyecto** (*Definir prompt del proyecto*): con tus palabras, sin saber de tecnología.
-2. **Elige el stack** (*Elegir stack del proyecto*): escribe el que quieres usar o deja que te recomiende uno para aprender. Queda guardado en `autocompletehelp.json` con versiones, convenciones y un plan paso a paso.
-3. **Escribe código**: cada sugerencia conoce tu stack, los archivos que existen, tus dependencias y lo que exportan los archivos que importas — no inventa rutas ni campos.
-4. **Pide lo que quieras con un comentario**:
+2. **Elige el stack** (*Elegir stack del proyecto*): uno de los perfiles curados para aprender (HTML + CSS + JS, Node + Express, Python + FastAPI, React + Vite, Django), el que tú quieras, o una recomendación. Queda en `autocompletehelp.json` con convenciones y un plan paso a paso.
+3. **Crea la estructura** (*Crear estructura del proyecto*): manifiesto, `.gitignore` y los archivos del plan, **vacíos salvo su instrucción `ach:`**. Nunca sobrescribe. El comando de instalación se escribe en la terminal con su explicación, y lo ejecutas tú.
+4. **Sigue el plan** desde el panel **Plan del proyecto** del explorador: un clic abre el archivo del paso y el autocompletado arranca; la casilla lo marca como hecho.
+5. **Escribe código**: cada sugerencia conoce tu stack, los archivos que existen, tus dependencias y lo que exportan los archivos que importas — no inventa rutas ni campos.
+6. **Pide lo que quieras con un comentario**:
    ```js
    // ach: ruta para listar productos con paginación
    ```

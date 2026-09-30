@@ -2,6 +2,28 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.4.0] — 2026-09-30
+
+### Añadido
+
+- **Panel «Plan del proyecto»** en el explorador: los pasos del plan con una
+  casilla para marcarlos como hechos (se guarda en `autocompletehelp.json`) y el
+  paso siguiente destacado. Un clic abre el archivo del paso; si no existe, lo
+  crea vacío con la instrucción `ach:` del paso y dispara la sugerencia.
+- **Perfiles de stack curados** para aprender: HTML + CSS + JavaScript,
+  Node.js + Express 5 + MongoDB, Python + FastAPI + SQLite, React 19 + Vite y
+  Python + Django 5.2. El perfil fija el stack y las convenciones (consistencia
+  entre archivos) y el modelo adapta el plan al proyecto. Sin conexión con el
+  modelo, se puede guardar el plan base del perfil.
+- **Comando «Crear estructura del proyecto»**: crea el manifiesto, `.gitignore`,
+  las variables de entorno y los archivos del plan, **vacíos salvo su
+  instrucción `ach:`**. Muestra la lista para elegir y nunca sobrescribe. El
+  comando de instalación se escribe en una terminal **sin ejecutarlo**, con la
+  explicación de qué hace. Las dependencias se instalan por nombre para obtener
+  la versión estable actual, en vez de fijar versiones que envejecen.
+- «Elegir stack del proyecto» ahora ofrece los perfiles curados, un stack a
+  elección o una recomendación, y al guardar propone crear la estructura.
+
 ## [0.3.0] — 2026-09-30
 
 ### Añadido

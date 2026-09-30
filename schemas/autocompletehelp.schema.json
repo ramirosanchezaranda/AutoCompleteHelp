@@ -3,40 +3,87 @@
   "title": "AutoCompleteHelp — proyecto",
   "description": "Fuente de verdad del proyecto para AutoCompleteHelp: objetivo, stack, convenciones y plan. Se versiona junto al código.",
   "type": "object",
-  "required": ["prompt"],
+  "required": [
+    "prompt"
+  ],
   "properties": {
     "prompt": {
       "type": "string",
       "description": "Qué estás construyendo y cómo quieres que te ayude."
     },
+    "perfil": {
+      "type": "string",
+      "description": "Perfil de stack curado. Lo fija «Elegir stack del proyecto»; define los archivos base y los comandos de «Crear estructura».",
+      "enum": [
+        "web-basica",
+        "node-express",
+        "python-fastapi",
+        "react-vite",
+        "django"
+      ]
+    },
     "stack": {
       "type": "object",
       "description": "Tecnologías del proyecto, con versión. Todas las sugerencias usan exactamente este stack.",
       "properties": {
-        "resumen": { "type": "string", "description": "El stack en una frase, ej: \"Node.js + Express 5 + MongoDB\"." },
-        "lenguaje": { "type": "string", "description": "Lenguaje y versión, ej: \"JavaScript (Node 22)\"." },
-        "framework": { "type": "string", "description": "Framework y versión, ej: \"Express 5\"." },
-        "datos": { "type": "string", "description": "Base de datos y librería, ej: \"MongoDB con Mongoose 8\"." },
-        "tests": { "type": "string", "description": "Framework de tests, ej: \"node:test\"." }
+        "resumen": {
+          "type": "string",
+          "description": "El stack en una frase, ej: \"Node.js + Express 5 + MongoDB\"."
+        },
+        "lenguaje": {
+          "type": "string",
+          "description": "Lenguaje y versión, ej: \"JavaScript (Node 22)\"."
+        },
+        "framework": {
+          "type": "string",
+          "description": "Framework y versión, ej: \"Express 5\"."
+        },
+        "datos": {
+          "type": "string",
+          "description": "Base de datos y librería, ej: \"MongoDB con Mongoose 8\"."
+        },
+        "tests": {
+          "type": "string",
+          "description": "Framework de tests, ej: \"node:test\"."
+        }
       },
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "convenciones": {
       "type": "array",
       "description": "Reglas del proyecto que las sugerencias deben respetar.",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "plan": {
       "type": "array",
       "description": "Pasos ordenados para construir el proyecto. La guía «➜ Siguiente paso» apunta al primero sin hacer.",
       "items": {
         "type": "object",
-        "required": ["paso"],
+        "required": [
+          "paso"
+        ],
         "properties": {
-          "paso": { "type": "string", "description": "Qué construir." },
-          "archivo": { "type": "string", "description": "Archivo donde se construye, relativo a la raíz." },
-          "concepto": { "type": "string", "description": "Concepto que enseña este paso." },
-          "hecho": { "type": "boolean", "description": "Marca el paso como terminado.", "default": false }
+          "paso": {
+            "type": "string",
+            "description": "Qué construir."
+          },
+          "archivo": {
+            "type": "string",
+            "description": "Archivo donde se construye, relativo a la raíz."
+          },
+          "concepto": {
+            "type": "string",
+            "description": "Concepto que enseña este paso."
+          },
+          "hecho": {
+            "type": "boolean",
+            "description": "Marca el paso como terminado.",
+            "default": false
+          }
         }
       }
     }

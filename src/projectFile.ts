@@ -30,6 +30,8 @@ export interface PlanStep {
 
 export interface ProjectFile {
   prompt: string;
+  /** Id del perfil de stack curado (src/stackProfiles.ts), si corresponde. */
+  perfil?: string;
   stack?: StackInfo;
   convenciones?: string[];
   plan?: PlanStep[];
@@ -37,6 +39,14 @@ export interface ProjectFile {
 
 let cached: ProjectFile | undefined;
 let legacyPrompt = '';
+
+// Perezoso: fuera del IDE (pruebas unitarias) no existe vscode.EventEmitter.
+let changed: vscode.EventEmitter<void> | undefined;
+const emitter = () => (changed ??= new vscode.EventEmitter<void>());
+
+/** Se dispara cuando el proyecto cambia: guardado por la extensión o editado a mano. */
+export const onDidChangeProject: vscode.Event<void> = (listener, thisArgs, disposables) =>
+  emitter().event(listener, thisArgs, disposables);
 
 function projectUri(): vscode.Uri | undefined {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -55,6 +65,9 @@ export function parseProjectFile(text: string): ProjectFile | undefined {
     return undefined;
   }
   const project: ProjectFile = { prompt: typeof data.prompt === 'string' ? data.prompt : '' };
+  if (typeof data.perfil === 'string' && data.perfil.trim()) {
+    project.perfil = data.perfil.trim();
+  }
   if (data.stack && typeof data.stack === 'object') {
     const stack: StackInfo = {};
     for (const [k, v] of Object.entries(data.stack)) {
@@ -94,6 +107,7 @@ async function reload(): Promise<void> {
   } catch {
     cached = undefined; // no existe todavía
   }
+  changed?.fire();
 }
 
 /** Carga el archivo al activar y lo mantiene sincronizado si se edita a mano. */
@@ -104,7 +118,7 @@ export async function initProjectFile(context: vscode.ExtensionContext): Promise
   watcher.onDidChange(() => reload());
   watcher.onDidCreate(() => reload());
   watcher.onDidDelete(() => reload());
-  context.subscriptions.push(watcher);
+  context.subscriptions.push(watcher, emitter());
 }
 
 export function getProject(): ProjectFile | undefined {
@@ -132,7 +146,26 @@ export async function saveProject(
   const text = JSON.stringify(next, null, 2) + '\n';
   await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
   cached = next;
+  changed?.fire();
   return true;
+}
+
+/** Marca un paso del plan como hecho o pendiente. */
+export async function markStep(
+  context: vscode.ExtensionContext,
+  index: number,
+  hecho: boolean
+): Promise<void> {
+  const plan = getProject()?.plan;
+  if (!plan || !plan[index]) {
+    return;
+  }
+  const next = plan.map((s, i) => (i === index ? { ...s, hecho } : s));
+  await saveProject(context, { plan: next });
+}
+
+export function projectRoot(): vscode.Uri | undefined {
+  return vscode.workspace.workspaceFolders?.[0]?.uri;
 }
 
 export async function openProjectFile(): Promise<void> {

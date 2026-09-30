@@ -6,6 +6,7 @@ import {
   openProjectFile,
   saveProject
 } from './projectFile';
+import type { StackProfile } from './stackProfiles';
 
 export type LearningLevel = 'completo' | 'guiado' | 'pista' | 'educame';
 
@@ -228,7 +229,24 @@ export function buildUserPrompt(
 }
 
 /** Prompt de sistema para el comando "Recomendar stack para mi proyecto". */
-export function buildStackSystemPrompt(preferredStack?: string): string {
+export function buildStackSystemPrompt(
+  preferredStack?: string,
+  profile?: Pick<StackProfile, 'stack' | 'convenciones' | 'planBase' | 'crearArchivosDelPlan'>
+): string {
+  const base = profile
+    ? [
+        '',
+        'PERFIL CURADO de este stack (úsalo como base obligatoria):',
+        `  stack: ${JSON.stringify(profile.stack)}`,
+        `  convenciones: ${JSON.stringify(profile.convenciones)}`,
+        `  plan de ejemplo: ${JSON.stringify(profile.planBase)}`,
+        'En el bloque ach-project copia "stack" y "convenciones" tal cual. Adapta el plan a ESTE proyecto',
+        '(nombres de archivos y recursos del dominio del usuario), siguiendo esas convenciones y estructura de carpetas.',
+        profile.crearArchivosDelPlan
+          ? ''
+          : 'Las rutas de archivo del plan deben coincidir con la estructura que genera la propia herramienta del stack.'
+      ]
+    : [];
   const intro = preferredStack
     ? [
         'Eres un mentor de arquitectura de software especializado en personas que están aprendiendo a programar.',
@@ -257,8 +275,11 @@ export function buildStackSystemPrompt(preferredStack?: string): string {
     '  "plan": [ { "paso": "qué construir", "archivo": "ruta/relativa.ext", "concepto": "concepto que enseña" } ]',
     '}',
     '```',
-    'El plan debe coincidir con la Ruta de aprendizaje. Omite en "stack" las claves que no apliquen (ej: sin base de datos). Usa versiones estables actuales.'
-  ].join('\n');
+    'El plan debe coincidir con la Ruta de aprendizaje. Omite en "stack" las claves que no apliquen (ej: sin base de datos). Usa versiones estables actuales.',
+    ...base
+  ]
+    .filter((line, i, all) => line !== '' || all[i - 1] !== '')
+    .join('\n');
 }
 
 /** Prompt de sistema para el comando "Explicar código seleccionado". */

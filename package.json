@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Autocompletado guiado por prompt con múltiples LLMs. Aprende mientras escribes: el asistente completa, explica y te da pistas para que entiendas cada parte de tu proyecto.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -38,7 +38,8 @@
       },
       {
         "command": "autocompletehelp.openProjectFile",
-        "title": "AutoCompleteHelp: Abrir autocompletehelp.json"
+        "title": "AutoCompleteHelp: Abrir autocompletehelp.json",
+        "icon": "$(go-to-file)"
       },
       {
         "command": "autocompletehelp.instruct",
@@ -66,7 +67,17 @@
       },
       {
         "command": "autocompletehelp.recommendStack",
-        "title": "AutoCompleteHelp: Elegir stack del proyecto"
+        "title": "AutoCompleteHelp: Elegir stack del proyecto",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "autocompletehelp.createStructure",
+        "title": "AutoCompleteHelp: Crear estructura del proyecto",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "autocompletehelp.openStep",
+        "title": "AutoCompleteHelp: Abrir paso del plan"
       },
       {
         "command": "autocompletehelp.addProvider",
@@ -88,6 +99,29 @@
           "command": "autocompletehelp.explainSelection",
           "when": "editorHasSelection",
           "group": "autocompletehelp@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "autocompletehelp.createStructure",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@1"
+        },
+        {
+          "command": "autocompletehelp.recommendStack",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@2"
+        },
+        {
+          "command": "autocompletehelp.openProjectFile",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "autocompletehelp.openStep",
+          "when": "false"
         }
       ]
     },
@@ -202,7 +236,21 @@
           "description": "URL base para el proveedor 'custom' (debe exponer /chat/completions compatible con OpenAI)."
         }
       }
-    }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "autocompletehelp.plan",
+          "name": "Plan del proyecto"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "autocompletehelp.plan",
+        "contents": "Todavía no hay plan. Elige el stack y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo con una instrucción ach: lista para que el autocompletado te guíe."
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
