@@ -6,6 +6,8 @@ import { setApiKeyCommand, ensureApiKey } from './secrets';
 import { setProjectPrompt, LearningLevel } from './prompts';
 import { explainSelection } from './explain';
 import { recommendStack } from './stackAdvisor';
+import { showMarkdownPanel } from './explain';
+import { progressReport, recordAccepted, resetLedger } from './conceptLedger';
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -51,6 +53,14 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('autocompletehelp.addProvider', () =>
       addProvider(context)
+    ),
+    vscode.commands.registerCommand('autocompletehelp.showProgress', () =>
+      showProgress(context)
+    ),
+    // Interno: lo dispara el propio InlineCompletionItem al ser aceptado.
+    vscode.commands.registerCommand(
+      'autocompletehelp.recordAccepted',
+      (concepts: string[], level: string) => recordAccepted(context, concepts, level)
     ),
     vscode.commands.registerCommand('autocompletehelp.selectModel', () =>
       selectModel(context)
@@ -174,6 +184,26 @@ async function selectLearningLevel(): Promise<void> {
     .getConfiguration('autocompletehelp')
     .update('learningLevel', pick.label as LearningLevel, vscode.ConfigurationTarget.Global);
   refreshStatusBar();
+}
+
+/** Panel con los conceptos registrados y cuánto escribió el usuario por su cuenta. */
+async function showProgress(context: vscode.ExtensionContext): Promise<void> {
+  showMarkdownPanel('AutoCompleteHelp — Tu progreso', progressReport(context));
+  const action = await vscode.window.showInformationMessage(
+    'AutoCompleteHelp baja las explicaciones de los conceptos que ya repetiste.',
+    'Reiniciar progreso'
+  );
+  if (action === 'Reiniciar progreso') {
+    const confirm = await vscode.window.showWarningMessage(
+      'Se borrarán todos los conceptos registrados y volverás a recibir las explicaciones completas. ¿Continuar?',
+      { modal: true },
+      'Reiniciar'
+    );
+    if (confirm === 'Reiniciar') {
+      await resetLedger(context);
+      vscode.window.showInformationMessage('AutoCompleteHelp: progreso reiniciado.');
+    }
+  }
 }
 
 async function toggleEnabled(): Promise<void> {

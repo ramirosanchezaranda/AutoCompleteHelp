@@ -6,9 +6,11 @@ import {
   LearningLevel,
   buildSystemPrompt,
   buildUserPrompt,
+  extractConcepts,
   getProjectPrompt,
   sanitizeCompletion
 } from './prompts';
+import { knownConcepts } from './conceptLedger';
 
 const MAX_PREFIX_CHARS = 6000;
 const MAX_SUFFIX_CHARS = 2000;
@@ -19,6 +21,7 @@ const STREAM_MAX_CHARS = 1600;
 export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProvider {
   private lastKey = '';
   private lastResult = '';
+  private lastConcepts: string[] = [];
   private keyWarned = false;
   private promptNudged = false;
   private readonly progress: vscode.StatusBarItem;
@@ -61,7 +64,7 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
     // Caché trivial: mismo punto de inserción → misma sugerencia.
     const cacheKey = `${document.uri.toString()}#${prefix}#${suffix.slice(0, 200)}`;
     if (cacheKey === this.lastKey && this.lastResult) {
-      return [new vscode.InlineCompletionItem(this.lastResult)];
+      return [this.buildItem(this.lastResult, this.lastConcepts, cfg)];
     }
 
     const { provider, model, baseUrl } = resolveActiveConfig();
@@ -98,7 +101,13 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
 
     const level = cfg.get<LearningLevel>('learningLevel', 'guiado');
     const guidance = cfg.get<boolean>('projectGuidance', true);
-    const system = buildSystemPrompt(level, projectPrompt, guidance);
+    const fading = cfg.get<boolean>('fadingScaffolding', true);
+    const system = buildSystemPrompt(
+      level,
+      projectPrompt,
+      guidance,
+      fading ? knownConcepts(this.context) : []
+    );
     const user = buildUserPrompt(
       document.languageId,
       vscode.workspace.asRelativePath(document.uri),
@@ -138,13 +147,15 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       if (token.isCancellationRequested) {
         return undefined;
       }
-      const text = sanitizeCompletion(raw, prefix);
+      const { text: body, concepts } = extractConcepts(raw);
+      const text = sanitizeCompletion(body, prefix);
       if (!text.trim()) {
         return undefined;
       }
       this.lastKey = cacheKey;
       this.lastResult = text;
-      return [new vscode.InlineCompletionItem(text)];
+      this.lastConcepts = concepts;
+      return [this.buildItem(text, concepts, cfg)];
     } catch (err: any) {
       this.progress.hide();
       if (err?.name === 'AbortError') {
@@ -153,6 +164,27 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       this.output.appendLine(`[${new Date().toISOString()}] Error de ${provider.label}: ${err?.message ?? err}`);
       return undefined;
     }
+  }
+
+  /**
+   * El `command` de un InlineCompletionItem se ejecuta al ACEPTAR la
+   * sugerencia: es nuestra única señal fiable de que el concepto entró de
+   * verdad al código del usuario (y no de que el fantasma pasó por pantalla).
+   */
+  private buildItem(
+    text: string,
+    concepts: string[],
+    cfg: vscode.WorkspaceConfiguration
+  ): vscode.InlineCompletionItem {
+    const item = new vscode.InlineCompletionItem(text);
+    if (concepts.length && cfg.get<boolean>('fadingScaffolding', true)) {
+      item.command = {
+        command: 'autocompletehelp.recordAccepted',
+        title: 'AutoCompleteHelp: registrar conceptos aprendidos',
+        arguments: [concepts, cfg.get<LearningLevel>('learningLevel', 'guiado')]
+      };
+    }
+    return item;
   }
 }
 

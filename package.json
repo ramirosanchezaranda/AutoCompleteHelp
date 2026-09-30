@@ -49,6 +49,10 @@
         "title": "AutoCompleteHelp: Elegir nivel de aprendizaje"
       },
       {
+        "command": "autocompletehelp.showProgress",
+        "title": "AutoCompleteHelp: Ver mi progreso"
+      },
+      {
         "command": "autocompletehelp.explainSelection",
         "title": "AutoCompleteHelp: Explicar código seleccionado"
       },
@@ -93,7 +97,10 @@
           "description": "Tus IAs propias (endpoints OpenAI-compatibles con API key). Créalas con el comando 'Agregar IA'; las claves van al SecretStorage, nunca aquí.",
           "items": {
             "type": "object",
-            "required": ["name", "baseUrl"],
+            "required": [
+              "name",
+              "baseUrl"
+            ],
             "properties": {
               "name": {
                 "type": "string",
@@ -105,7 +112,9 @@
               },
               "models": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "IDs de modelos disponibles en este endpoint."
               }
             }
@@ -132,6 +141,11 @@
             "Edúcame: para empezar desde cero — cada línea explicada con conceptos básicos, una idea nueva por sugerencia."
           ],
           "description": "Cuánto te ayuda la IA. 'guiado' y 'pista' para aprender sin depender de la IA; 'educame' para arrancar desde cero con un lenguaje."
+        },
+        "autocompletehelp.fadingScaffolding": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Andamiaje decreciente: AutoCompleteHelp recuerda qué conceptos ya usaste y deja de explicártelos cuando los repetiste varias veces. Desactívalo para recibir siempre la explicación completa. Usa **Ver mi progreso** para consultarlo."
         },
         "autocompletehelp.streaming": {
           "type": "boolean",

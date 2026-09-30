@@ -21,6 +21,16 @@ Todos los cambios notables de AutoCompleteHelp se documentan aquí.
   propio (vLLM, LM Studio, Azure OpenAI, proxys corporativos…) con nombre,
   URL, modelo y API key cifrada; queda disponible en el selector como
   «Nombre (tu IA)».
+- **Comentarios contrastivos**: cada explicación ahora dice qué hace el código,
+  **en vez de qué** alternativa se eligió y **cuándo no** convendría. Un comentario
+  que solo repite el código en castellano quedó prohibido en el prompt.
+- **Registro de conceptos y andamiaje decreciente**: la extensión recuerda qué
+  conceptos entraron a tu código y deja de explicarlos cuando ya los repetiste,
+  igual que un profesor que suelta la mano. Configurable con
+  `autocompletehelp.fadingScaffolding`.
+- **Comando «Ver mi progreso»**: conceptos agrupados por etapa (recién vistos,
+  en práctica, ya dominados) y qué proporción escribiste tú en vez de aceptar
+  con Tab, con opción de reiniciar el progreso.
 - Aviso único para definir el prompt del proyecto si aún no existe.
 
 ## [0.1.0] — 2026-07-22

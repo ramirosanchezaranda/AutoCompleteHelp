@@ -15,6 +15,8 @@ Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la
   | `pista` | Solo comentarios con pasos y pistas — **tú escribes el código** | Máximo aprendizaje |
   | `guiado` *(por defecto)* | Código + comentarios que explican el **porqué** | Aprender mientras avanzas |
   | `completo` | Código directo | Máxima velocidad |
+- **La ayuda baja a medida que aprendes**: AutoCompleteHelp anota cada concepto que entra en tu código y, cuando lo repetiste varias veces, deja de explicártelo. Consulta el comando **Ver mi progreso** para ver qué dominas y qué proporción escribiste tú.
+- **Comentarios que dan criterio, no descripciones**: cada explicación dice qué hace, **en vez de qué** alternativa, y **cuándo no** convendría — que es lo que separa entender de memorizar.
 - **Guía del proyecto**: los archivos vacíos reciben su esqueleto según tu prompt, y cada sugerencia termina con «➜ Siguiente paso», la próxima pieza que falta del proyecto.
 - **Streaming (SSE)** con corte temprano: sugerencias más rápidas y menos tokens.
 - **Recomendar stack**: ¿no sabes con qué tecnologías hacer tu proyecto? El comando analiza tu prompt y propone el mejor stack para aprender, con alternativas, estructura inicial y ruta de aprendizaje — y lo fija en tu prompt si lo aceptas.

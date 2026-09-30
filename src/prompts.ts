@@ -32,11 +32,28 @@ export async function setProjectPrompt(context: vscode.ExtensionContext): Promis
   }
 }
 
+/**
+ * Plantilla del comentario pedagógico. El "por qué" real es CONTRASTIVO:
+ * un comentario que solo describe lo que ya se lee en el código no enseña nada.
+ */
+const CONTRASTIVE_RULE = [
+  'FORMATO OBLIGATORIO DEL COMENTARIO (para cada decisión no trivial), en 1-3 líneas con estos movimientos:',
+  '  1. QUÉ hace, en pocas palabras.',
+  '  2. EN VEZ DE QUÉ: la alternativa obvia que descartaste y por qué esta gana aquí. Este movimiento es OBLIGATORIO.',
+  '  3. CUÁNDO NO: en qué situación esta misma elección sería incorrecta. Inclúyelo cuando aporte criterio.',
+  'Ejemplo del tono buscado:',
+  '  // Devolvemos 201 y no 200: 200 dice "salió bien" pero no que ahora existe algo nuevo.',
+  '  // Si esta ruta actualizara en vez de crear, 200 sería lo correcto.',
+  'PROHIBIDO: comentarios que repiten el código en castellano ("// guardamos el producto" sobre producto.save()).',
+  'Si no encuentras una alternativa real que contrastar, no escribas el comentario: el código va solo.'
+].join('\n');
+
 /** Prompt de sistema para el autocompletado inline, según el nivel de aprendizaje. */
 export function buildSystemPrompt(
   level: LearningLevel,
   projectPrompt: string,
-  guidance: boolean
+  guidance: boolean,
+  known: string[] = []
 ): string {
   const base = [
     'Eres AutoCompleteHelp, un motor de autocompletado de código dentro de un IDE.',
@@ -47,6 +64,17 @@ export function buildSystemPrompt(
     '- Respeta la indentación, el estilo y el lenguaje del archivo.',
     '- Completa una unidad razonable (resto de la línea, una función, un bloque). No escribas el archivo entero.'
   ];
+
+  // Marcador de conceptos: primera línea de la respuesta (va primero para que
+  // sobreviva al corte temprano del streaming). La extensión lo elimina antes
+  // de insertar y lo usa para saber qué ya te explicó.
+  base.push(
+    'PRIMERA LÍNEA OBLIGATORIA de tu respuesta: un comentario (sintaxis del lenguaje) con el formato exacto',
+    '  @ach-concepts: concepto-1, concepto-2',
+    'listando de 1 a 4 conceptos de programación que usa tu sugerencia, con nombres canónicos y estables',
+    '(ej: async/await, try/catch, destructuring, middleware, códigos de estado HTTP, promesas).',
+    'Esa línea se elimina antes de insertar el código: no la comentes ni la expliques.'
+  );
 
   if (projectPrompt) {
     base.push(
@@ -61,31 +89,72 @@ export function buildSystemPrompt(
     }
   }
 
+  // Andamiaje decreciente: lo que ya se repitió no se vuelve a explicar.
+  if (known.length && (level === 'guiado' || level === 'educame')) {
+    base.push(
+      'MEMORIA DEL APRENDIZ — el usuario YA DOMINA estos conceptos porque los repitió varias veces:',
+      `  ${known.join(', ')}`,
+      'NO vuelvas a explicarlos: da ese código sin comentario, como se lo darías a alguien con experiencia.',
+      'Reserva los comentarios para lo que sea nuevo o poco frecuente en esta sugerencia.',
+      'Explicar de más a quien ya sabe entorpece la lectura y hace que deje de leer los comentarios que sí importan.'
+    );
+  }
+
   switch (level) {
     case 'educame':
       base.push(
         'MODO EDÚCAME (el usuario está empezando desde cero): asume que todavía NO sabe programar.',
-        'Sugiere el código en pasos muy pequeños y, antes de CADA línea, escribe un comentario en español muy simple que explique qué hace y qué concepto usa (variable, función, import, ruta…), como un profesor paciente.',
+        'Sugiere el código en pasos muy pequeños y comenta cada parte nueva como un profesor paciente.',
         'La primera vez que aparezca un concepto, defínelo en una frase sencilla. Nada de jerga sin explicar.',
-        'Introduce como máximo una idea nueva por sugerencia: mejor corto y entendido que largo y mágico.'
+        'Introduce como máximo una idea nueva por sugerencia: mejor corto y entendido que largo y mágico.',
+        CONTRASTIVE_RULE,
+        'Adaptación para este nivel: en el movimiento 2 contrasta contra lo que alguien haría por intuición, no contra tecnicismos que el usuario aún no conoce.',
+        '  // Guardamos el resultado en una variable en vez de usarlo suelto:',
+        '  // así podemos volver a usarlo más abajo sin repetir el trabajo.'
       );
       break;
     case 'guiado':
       base.push(
-        'MODO GUIADO (objetivo: que el usuario aprenda): antes de cada parte no trivial del código que sugieras, agrega un comentario corto en español (una línea) explicando POR QUÉ se hace así. Usa la sintaxis de comentarios del lenguaje del archivo.'
+        'MODO GUIADO (objetivo: que el usuario aprenda el criterio, no que copie):',
+        'comenta cada decisión no trivial del código que sugieras, en español y con la sintaxis de comentarios del lenguaje.',
+        CONTRASTIVE_RULE
       );
       break;
     case 'pista':
       base.push(
-        'MODO PISTA (objetivo: que el usuario escriba su propio código): NO escribas la solución. Responde ÚNICAMENTE con comentarios en español (sintaxis de comentarios del lenguaje del archivo) que den los pasos y pistas concretas para que el usuario implemente el código por sí mismo. Máximo 5 comentarios cortos. Puedes mencionar nombres de funciones o APIs relevantes, pero nunca líneas de código completas.'
+        'MODO PISTA (objetivo: que el usuario escriba su propio código): NO escribas la solución.',
+        'Responde ÚNICAMENTE con comentarios en español (sintaxis del lenguaje) que den los pasos y pistas concretas para que el usuario lo implemente por sí mismo. Máximo 5 comentarios cortos.',
+        'Puedes mencionar nombres de funciones o APIs relevantes, pero nunca líneas de código completas.',
+        'En al menos una pista, plantea la decisión como una elección: menciona la alternativa obvia y pregunta cuál conviene aquí y por qué (sin dar la respuesta).'
       );
       break;
     case 'completo':
     default:
-      base.push('MODO COMPLETO: sugiere directamente el código, limpio y idiomático.');
+      base.push('MODO COMPLETO: sugiere directamente el código, limpio y idiomático, sin comentarios pedagógicos.');
       break;
   }
   return base.join('\n');
+}
+
+/** Marcador que el modelo emite en la primera línea con los conceptos usados. */
+const CONCEPT_MARKER = /^[^\n]*@ach-concepts:[ \t]*([^\n]*)\n?/m;
+
+/**
+ * Separa el marcador de conceptos del texto que realmente se inserta.
+ * Tolera que falte (streaming cortado, modelo desobediente): en ese caso
+ * simplemente no hay conceptos que registrar.
+ */
+export function extractConcepts(raw: string): { text: string; concepts: string[] } {
+  const match = raw.match(CONCEPT_MARKER);
+  if (!match) {
+    return { text: raw, concepts: [] };
+  }
+  const concepts = match[1]
+    .split(',')
+    .map((s) => s.replace(/[*\/#<>-]+$/, '').trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  return { text: raw.replace(CONCEPT_MARKER, ''), concepts };
 }
 
 /** Prompt de usuario con el contexto del archivo. */
