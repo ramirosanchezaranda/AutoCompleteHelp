@@ -7,16 +7,22 @@ import {
   buildSystemPrompt,
   buildUserPrompt,
   extractConcepts,
+  getProjectBlock,
   getProjectPrompt,
   sanitizeCompletion
 } from './prompts';
 import { knownConcepts } from './conceptLedger';
+import { ProjectContext, detectInstruction } from './projectContext';
 
 const MAX_PREFIX_CHARS = 6000;
 const MAX_SUFFIX_CHARS = 2000;
 // Corte temprano del stream: con esto ya hay una sugerencia útil en pantalla.
 const STREAM_MAX_LINES = 18;
 const STREAM_MAX_CHARS = 1600;
+// Una instrucción `ach:` pide una pieza completa (una ruta, una función):
+// se le da más margen antes del corte temprano.
+const INSTRUCTION_MAX_LINES = 45;
+const INSTRUCTION_MAX_CHARS = 3600;
 
 export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProvider {
   private lastKey = '';
@@ -28,7 +34,8 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly output: vscode.OutputChannel
+    private readonly output: vscode.OutputChannel,
+    private readonly project: ProjectContext
   ) {
     this.progress = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
     context.subscriptions.push(this.progress);
@@ -102,19 +109,35 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
     const level = cfg.get<LearningLevel>('learningLevel', 'guiado');
     const guidance = cfg.get<boolean>('projectGuidance', true);
     const fading = cfg.get<boolean>('fadingScaffolding', true);
+    const useContext = cfg.get<boolean>('projectContext', true);
+    const instruction = detectInstruction(prefix);
+
+    // Contexto del proyecto: árbol + dependencias (estable, va al sistema) y
+    // lo que exportan los archivos que este importa (va al mensaje).
+    const [snapshot, related] = useContext
+      ? await Promise.all([this.project.snapshot(), this.project.relatedFiles(document)])
+      : ['', ''];
+    if (token.isCancellationRequested) {
+      return undefined;
+    }
+
     const system = buildSystemPrompt(
       level,
-      projectPrompt,
+      getProjectBlock(),
       guidance,
-      fading ? knownConcepts(this.context) : []
+      fading ? knownConcepts(this.context) : [],
+      snapshot
     );
     const user = buildUserPrompt(
       document.languageId,
       vscode.workspace.asRelativePath(document.uri),
       prefix,
-      suffix
+      suffix,
+      related,
+      instruction
     );
 
+    const baseTokens = cfg.get<number>('maxTokens', 400);
     const request = {
       provider,
       baseUrl,
@@ -122,23 +145,24 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       apiKey,
       system,
       user,
-      maxTokens: cfg.get<number>('maxTokens', 400),
+      maxTokens: instruction ? Math.max(baseTokens, 1200) : baseTokens,
       token
     };
+    const maxLines = instruction ? INSTRUCTION_MAX_LINES : STREAM_MAX_LINES;
+    const maxChars = instruction ? INSTRUCTION_MAX_CHARS : STREAM_MAX_CHARS;
 
     try {
       let raw: string;
       if (cfg.get<boolean>('streaming', true)) {
-        this.progress.text = '$(loading~spin) ACH generando…';
+        const label = instruction ? 'ACH siguiendo tu instrucción' : 'ACH';
+        this.progress.text = `$(loading~spin) ${label} generando…`;
         this.progress.show();
         raw = await streamComplete(request, {
           onDelta: (_d, total) => {
-            this.progress.text = `$(loading~spin) ACH streaming… ${total.length}`;
+            this.progress.text = `$(loading~spin) ${label} streaming… ${total.length}`;
           },
-          // Corte temprano: suficientes líneas o un bloque cerrado al final.
-          shouldStop: (total) =>
-            total.length >= STREAM_MAX_CHARS ||
-            countLines(total) >= STREAM_MAX_LINES
+          // Corte temprano: con suficientes líneas ya hay una sugerencia útil.
+          shouldStop: (total) => total.length >= maxChars || countLines(total) >= maxLines
         });
         this.progress.hide();
       } else {

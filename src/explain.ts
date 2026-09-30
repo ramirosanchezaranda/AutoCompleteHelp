@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
-import { buildExplainSystemPrompt, getProjectPrompt } from './prompts';
+import { buildExplainSystemPrompt, getProjectBlock } from './prompts';
 
 /**
  * Comando "Explicar código seleccionado": pide al LLM una explicación
@@ -30,7 +30,7 @@ export async function explainSelection(context: vscode.ExtensionContext): Promis
           baseUrl,
           model,
           apiKey,
-          system: buildExplainSystemPrompt(getProjectPrompt(context)),
+          system: buildExplainSystemPrompt(getProjectBlock()),
           user: `Lenguaje: ${editor.document.languageId}\n\nExplícame este código:\n\n${code}`,
           maxTokens: 1500
         });

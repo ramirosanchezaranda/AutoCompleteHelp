@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Autocompletado guiado por prompt con múltiples LLMs. Aprende mientras escribes: el asistente completa, explica y te da pistas para que entiendas cada parte de tu proyecto.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -37,6 +37,14 @@
         "title": "AutoCompleteHelp: Definir prompt del proyecto"
       },
       {
+        "command": "autocompletehelp.openProjectFile",
+        "title": "AutoCompleteHelp: Abrir autocompletehelp.json"
+      },
+      {
+        "command": "autocompletehelp.instruct",
+        "title": "AutoCompleteHelp: Construir aquí con una instrucción"
+      },
+      {
         "command": "autocompletehelp.selectModel",
         "title": "AutoCompleteHelp: Elegir proveedor y modelo"
       },
@@ -58,7 +66,7 @@
       },
       {
         "command": "autocompletehelp.recommendStack",
-        "title": "AutoCompleteHelp: Recomendar stack para mi proyecto"
+        "title": "AutoCompleteHelp: Elegir stack del proyecto"
       },
       {
         "command": "autocompletehelp.addProvider",
@@ -72,12 +80,23 @@
     "menus": {
       "editor/context": [
         {
+          "command": "autocompletehelp.instruct",
+          "when": "editorTextFocus && !editorHasSelection",
+          "group": "autocompletehelp@1"
+        },
+        {
           "command": "autocompletehelp.explainSelection",
           "when": "editorHasSelection",
-          "group": "autocompletehelp"
+          "group": "autocompletehelp@2"
         }
       ]
     },
+    "jsonValidation": [
+      {
+        "fileMatch": "autocompletehelp.json",
+        "url": "./schemas/autocompletehelp.schema.json"
+      }
+    ],
     "configuration": {
       "title": "AutoCompleteHelp",
       "properties": {
@@ -157,6 +176,11 @@
           "default": true,
           "description": "Guía del proyecto: cada sugerencia termina con un comentario '➜ Siguiente paso:' indicando la próxima pieza que falta según tu prompt."
         },
+        "autocompletehelp.projectContext": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Envía a la IA el árbol de archivos, las dependencias (`package.json`, `requirements.txt`…) y lo que exportan los archivos que importa el actual, para que no invente rutas, APIs ni campos. Con Anthropic, esta parte se cachea entre sugerencias."
+        },
         "autocompletehelp.maxTokens": {
           "type": "number",
           "default": 400,
@@ -184,7 +208,8 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile",
-    "package": "vsce package"
+    "package": "vsce package",
+    "test": "npm run compile && node test/unit.test.js"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",

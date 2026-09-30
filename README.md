@@ -4,6 +4,28 @@ Extensión para **VS Code, Cursor, Windsurf, VSCodium** y cualquier IDE basado e
 
 Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la IA completa el código mientras escribes — pero con un objetivo distinto al de un copilot clásico: **que aprendas y entiendas cada parte de tu proyecto**, no que dependas de la IA.
 
+## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
+
+1. **Describe el proyecto** (*Definir prompt del proyecto*): con tus palabras, sin saber de tecnología.
+2. **Elige el stack** (*Elegir stack del proyecto*): escribe el que quieres usar o deja que te recomiende uno para aprender. Queda guardado en `autocompletehelp.json` con versiones, convenciones y un plan paso a paso.
+3. **Escribe código**: cada sugerencia conoce tu stack, los archivos que existen, tus dependencias y lo que exportan los archivos que importas — no inventa rutas ni campos.
+4. **Pide lo que quieras con un comentario**:
+   ```js
+   // ach: ruta para listar productos con paginación
+   ```
+   Pulsa Enter y la sugerencia implementa la instrucción, en tu stack y en tu nivel de aprendizaje (en `pista` recibes los pasos, no el código).
+
+`autocompletehelp.json` vive en la raíz del proyecto y se versiona con tu código:
+
+```json
+{
+  "prompt": "API REST para una tienda; explícame cada middleware",
+  "stack": { "resumen": "Node.js + Express 5 + MongoDB", "framework": "Express 5", "datos": "MongoDB con Mongoose 8" },
+  "convenciones": ["CommonJS", "rutas en routes/"],
+  "plan": [{ "paso": "Modelo de producto", "archivo": "models/producto.js", "concepto": "esquemas" }]
+}
+```
+
 ## ✨ Características
 
 - **Autocompletado inline** (texto fantasma) en cualquier lenguaje, aceptas con `Tab`.

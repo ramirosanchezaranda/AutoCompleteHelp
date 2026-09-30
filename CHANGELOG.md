@@ -2,6 +2,34 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.3.0] — 2026-09-30
+
+### Añadido
+
+- **`autocompletehelp.json`**: el proyecto pasa a ser un archivo en la raíz,
+  versionado con el código: prompt, stack con versiones, convenciones y plan.
+  Antes el prompt vivía en el estado interno del IDE, invisible y sin
+  versiones. Incluye esquema JSON para validarlo y autocompletarlo a mano; el
+  prompt de versiones anteriores se sigue leyendo.
+- **Contexto del proyecto en cada sugerencia**: árbol de archivos, manifiesto
+  de dependencias (`package.json`, `requirements.txt`, `pyproject.toml`,
+  `go.mod`, `Cargo.toml`) y lo que exportan los archivos que importa el actual.
+  La IA deja de inventar rutas, APIs y campos. Setting
+  `autocompletehelp.projectContext`.
+- **Instrucciones en línea `ach:`**: un comentario como
+  `// ach: ruta para listar productos con paginación` seguido de Enter hace que
+  la sugerencia implemente esa instrucción, con el stack del proyecto y el nivel
+  de aprendizaje activo. Comando «Construir aquí con una instrucción» en el menú
+  contextual para quien no recuerde el prefijo.
+- **«Elegir stack del proyecto»** (antes «Recomendar stack»): acepta el stack
+  que ya elegiste y lo concreta con versiones, convenciones y plan; o recomienda
+  uno si no lo sabes. El resultado se guarda estructurado en
+  `autocompletehelp.json`.
+- La guía «➜ Siguiente paso» sigue el plan del proyecto.
+- Prompt de sistema cacheado con Anthropic: el contexto del proyecto cambia poco
+  entre sugerencias y se lee de caché.
+- Pruebas unitarias de la lógica pura (`npm test`), ejecutadas en el CI.
+
 ## [0.2.0] — 2026-07-22
 
 ### Añadido
