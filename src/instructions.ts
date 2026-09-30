@@ -65,6 +65,26 @@ export function languageForPath(path: string): string | undefined {
 }
 
 /**
+ * Busca en un archivo la instrucción `ach:` de un paso. Distingue si el paso
+ * está sin empezar (la instrucción es lo último del archivo) o si ya tiene
+ * código debajo. Así, abrir un paso cuyo archivo creó «Crear estructura» no
+ * vuelve a insertar la misma instrucción.
+ */
+export function findStepLine(
+  text: string,
+  step: PlanStep
+): { line: number; hasCodeAfter: boolean } | undefined {
+  const target = `ach: ${stepInstruction(step)}`;
+  const lines = text.split('\n');
+  const line = lines.findIndex((l) => l.includes(target));
+  if (line < 0) {
+    return undefined;
+  }
+  const hasCodeAfter = lines.slice(line + 1).some((l) => l.trim() !== '');
+  return { line, hasCodeAfter };
+}
+
+/**
  * Contenido inicial del archivo de un paso: vacío salvo la instrucción del
  * paso, con una línea en blanco debajo donde se dispara la sugerencia. El
  * código lo escribes tú con la ayuda del autocompletado, no aparece de golpe.

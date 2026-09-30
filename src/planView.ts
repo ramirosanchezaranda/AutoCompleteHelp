@@ -8,7 +8,7 @@ import {
   onDidChangeProject,
   projectRoot
 } from './projectFile';
-import { insertInstruction, stepFileContent, stepInstruction } from './instructions';
+import { findStepLine, insertInstruction, stepFileContent, stepInstruction } from './instructions';
 
 /**
  * Panel «Plan del proyecto» en el explorador. Convierte la guía
@@ -151,9 +151,34 @@ async function openStep(index: number): Promise<void> {
     return;
   }
 
-  // Archivo existente: no lo tocamos sin permiso. Ofrecemos insertar la
-  // instrucción donde esté el cursor.
-  await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
+  const document = await vscode.workspace.openTextDocument(uri);
+  const editor = await vscode.window.showTextDocument(document);
+
+  // ¿El archivo ya tiene la instrucción de este paso (p. ej. lo creó «Crear
+  // estructura»)? Entonces no se duplica: vamos a ella.
+  const found = findStepLine(document.getText(), step);
+  if (found) {
+    if (found.hasCodeAfter) {
+      const pos = new vscode.Position(found.line, 0);
+      editor.selection = new vscode.Selection(pos, pos);
+      editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+      vscode.window.showInformationMessage(
+        `Paso ${index + 1}: ya tiene código debajo de su instrucción. Si lo terminaste, márcalo como hecho en el plan.`
+      );
+      return;
+    }
+    // Sin empezar: cursor en una línea en blanco debajo de la instrucción.
+    if (found.line === document.lineCount - 1) {
+      await editor.edit((e) => e.insert(document.lineAt(found.line).range.end, '\n'));
+    }
+    const pos = new vscode.Position(found.line + 1, 0);
+    editor.selection = new vscode.Selection(pos, pos);
+    await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+    return;
+  }
+
+  // Archivo existente sin la instrucción: no lo tocamos sin permiso. Ofrecemos
+  // insertarla donde esté el cursor.
   const action = await vscode.window.showInformationMessage(
     `Paso ${index + 1}: ${step.paso}. Ubica el cursor donde quieras construirlo.`,
     'Insertar la instrucción aquí'

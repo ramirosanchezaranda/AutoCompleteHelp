@@ -92,7 +92,11 @@ eq('manifiestos JSON de los perfiles son válidos', PROFILES.every((pr) => pr.ba
 eq('django no pre-crea archivos del plan (romperían startproject)', getProfile('django').crearArchivosDelPlan, false);
 
 console.log('— fase 2: instrucciones de pasos');
-const { stepInstruction, languageForPath, stepFileContent } = require(out + 'instructions.js');
+const { stepInstruction, languageForPath, stepFileContent, findStepLine } = require(out + 'instructions.js');
+const paso = { paso: 'Listar', concepto: 'rutas' };
+eq('findStepLine: archivo de «Crear estructura» → paso sin empezar (no se duplica)', findStepLine(stepFileContent('r.js', paso), paso), { line: 0, hasCodeAfter: false });
+eq('findStepLine: con código debajo', findStepLine('x\n// ach: Listar (enseña: rutas)\nrouter.get();\n', paso), { line: 1, hasCodeAfter: true });
+eq('findStepLine: instrucción ausente', findStepLine('const a = 1;', paso), undefined);
 eq('stepInstruction', stepInstruction({ paso: 'Listar productos', concepto: 'paginación' }), 'Listar productos (enseña: paginación)');
 eq('languageForPath', ['a/b.py', 'x.JSX', 'index.html', 'Makefile', 'c.json'].map(languageForPath), ['python', 'javascriptreact', 'html', undefined, undefined]);
 eq('archivo nuevo: solo la instrucción, con sintaxis del lenguaje', [
