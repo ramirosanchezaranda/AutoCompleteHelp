@@ -1,8 +1,8 @@
 {
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
-  "description": "Autocompletado guiado por prompt con múltiples LLMs. Aprende mientras escribes: el asistente completa, explica y te da pistas para que entiendas cada parte de tu proyecto.",
-  "version": "0.1.0",
+  "description": "Construye tu proyecto desde el IDE con prompts: la IA dicta el código en gris y tú lo escribes encima, con comentarios que explican qué y por qué. Multi-LLM.",
+  "version": "0.6.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -37,6 +37,15 @@
         "title": "AutoCompleteHelp: Definir prompt del proyecto"
       },
       {
+        "command": "autocompletehelp.openProjectFile",
+        "title": "AutoCompleteHelp: Abrir autocompletehelp.json",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "autocompletehelp.instruct",
+        "title": "AutoCompleteHelp: Construir aquí con una instrucción"
+      },
+      {
         "command": "autocompletehelp.selectModel",
         "title": "AutoCompleteHelp: Elegir proveedor y modelo"
       },
@@ -49,23 +58,128 @@
         "title": "AutoCompleteHelp: Elegir nivel de aprendizaje"
       },
       {
+        "command": "autocompletehelp.selectMode",
+        "title": "AutoCompleteHelp: Elegir modo (dictado o autocompletar)"
+      },
+      {
+        "command": "autocompletehelp.showProgress",
+        "title": "AutoCompleteHelp: Ver mi progreso"
+      },
+      {
         "command": "autocompletehelp.explainSelection",
         "title": "AutoCompleteHelp: Explicar código seleccionado"
       },
       {
+        "command": "autocompletehelp.explainError",
+        "title": "AutoCompleteHelp: Entender este error"
+      },
+      {
+        "command": "autocompletehelp.review",
+        "title": "AutoCompleteHelp: Repasar conceptos"
+      },
+      {
+        "command": "autocompletehelp.recommendStack",
+        "title": "AutoCompleteHelp: Elegir stack del proyecto",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "autocompletehelp.createStructure",
+        "title": "AutoCompleteHelp: Crear estructura del proyecto",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "autocompletehelp.openStep",
+        "title": "AutoCompleteHelp: Abrir paso del plan"
+      },
+      {
+        "command": "autocompletehelp.addProvider",
+        "title": "AutoCompleteHelp: Agregar IA (endpoint + API key)"
+      },
+      {
         "command": "autocompletehelp.toggle",
         "title": "AutoCompleteHelp: Activar / desactivar autocompletado"
+      },
+      {
+        "command": "autocompletehelp.dictation.menu",
+        "title": "AutoCompleteHelp: Opciones del dictado"
+      },
+      {
+        "command": "autocompletehelp.dictation.back",
+        "title": "AutoCompleteHelp: Dictado — volver un carácter"
+      },
+      {
+        "command": "autocompletehelp.dictation.tab",
+        "title": "AutoCompleteHelp: Dictado — dictarme una palabra"
+      },
+      {
+        "command": "autocompletehelp.dictation.enter",
+        "title": "AutoCompleteHelp: Dictado — Enter"
       }
     ],
     "menus": {
       "editor/context": [
         {
+          "command": "autocompletehelp.instruct",
+          "when": "editorTextFocus && !editorHasSelection",
+          "group": "autocompletehelp@1"
+        },
+        {
           "command": "autocompletehelp.explainSelection",
           "when": "editorHasSelection",
-          "group": "autocompletehelp"
+          "group": "autocompletehelp@2"
+        },
+        {
+          "command": "autocompletehelp.explainError",
+          "when": "editorTextFocus",
+          "group": "autocompletehelp@3"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "autocompletehelp.createStructure",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@1"
+        },
+        {
+          "command": "autocompletehelp.recommendStack",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@2"
+        },
+        {
+          "command": "autocompletehelp.openProjectFile",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "autocompletehelp.openStep",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.back",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.tab",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.enter",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.menu",
+          "when": "autocompletehelp.dictating"
         }
       ]
     },
+    "jsonValidation": [
+      {
+        "fileMatch": "autocompletehelp.json",
+        "url": "./schemas/autocompletehelp.schema.json"
+      }
+    ],
     "configuration": {
       "title": "AutoCompleteHelp",
       "properties": {
@@ -74,34 +188,72 @@
           "default": true,
           "description": "Activa o desactiva el autocompletado inline."
         },
+        "autocompletehelp.interactionMode": {
+          "type": "string",
+          "default": "dictado",
+          "enum": [
+            "dictado",
+            "autocompletar"
+          ],
+          "enumDescriptions": [
+            "Dictado: el código del paso aparece en gris y lo escribes encima, guiado por comentarios que dicen qué escribir y por qué. Nada entra al archivo sin que lo teclees.",
+            "Autocompletar: sugerencias en gris que aceptas con Tab."
+          ],
+          "markdownDescription": "Cómo se construye el código. En **dictado** no hay autocompletado mientras escribes: una instrucción `ach:` (o un paso del plan) prepara el código y lo tecleas encima del gris. En nivel `pista` se dan solo pistas en ambos modos."
+        },
+        "autocompletehelp.dictation.typeComments": {
+          "type": "boolean",
+          "default": false,
+          "description": "En el dictado, escribir también los comentarios. Por defecto avanzan solos: son la explicación, se leen."
+        },
+        "autocompletehelp.dictation.gaps": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "always",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Según lo practicado: lo nuevo se dicta entero; en los conceptos que ya escribiste varias veces, algunas palabras quedan como hueco.",
+            "Siempre deja huecos (al menos 30% de las palabras).",
+            "Dicta todo, sin huecos."
+          ],
+          "description": "Huecos en el dictado: palabras que no se muestran y escribes de memoria. Recordar en vez de copiar es lo que fija lo aprendido."
+        },
         "autocompletehelp.provider": {
           "type": "string",
           "default": "anthropic",
-          "enum": [
-            "anthropic",
-            "openai",
-            "google",
-            "mistral",
-            "deepseek",
-            "xai",
-            "groq",
-            "openrouter",
-            "ollama",
-            "custom"
-          ],
-          "enumDescriptions": [
-            "Anthropic (Claude)",
-            "OpenAI (GPT)",
-            "Google (Gemini)",
-            "Mistral AI (Codestral)",
-            "DeepSeek",
-            "xAI (Grok)",
-            "Groq",
-            "OpenRouter (agregador multi-modelo)",
-            "Ollama (modelos locales, sin API key)",
-            "Endpoint personalizado compatible con OpenAI"
-          ],
-          "description": "Proveedor de LLM a utilizar."
+          "description": "Proveedor de LLM: anthropic | openai | google | mistral | deepseek | xai | groq | openrouter | ollama | custom, o el id de una IA agregada por ti ('custom:Nombre'). Usa el comando 'Elegir proveedor y modelo'."
+        },
+        "autocompletehelp.customProviders": {
+          "type": "array",
+          "default": [],
+          "description": "Tus IAs propias (endpoints OpenAI-compatibles con API key). Créalas con el comando 'Agregar IA'; las claves van al SecretStorage, nunca aquí.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "baseUrl"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Nombre para mostrar (su id será 'custom:Nombre')."
+              },
+              "baseUrl": {
+                "type": "string",
+                "description": "URL base que expone /chat/completions."
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "IDs de modelos disponibles en este endpoint."
+              }
+            }
+          }
         },
         "autocompletehelp.model": {
           "type": "string",
@@ -114,14 +266,21 @@
           "enum": [
             "completo",
             "guiado",
-            "pista"
+            "pista",
+            "educame"
           ],
           "enumDescriptions": [
             "Completo: sugiere el código directamente (máxima velocidad, mínimo aprendizaje).",
             "Guiado: sugiere el código con comentarios breves que explican el porqué de cada parte.",
-            "Pista: no escribe la solución; sugiere solo comentarios con pasos y pistas para que TÚ escribas el código."
+            "Pista: no escribe la solución; sugiere solo comentarios con pasos y pistas para que TÚ escribas el código.",
+            "Edúcame: para empezar desde cero — cada línea explicada con conceptos básicos, una idea nueva por sugerencia."
           ],
-          "description": "Cuánto te ayuda la IA. Los niveles 'guiado' y 'pista' están pensados para aprender y no depender de la IA."
+          "description": "Cuánto te ayuda la IA. 'guiado' y 'pista' para aprender sin depender de la IA; 'educame' para arrancar desde cero con un lenguaje."
+        },
+        "autocompletehelp.fadingScaffolding": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Andamiaje decreciente: AutoCompleteHelp recuerda qué conceptos ya usaste y deja de explicártelos cuando los repetiste varias veces. Desactívalo para recibir siempre la explicación completa. Usa **Ver mi progreso** para consultarlo."
         },
         "autocompletehelp.streaming": {
           "type": "boolean",
@@ -132,6 +291,11 @@
           "type": "boolean",
           "default": true,
           "description": "Guía del proyecto: cada sugerencia termina con un comentario '➜ Siguiente paso:' indicando la próxima pieza que falta según tu prompt."
+        },
+        "autocompletehelp.projectContext": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Envía a la IA el árbol de archivos, las dependencias (`package.json`, `requirements.txt`…) y lo que exportan los archivos que importa el actual, para que no invente rutas, APIs ni campos. Con Anthropic, esta parte se cachea entre sugerencias."
         },
         "autocompletehelp.maxTokens": {
           "type": "number",
@@ -154,13 +318,50 @@
           "description": "URL base para el proveedor 'custom' (debe exponer /chat/completions compatible con OpenAI)."
         }
       }
-    }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "autocompletehelp.plan",
+          "name": "Plan del proyecto"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "autocompletehelp.plan",
+        "contents": "Todavía no hay plan. Elige el stack y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo con una instrucción ach: y te dicta el código para que lo escribas tú."
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "autocompletehelp.dictation.back",
+        "key": "backspace",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      },
+      {
+        "command": "autocompletehelp.dictation.tab",
+        "key": "tab",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      },
+      {
+        "command": "autocompletehelp.dictation.enter",
+        "key": "enter",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      },
+      {
+        "command": "autocompletehelp.dictation.menu",
+        "key": "escape",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile",
-    "package": "vsce package"
+    "package": "vsce package",
+    "test": "npm run compile && node test/unit.test.js"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",

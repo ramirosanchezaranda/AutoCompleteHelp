@@ -6,26 +6,38 @@ import {
   LearningLevel,
   buildSystemPrompt,
   buildUserPrompt,
+  extractConcepts,
+  getProjectBlock,
   getProjectPrompt,
   sanitizeCompletion
 } from './prompts';
+import { knownConcepts } from './conceptLedger';
+import { ProjectContext, detectInstruction } from './projectContext';
+import { DictationManager, usesDictation } from './dictation';
 
 const MAX_PREFIX_CHARS = 6000;
 const MAX_SUFFIX_CHARS = 2000;
 // Corte temprano del stream: con esto ya hay una sugerencia útil en pantalla.
 const STREAM_MAX_LINES = 18;
 const STREAM_MAX_CHARS = 1600;
+// Una instrucción `ach:` pide una pieza completa (una ruta, una función):
+// se le da más margen antes del corte temprano.
+const INSTRUCTION_MAX_LINES = 45;
+const INSTRUCTION_MAX_CHARS = 3600;
 
 export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProvider {
   private lastKey = '';
   private lastResult = '';
+  private lastConcepts: string[] = [];
   private keyWarned = false;
   private promptNudged = false;
   private readonly progress: vscode.StatusBarItem;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly output: vscode.OutputChannel
+    private readonly output: vscode.OutputChannel,
+    private readonly project: ProjectContext,
+    private readonly dictation: DictationManager
   ) {
     this.progress = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
     context.subscriptions.push(this.progress);
@@ -38,7 +50,7 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
     token: vscode.CancellationToken
   ): Promise<vscode.InlineCompletionItem[] | undefined> {
     const cfg = vscode.workspace.getConfiguration('autocompletehelp');
-    if (!cfg.get<boolean>('enabled', true)) {
+    if (!cfg.get<boolean>('enabled', true) || this.dictation.owns(document)) {
       return undefined;
     }
 
@@ -58,10 +70,20 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       )
       .slice(0, MAX_SUFFIX_CHARS);
 
+    // Modo dictado: no hay autocompletado mientras escribes. Una instrucción
+    // «ach: …» + Enter prepara el dictado, que escribes encima del gris.
+    if (usesDictation(cfg)) {
+      const instruction = detectInstruction(prefix);
+      if (instruction) {
+        this.dictation.autoStart(document, position, instruction);
+      }
+      return undefined;
+    }
+
     // Caché trivial: mismo punto de inserción → misma sugerencia.
     const cacheKey = `${document.uri.toString()}#${prefix}#${suffix.slice(0, 200)}`;
     if (cacheKey === this.lastKey && this.lastResult) {
-      return [new vscode.InlineCompletionItem(this.lastResult)];
+      return [this.buildItem(this.lastResult, this.lastConcepts, cfg)];
     }
 
     const { provider, model, baseUrl } = resolveActiveConfig();
@@ -98,14 +120,36 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
 
     const level = cfg.get<LearningLevel>('learningLevel', 'guiado');
     const guidance = cfg.get<boolean>('projectGuidance', true);
-    const system = buildSystemPrompt(level, projectPrompt, guidance);
+    const fading = cfg.get<boolean>('fadingScaffolding', true);
+    const useContext = cfg.get<boolean>('projectContext', true);
+    const instruction = detectInstruction(prefix);
+
+    // Contexto del proyecto: árbol + dependencias (estable, va al sistema) y
+    // lo que exportan los archivos que este importa (va al mensaje).
+    const [snapshot, related] = useContext
+      ? await Promise.all([this.project.snapshot(), this.project.relatedFiles(document)])
+      : ['', ''];
+    if (token.isCancellationRequested) {
+      return undefined;
+    }
+
+    const system = buildSystemPrompt(
+      level,
+      getProjectBlock(),
+      guidance,
+      fading ? knownConcepts(this.context) : [],
+      snapshot
+    );
     const user = buildUserPrompt(
       document.languageId,
       vscode.workspace.asRelativePath(document.uri),
       prefix,
-      suffix
+      suffix,
+      related,
+      instruction
     );
 
+    const baseTokens = cfg.get<number>('maxTokens', 400);
     const request = {
       provider,
       baseUrl,
@@ -113,23 +157,24 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       apiKey,
       system,
       user,
-      maxTokens: cfg.get<number>('maxTokens', 400),
+      maxTokens: instruction ? Math.max(baseTokens, 1200) : baseTokens,
       token
     };
+    const maxLines = instruction ? INSTRUCTION_MAX_LINES : STREAM_MAX_LINES;
+    const maxChars = instruction ? INSTRUCTION_MAX_CHARS : STREAM_MAX_CHARS;
 
     try {
       let raw: string;
       if (cfg.get<boolean>('streaming', true)) {
-        this.progress.text = '$(loading~spin) ACH generando…';
+        const label = instruction ? 'ACH siguiendo tu instrucción' : 'ACH';
+        this.progress.text = `$(loading~spin) ${label} generando…`;
         this.progress.show();
         raw = await streamComplete(request, {
           onDelta: (_d, total) => {
-            this.progress.text = `$(loading~spin) ACH streaming… ${total.length}`;
+            this.progress.text = `$(loading~spin) ${label} streaming… ${total.length}`;
           },
-          // Corte temprano: suficientes líneas o un bloque cerrado al final.
-          shouldStop: (total) =>
-            total.length >= STREAM_MAX_CHARS ||
-            countLines(total) >= STREAM_MAX_LINES
+          // Corte temprano: con suficientes líneas ya hay una sugerencia útil.
+          shouldStop: (total) => total.length >= maxChars || countLines(total) >= maxLines
         });
         this.progress.hide();
       } else {
@@ -138,13 +183,15 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       if (token.isCancellationRequested) {
         return undefined;
       }
-      const text = sanitizeCompletion(raw, prefix);
+      const { text: body, concepts } = extractConcepts(raw);
+      const text = sanitizeCompletion(body, prefix);
       if (!text.trim()) {
         return undefined;
       }
       this.lastKey = cacheKey;
       this.lastResult = text;
-      return [new vscode.InlineCompletionItem(text)];
+      this.lastConcepts = concepts;
+      return [this.buildItem(text, concepts, cfg)];
     } catch (err: any) {
       this.progress.hide();
       if (err?.name === 'AbortError') {
@@ -153,6 +200,27 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
       this.output.appendLine(`[${new Date().toISOString()}] Error de ${provider.label}: ${err?.message ?? err}`);
       return undefined;
     }
+  }
+
+  /**
+   * El `command` de un InlineCompletionItem se ejecuta al ACEPTAR la
+   * sugerencia: es nuestra única señal fiable de que el concepto entró de
+   * verdad al código del usuario (y no de que el fantasma pasó por pantalla).
+   */
+  private buildItem(
+    text: string,
+    concepts: string[],
+    cfg: vscode.WorkspaceConfiguration
+  ): vscode.InlineCompletionItem {
+    const item = new vscode.InlineCompletionItem(text);
+    if (concepts.length && cfg.get<boolean>('fadingScaffolding', true)) {
+      item.command = {
+        command: 'autocompletehelp.recordAccepted',
+        title: 'AutoCompleteHelp: registrar conceptos aprendidos',
+        arguments: [concepts, cfg.get<LearningLevel>('learningLevel', 'guiado')]
+      };
+    }
+    return item;
   }
 }
 
