@@ -24,6 +24,9 @@ export interface ConceptStat {
   practiced: number;
   firstSeen: string;
   lastSeen: string;
+  /** Repaso espaciado: caja de Leitner (0 = repasar al día siguiente). */
+  reviewBox?: number;
+  lastReview?: string;
 }
 
 export type Ledger = Record<string, ConceptStat>;
@@ -49,6 +52,10 @@ export function normalizeConcept(raw: string): { id: string; label: string } {
 
 export function readLedger(context: vscode.ExtensionContext): Ledger {
   return context.globalState.get<Ledger>(LEDGER_KEY, {});
+}
+
+export async function writeLedger(context: vscode.ExtensionContext, ledger: Ledger): Promise<void> {
+  await context.globalState.update(LEDGER_KEY, ledger);
 }
 
 /**
@@ -113,6 +120,7 @@ export async function recordAccepted(
     }
     const prev = ledger[id];
     ledger[id] = {
+      ...prev,
       label: prev?.label ?? label,
       seen: (prev?.seen ?? 0) + 1,
       accepted: (prev?.accepted ?? 0) + (userWroteIt ? 0 : 1),

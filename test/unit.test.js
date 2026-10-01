@@ -167,5 +167,43 @@ const dp = buildDictationSystemPrompt('guiado', 'Objetivo: e-commerce completa, 
 eq('prompt de dictado: comentarios antes de cada bloque, metodología y objetivo',
   [dp.includes('ANTES de cada bloque'), dp.includes('METODOLOGÍA'), dp.includes('e-commerce completa'), dp.includes('@ach-concepts')], [true, true, true, true]);
 
+console.log('— fase 3: huecos según lo practicado');
+eq('concepto nuevo → sin huecos', T.gapRatio({ nuevos: 2, enPractica: 0, conocidos: 0 }), 0);
+eq('en práctica y dominado → más huecos', [T.gapRatio({ nuevos: 0, enPractica: 1, conocidos: 0 }), T.gapRatio({ nuevos: 0, enPractica: 0, conocidos: 2 })], [0.2, 0.4]);
+const gaps = T.chooseGaps(dict, mask, 0.4, 7);
+eq('huecos deterministas con la misma semilla', JSON.stringify(gaps) === JSON.stringify(T.chooseGaps(dict, mask, 0.4, 7)), true);
+eq('nunca en comentarios ni en la primera palabra', gaps.every(([s]) => !mask[s]) && gaps[0][0] > dict.indexOf('const'), true);
+eq('solo palabras completas de 3+ letras', gaps.every(([s, e]) => /^[A-Za-z_$][\w$]{2,}$/.test(dict.slice(s, e))), true);
+eq('sin práctica, sin huecos', T.chooseGaps(dict, mask, 0, 7), []);
+eq('inGap', [T.inGap([[5, 9]], 5), T.inGap([[5, 9]], 9)], [true, false]);
+eq('lo gris es lo pendiente menos los huecos', T.subtractRanges(0, 20, [[3, 5], [10, 12]]), [[0, 3], [5, 10], [12, 20]]);
+eq('huecos pendientes recortados al cursor', T.clipRanges(4, 20, [[3, 5], [10, 12], [25, 30]]), [[4, 5], [10, 12]]);
+
+console.log('— fase 3: repaso espaciado');
+const R = require(out + 'review.js');
+const day = 24 * 3600 * 1000;
+const t0 = Date.parse('2026-10-01T10:00:00Z');
+const st = (o) => Object.assign({ label: 'x', seen: 3, accepted: 0, practiced: 1, firstSeen: '2026-09-01T00:00:00Z', lastSeen: new Date(t0).toISOString() }, o);
+const led = {
+  'async-await': st({ label: 'async/await' }),
+  'promesas': st({ label: 'promesas', reviewBox: 2, lastReview: new Date(t0 - 8 * day).toISOString() }),
+  'solo-aceptado': st({ label: 'solo aceptado', practiced: 0 })
+};
+eq('vence al día siguiente de escribirlo', R.dueConcepts(led, t0 + 0.5 * day).map((d) => d.id), ['promesas']);
+eq('al día siguiente, también el nuevo; el más atrasado primero', R.dueConcepts(led, t0 + 1 * day).map((d) => d.id), ['promesas', 'async-await']);
+eq('lo que nunca escribiste no entra al repaso', R.dueConcepts(led, t0 + 100 * day).some((d) => d.id === 'solo-aceptado'), false);
+eq('repaso bien hecho sube de caja', R.applyReview(st({ reviewBox: 1 }), { errors: 1, helped: 1, gaps: 6 }).reviewBox, 2);
+eq('repaso que costó vuelve a la primera', R.applyReview(st({ reviewBox: 3 }), { errors: 6, helped: 0, gaps: 6 }).reviewBox, 0);
+eq('la última caja no se pasa', R.applyReview(st({ reviewBox: 4 }), { errors: 0, helped: 0, gaps: 6 }).reviewBox, 4);
+eq('lenguaje del ejercicio según el stack', [R.reviewLanguage('Python + FastAPI').languageId, R.reviewLanguage('Node.js + Express').languageId], ['python', 'javascript']);
+
+console.log('— fase 3: entender errores');
+const E = require(out + 'errorHelp.js');
+const errPrompt = E.buildErrorUserPrompt('javascript', 'server.js', "Cannot find name 'expres'.", 'ts 2304', 9, ['a();', 'expres();', 'b();'], 10, 10);
+eq('marca la línea del error con su número real', errPrompt.split('\n').filter((l) => l.startsWith('>>')), ['>> 11 | expres();']);
+eq('incluye mensaje y origen', errPrompt.includes("Error (ts 2304): Cannot find name 'expres'."), true);
+eq('sin código corregido salvo en nivel completo',
+  [E.buildErrorSystemPrompt('guiado', '').includes('NO escribas el código corregido'), E.buildErrorSystemPrompt('completo', '').includes('## Solución')], [true, true]);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);

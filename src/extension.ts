@@ -14,6 +14,8 @@ import { insertInstruction } from './instructions';
 import { registerPlanView } from './planView';
 import { createStructure } from './scaffold';
 import { DictationManager } from './dictation';
+import { ReviewReminder, startReview } from './review';
+import { ErrorHelpProvider, explainError } from './errorHelp';
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -31,6 +33,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Modo dictado: el código del paso en gris, y lo escribes encima.
   const dictation = new DictationManager(context, output, projectContext);
   context.subscriptions.push(dictation);
+
+  // Repaso espaciado: aviso en la barra de estado cuando vence un concepto.
+  const reminder = new ReviewReminder(context);
+  dictation.afterFinish = () => reminder.refresh();
+  context.subscriptions.push(reminder);
+
+  // «Entender este error» en la bombita de los errores del editor.
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider({ pattern: '**' }, new ErrorHelpProvider(), {
+      providedCodeActionKinds: ErrorHelpProvider.kinds
+    })
+  );
 
   // Autocompletado inline en todos los lenguajes (en modo dictado solo
   // detecta las instrucciones «ach:»).
@@ -93,6 +107,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ),
     vscode.commands.registerCommand('autocompletehelp.selectLearningLevel', selectLearningLevel),
     vscode.commands.registerCommand('autocompletehelp.selectMode', selectMode),
+    vscode.commands.registerCommand('autocompletehelp.review', () => startReview(context, dictation)),
+    vscode.commands.registerCommand(
+      'autocompletehelp.explainError',
+      (uri?: vscode.Uri, range?: vscode.Range, message?: string, source?: string) =>
+        explainError(context, uri, range, message, source)
+    ),
     vscode.commands.registerCommand('autocompletehelp.toggle', toggleEnabled)
   );
 }

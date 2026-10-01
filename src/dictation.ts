@@ -10,18 +10,25 @@ import {
   getProjectBlock,
   sanitizeCompletion
 } from './prompts';
-import { knownConcepts, recordAccepted } from './conceptLedger';
+import { knownConcepts, recordAccepted, stagesFor } from './conceptLedger';
+import { REVIEW_DAYS, recordReview } from './review';
 import { ProjectContext } from './projectContext';
 import { markStep } from './projectFile';
 import {
   autoMask,
+  Range2,
   backPos,
+  chooseGaps,
+  clipRanges,
   commentPrefixes,
+  gapRatio,
+  inGap,
   explanationAt,
   lineEnd,
   nextWordEnd,
   progressOf,
   skipAuto,
+  subtractRanges,
   typeKeys
 } from './typing';
 
@@ -77,6 +84,13 @@ interface Generated {
   level: LearningLevel;
 }
 
+export interface DictationOptions {
+  /** Repaso espaciado: id del concepto que se repasa. */
+  reviewConcept?: string;
+  /** Proporción de huecos fija (si no, se calcula por lo practicado). */
+  gapRatio?: number;
+}
+
 interface Session {
   doc: vscode.TextDocument;
   text: string;
@@ -95,6 +109,9 @@ interface Session {
   level: LearningLevel;
   instruction: string;
   stepIndex?: number;
+  /** Palabras que no se dictan (índices en `text`): se escriben de memoria. */
+  gaps: Range2[];
+  options: DictationOptions;
   typeReg: vscode.Disposable;
 }
 
@@ -116,6 +133,14 @@ export class DictationManager implements vscode.Disposable {
   private readonly enterDeco = vscode.window.createTextEditorDecorationType({
     after: { contentText: ' ⏎', color: new vscode.ThemeColor('editorCursor.foreground') }
   });
+  private readonly gapDeco = vscode.window.createTextEditorDecorationType({
+    color: 'transparent',
+    borderStyle: 'dotted',
+    borderWidth: '0 0 1px 0',
+    borderColor: new vscode.ThemeColor('editorGhostText.foreground')
+  });
+  /** Se llama tras cada dictado terminado (el registro de conceptos cambió). */
+  afterFinish?: () => void;
   private readonly errorDeco = vscode.window.createTextEditorDecorationType({
     backgroundColor: new vscode.ThemeColor('inputValidation.errorBackground'),
     borderStyle: 'solid',
@@ -137,6 +162,7 @@ export class DictationManager implements vscode.Disposable {
       this.pendingDeco,
       this.nextDeco,
       this.enterDeco,
+      this.gapDeco,
       this.errorDeco,
       vscode.workspace.onDidChangeTextDocument((e) => this.onDocumentChange(e)),
       vscode.workspace.onDidCloseTextDocument((doc) => {
@@ -167,7 +193,12 @@ export class DictationManager implements vscode.Disposable {
     void this.start(editor, instruction);
   }
 
-  async start(editor: vscode.TextEditor, instruction: string, stepIndex?: number): Promise<void> {
+  async start(
+    editor: vscode.TextEditor,
+    instruction: string,
+    stepIndex?: number,
+    options: DictationOptions = {}
+  ): Promise<void> {
     if (this.session || this.preparing) {
       vscode.window.showInformationMessage(
         'AutoCompleteHelp: ya hay un dictado en curso. Termínalo, o pulsa Esc en el editor para ver las opciones.'
@@ -193,7 +224,7 @@ export class DictationManager implements vscode.Disposable {
       const target =
         vscode.window.visibleTextEditors.find((e) => e.document === document) ??
         (await vscode.window.showTextDocument(document));
-      await this.begin(target, position, generated, instruction, stepIndex);
+      await this.begin(target, position, generated, instruction, stepIndex, options);
     } finally {
       this.preparing = undefined;
     }
@@ -297,7 +328,8 @@ export class DictationManager implements vscode.Disposable {
     position: vscode.Position,
     generated: Generated,
     instruction: string,
-    stepIndex?: number
+    stepIndex: number | undefined,
+    options: DictationOptions
   ): Promise<void> {
     const doc = editor.document;
     let typeReg: vscode.Disposable;
@@ -330,6 +362,7 @@ export class DictationManager implements vscode.Disposable {
     const mask = autoMask(text, prefixes, cfg.get<boolean>('dictation.typeComments', false));
     const start = doc.offsetAt(insertAt);
     const pos = skipAuto(mask, 0);
+    const gaps = chooseGaps(text, mask, this.gapRatioFor(generated.concepts, options), start + 1);
     this.session = {
       doc,
       text,
@@ -345,6 +378,8 @@ export class DictationManager implements vscode.Disposable {
       level: generated.level,
       instruction,
       stepIndex,
+      gaps,
+      options,
       typeReg
     };
     this.render(true);
@@ -352,12 +387,39 @@ export class DictationManager implements vscode.Disposable {
       await this.finish('escrito');
       return;
     }
+    if (gaps.length) {
+      vscode.window.setStatusBarMessage(
+        `AutoCompleteHelp: ${gaps.length} ${gaps.length === 1 ? 'palabra queda' : 'palabras quedan'} como hueco: ya las practicaste, escríbelas de memoria (Tab las revela).`,
+        8000
+      );
+    }
     if (!this.context.globalState.get<boolean>(TIP_KEY)) {
       void this.context.globalState.update(TIP_KEY, true);
       vscode.window.showInformationMessage(
         'Dictado: escribe encima del código gris. Lee cada comentario antes de su bloque: dice qué escribir y por qué. Tab: te dicto una palabra · Retroceso: volver · Esc: opciones.'
       );
     }
+  }
+
+  /**
+   * Huecos según lo practicado: en un concepto nuevo se dicta todo; en lo que
+   * ya escribiste varias veces, algunas palabras se completan de memoria.
+   */
+  private gapRatioFor(concepts: string[], options: DictationOptions): number {
+    if (options.gapRatio !== undefined) {
+      return options.gapRatio;
+    }
+    const mode = vscode.workspace.getConfiguration('autocompletehelp').get<string>('dictation.gaps', 'auto');
+    if (mode === 'off') {
+      return 0;
+    }
+    const st = stagesFor(this.context, concepts);
+    const ratio = gapRatio({
+      nuevos: st.nuevos.length,
+      enPractica: st.enPractica.length,
+      conocidos: st.conocidos.length
+    });
+    return mode === 'always' ? Math.max(ratio, 0.3) : ratio;
   }
 
   // ---------------------------------------------------------------------------
@@ -515,7 +577,7 @@ export class DictationManager implements vscode.Disposable {
     void vscode.commands.executeCommand('setContext', CONTEXT_KEY, false);
     for (const editor of vscode.window.visibleTextEditors) {
       if (editor.document === s.doc) {
-        for (const deco of [this.pendingDeco, this.nextDeco, this.enterDeco, this.errorDeco]) {
+        for (const deco of [this.pendingDeco, this.nextDeco, this.enterDeco, this.gapDeco, this.errorDeco]) {
           editor.setDecorations(deco, []);
         }
       }
@@ -529,9 +591,14 @@ export class DictationManager implements vscode.Disposable {
     if (!s) {
       return;
     }
+    if (s.options.reviewConcept) {
+      await this.finishReview(s, how);
+      return;
+    }
     if (vscode.workspace.getConfiguration('autocompletehelp').get<boolean>('fadingScaffolding', true)) {
       await recordAccepted(this.context, s.concepts, how === 'escrito' ? 'dictado' : s.level);
     }
+    this.afterFinish?.();
     const typed = s.mask.filter((auto) => !auto).length;
     const message =
       how === 'escrito'
@@ -543,6 +610,22 @@ export class DictationManager implements vscode.Disposable {
     if (action && s.stepIndex !== undefined) {
       await markStep(this.context, s.stepIndex, true);
     }
+  }
+
+  private async finishReview(s: Session, how: 'escrito' | 'completado'): Promise<void> {
+    const id = s.options.reviewConcept!;
+    // Completarlo sin escribir no es un repaso: cuenta como que costó.
+    const result =
+      how === 'escrito'
+        ? { errors: s.errors, helped: s.helped, gaps: s.gaps.length }
+        : { errors: Infinity, helped: Infinity, gaps: s.gaps.length };
+    const advanced = await recordReview(this.context, id, result);
+    this.afterFinish?.();
+    vscode.window.showInformationMessage(
+      advanced
+        ? `✓ Repaso superado (${s.errors} ${s.errors === 1 ? 'error' : 'errores'}, ${s.helped} ${s.helped === 1 ? 'ayuda' : 'ayudas'}). El concepto vuelve más adelante: cada repaso bien hecho alarga el intervalo.`
+        : `Este repaso costó (${s.errors} ${s.errors === 1 ? 'error' : 'errores'}, ${s.helped} ${s.helped === 1 ? 'ayuda' : 'ayudas'}): el concepto vuelve en ${REVIEW_DAYS[0]} día. Es normal; repetirlo pronto es lo que lo fija.`
+    );
   }
 
   private async stopAndDelete(): Promise<void> {
@@ -599,14 +682,19 @@ export class DictationManager implements vscode.Disposable {
       return;
     }
     const at = s.doc.positionAt(s.pendingStart);
-    const pending = new vscode.Range(at, s.doc.positionAt(s.end));
+    // Offset del inicio del bloque en el documento (se desplaza con ediciones previas).
+    const base = s.pendingStart - s.pos;
+    const toRange = ([a, b]: Range2) => new vscode.Range(s.doc.positionAt(base + a), s.doc.positionAt(base + b));
+    const pending = subtractRanges(s.pos, s.text.length, s.gaps).map(toRange);
+    const gaps = clipRanges(s.pos, s.text.length, s.gaps).map(toRange);
     const expectsEnter = s.text[s.pos] === '\n';
     const next = new vscode.Range(at, s.doc.positionAt(s.pendingStart + 1));
     for (const editor of vscode.window.visibleTextEditors) {
       if (editor.document !== s.doc) {
         continue;
       }
-      editor.setDecorations(this.pendingDeco, [pending]);
+      editor.setDecorations(this.pendingDeco, pending);
+      editor.setDecorations(this.gapDeco, gaps);
       editor.setDecorations(this.nextDeco, expectsEnter ? [] : [next]);
       editor.setDecorations(this.enterDeco, expectsEnter ? [new vscode.Range(at, at)] : []);
     }
@@ -616,12 +704,19 @@ export class DictationManager implements vscode.Disposable {
     }
 
     const pct = progressOf(s.mask, s.pos);
-    const hint = s.lastExpected !== undefined ? ` · esperaba ${showChar(s.lastExpected)}` : '';
+    // En un hueco no se dice qué carácter falta: se trata de recordarlo.
+    const hint =
+      s.lastExpected === undefined
+        ? ''
+        : inGap(s.gaps, s.pos)
+          ? ' · hueco: recuérdalo (Tab lo revela)'
+          : ` · esperaba ${showChar(s.lastExpected)}`;
     this.status.text = `$(pencil) Dictado ${pct}% · ${s.errors} ${s.errors === 1 ? 'error' : 'errores'}${hint}`;
     const explanation = explanationAt(s.text, s.pos, s.prefixes);
     this.status.tooltip = new vscode.MarkdownString(
       [
-        `**Dictado:** ${s.instruction}`,
+        `**${s.options.reviewConcept ? 'Repaso' : 'Dictado'}:** ${s.instruction}`,
+        s.gaps.length ? `Huecos: ${s.gaps.length} palabras para escribir de memoria.` : '',
         explanation ? `> ${explanation}` : '',
         'Escribe encima del gris. **Tab**: te dicto una palabra · **Retroceso**: volver · **Esc** o clic aquí: opciones.'
       ]

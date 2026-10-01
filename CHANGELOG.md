@@ -2,6 +2,25 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.6.0] — 2026-10-01
+
+### Añadido
+
+- **Huecos en el dictado**: en los conceptos que ya escribiste varias veces,
+  algunas palabras no se dictan (se ven como un subrayado punteado) y se
+  escriben de memoria; lo nuevo se dicta entero. En un hueco, el error no
+  revela el carácter; Tab revela la palabra y cuenta como ayuda. Setting
+  `autocompletehelp.dictation.gaps` (`auto`, `always`, `off`).
+- **Repaso espaciado** (sistema Leitner): cada concepto que escribiste vuelve a
+  los 1, 3, 7, 14 y 30 días. La barra de estado avisa cuántos vencen; el
+  comando **«Repasar conceptos»** abre un ejercicio corto, dictado con la mitad
+  de las palabras como hueco. Si sale bien, el concepto pasa al intervalo
+  siguiente; si cuesta (o se completa sin escribir), vuelve al primero.
+- **«Entender este error»**: acción rápida (bombita) sobre errores y avisos del
+  editor, también en el menú contextual. Explica qué dice el error, por qué
+  ocurre en esa línea, cómo encontrar la solución y cómo reconocerlo la próxima
+  vez. No da el código corregido, salvo en nivel `completo`.
+
 ## [0.5.0] — 2026-10-01
 
 ### Añadido

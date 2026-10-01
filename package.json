@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Construye tu proyecto desde el IDE con prompts: la IA dicta el código en gris y tú lo escribes encima, con comentarios que explican qué y por qué. Multi-LLM.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -70,6 +70,14 @@
         "title": "AutoCompleteHelp: Explicar código seleccionado"
       },
       {
+        "command": "autocompletehelp.explainError",
+        "title": "AutoCompleteHelp: Entender este error"
+      },
+      {
+        "command": "autocompletehelp.review",
+        "title": "AutoCompleteHelp: Repasar conceptos"
+      },
+      {
         "command": "autocompletehelp.recommendStack",
         "title": "AutoCompleteHelp: Elegir stack del proyecto",
         "icon": "$(layers)"
@@ -119,6 +127,11 @@
           "command": "autocompletehelp.explainSelection",
           "when": "editorHasSelection",
           "group": "autocompletehelp@2"
+        },
+        {
+          "command": "autocompletehelp.explainError",
+          "when": "editorTextFocus",
+          "group": "autocompletehelp@3"
         }
       ],
       "view/title": [
@@ -192,6 +205,21 @@
           "type": "boolean",
           "default": false,
           "description": "En el dictado, escribir también los comentarios. Por defecto avanzan solos: son la explicación, se leen."
+        },
+        "autocompletehelp.dictation.gaps": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "always",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Según lo practicado: lo nuevo se dicta entero; en los conceptos que ya escribiste varias veces, algunas palabras quedan como hueco.",
+            "Siempre deja huecos (al menos 30% de las palabras).",
+            "Dicta todo, sin huecos."
+          ],
+          "description": "Huecos en el dictado: palabras que no se muestran y escribes de memoria. Recordar en vez de copiar es lo que fija lo aprendido."
         },
         "autocompletehelp.provider": {
           "type": "string",

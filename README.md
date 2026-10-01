@@ -24,6 +24,10 @@ Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué est
    ```
    Pulsa Enter y se prepara el dictado de esa instrucción, en tu stack y en tu nivel de aprendizaje (en `pista` recibes los pasos, no el código).
 
+7. **Lo que ya practicaste, de memoria**: en los conceptos que ya escribiste varias veces, el dictado deja **huecos**: palabras que no se muestran (solo un subrayado punteado) y escribes de memoria. Lo nuevo se dicta entero. Tab revela la palabra si no sale.
+8. **Repasa cuando toca**: cada concepto que escribiste vuelve a los 1, 3, 7, 14 y 30 días (repaso espaciado). La barra de estado avisa «N para repasar»; **Repasar conceptos** abre un ejercicio corto, dictado con huecos. Si sale bien, el intervalo se alarga; si cuesta, vuelve a empezar.
+9. **Entiende los errores**: sobre un error del editor, la bombita ofrece **Entender este error**: qué dice, por qué pasa en esa línea y cómo encontrar la solución. No te da el código corregido (salvo en nivel `completo`): leer errores se aprende resolviéndolos.
+
 ¿Prefieres el autocompletado clásico (sugerencia en gris que aceptas con Tab)? Comando **Elegir modo** → `autocompletar`.
 
 `autocompletehelp.json` vive en la raíz del proyecto y se versiona con tu código:
@@ -108,6 +112,7 @@ src/
 | `autocompletehelp.model` | *(default del proveedor)* | ID del modelo |
 | `autocompletehelp.interactionMode` | `dictado` | `dictado` (escribes encima del gris) / `autocompletar` (Tab acepta) |
 | `autocompletehelp.dictation.typeComments` | `false` | En el dictado, escribir también los comentarios |
+| `autocompletehelp.dictation.gaps` | `auto` | Huecos en el dictado: `auto` (según lo practicado), `always`, `off` |
 | `autocompletehelp.learningLevel` | `guiado` | `educame` / `pista` / `guiado` / `completo` |
 | `autocompletehelp.maxTokens` | `400` | Tokens máximos por sugerencia |
 | `autocompletehelp.debounceMs` | `350` | Espera tras dejar de teclear |

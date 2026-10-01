@@ -179,3 +179,93 @@ function stripComment(line: string, prefixes: string[]): string {
   }
   return t.replace(/(\*\/|-->)\s*$/, '').trim();
 }
+
+// ---------------------------------------------------------------------------
+// Huecos: palabras que no se dictan y se escriben de memoria.
+// ---------------------------------------------------------------------------
+
+export type Range2 = [number, number];
+
+/**
+ * Proporción de huecos según cuánto practicaste los conceptos de este código:
+ * lo nuevo se dicta entero; lo que ya escribiste varias veces, se recuerda.
+ * Recordar (en vez de copiar) es lo que fija lo aprendido.
+ */
+export function gapRatio(stages: { nuevos: number; enPractica: number; conocidos: number }): number {
+  const total = stages.nuevos + stages.enPractica + stages.conocidos;
+  if (!total) {
+    return 0;
+  }
+  return Math.round(((0.2 * stages.enPractica + 0.4 * stages.conocidos) / total) * 100) / 100;
+}
+
+/**
+ * Elige qué palabras del código quedan como hueco. Solo identificadores y
+ * palabras clave de 3+ letras en líneas de código (nunca en comentarios), sin
+ * tocar la primera palabra: así siempre se sabe por dónde empezar. Es
+ * determinista con la misma semilla, para que regenerar la vista no cambie
+ * los huecos.
+ */
+export function chooseGaps(text: string, mask: boolean[], ratio: number, seed = 1): Range2[] {
+  if (ratio <= 0) {
+    return [];
+  }
+  const words: Range2[] = [];
+  const re = /[A-Za-z_$][\w$]*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (m[0].length >= 3 && !mask[start]) {
+      words.push([start, end]);
+    }
+  }
+  const candidates = words.slice(1);
+  const count = Math.round(candidates.length * Math.min(ratio, 0.9));
+  // Mulberry32: un PRNG mínimo con semilla.
+  let a = seed >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const picked = candidates
+    .map((w) => ({ w, r: rand() }))
+    .sort((x, y) => x.r - y.r)
+    .slice(0, count)
+    .map((x) => x.w);
+  return picked.sort((x, y) => x[0] - y[0]);
+}
+
+/** ¿La posición cae dentro de un hueco? */
+export function inGap(gaps: Range2[], pos: number): boolean {
+  return gaps.some(([s, e]) => pos >= s && pos < e);
+}
+
+/** Tramos de [start, end) que no son hueco (lo que se ve en gris). */
+export function subtractRanges(start: number, end: number, gaps: Range2[]): Range2[] {
+  const out: Range2[] = [];
+  let cur = start;
+  for (const [s, e] of gaps) {
+    if (e <= cur || s >= end) {
+      continue;
+    }
+    if (s > cur) {
+      out.push([cur, s]);
+    }
+    cur = Math.max(cur, e);
+  }
+  if (cur < end) {
+    out.push([cur, end]);
+  }
+  return out;
+}
+
+/** Huecos (o su parte) que siguen pendientes desde `start`. */
+export function clipRanges(start: number, end: number, gaps: Range2[]): Range2[] {
+  return gaps
+    .map(([s, e]) => [Math.max(s, start), Math.min(e, end)] as Range2)
+    .filter(([s, e]) => s < e);
+}
