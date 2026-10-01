@@ -1,8 +1,8 @@
 {
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
-  "description": "Autocompletado guiado por prompt con múltiples LLMs. Aprende mientras escribes: el asistente completa, explica y te da pistas para que entiendas cada parte de tu proyecto.",
-  "version": "0.4.0",
+  "description": "Construye tu proyecto desde el IDE con prompts: la IA dicta el código en gris y tú lo escribes encima, con comentarios que explican qué y por qué. Multi-LLM.",
+  "version": "0.5.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -58,6 +58,10 @@
         "title": "AutoCompleteHelp: Elegir nivel de aprendizaje"
       },
       {
+        "command": "autocompletehelp.selectMode",
+        "title": "AutoCompleteHelp: Elegir modo (dictado o autocompletar)"
+      },
+      {
         "command": "autocompletehelp.showProgress",
         "title": "AutoCompleteHelp: Ver mi progreso"
       },
@@ -86,6 +90,22 @@
       {
         "command": "autocompletehelp.toggle",
         "title": "AutoCompleteHelp: Activar / desactivar autocompletado"
+      },
+      {
+        "command": "autocompletehelp.dictation.menu",
+        "title": "AutoCompleteHelp: Opciones del dictado"
+      },
+      {
+        "command": "autocompletehelp.dictation.back",
+        "title": "AutoCompleteHelp: Dictado — volver un carácter"
+      },
+      {
+        "command": "autocompletehelp.dictation.tab",
+        "title": "AutoCompleteHelp: Dictado — dictarme una palabra"
+      },
+      {
+        "command": "autocompletehelp.dictation.enter",
+        "title": "AutoCompleteHelp: Dictado — Enter"
       }
     ],
     "menus": {
@@ -122,6 +142,22 @@
         {
           "command": "autocompletehelp.openStep",
           "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.back",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.tab",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.enter",
+          "when": "false"
+        },
+        {
+          "command": "autocompletehelp.dictation.menu",
+          "when": "autocompletehelp.dictating"
         }
       ]
     },
@@ -138,6 +174,24 @@
           "type": "boolean",
           "default": true,
           "description": "Activa o desactiva el autocompletado inline."
+        },
+        "autocompletehelp.interactionMode": {
+          "type": "string",
+          "default": "dictado",
+          "enum": [
+            "dictado",
+            "autocompletar"
+          ],
+          "enumDescriptions": [
+            "Dictado: el código del paso aparece en gris y lo escribes encima, guiado por comentarios que dicen qué escribir y por qué. Nada entra al archivo sin que lo teclees.",
+            "Autocompletar: sugerencias en gris que aceptas con Tab."
+          ],
+          "markdownDescription": "Cómo se construye el código. En **dictado** no hay autocompletado mientras escribes: una instrucción `ach:` (o un paso del plan) prepara el código y lo tecleas encima del gris. En nivel `pista` se dan solo pistas en ambos modos."
+        },
+        "autocompletehelp.dictation.typeComments": {
+          "type": "boolean",
+          "default": false,
+          "description": "En el dictado, escribir también los comentarios. Por defecto avanzan solos: son la explicación, se leen."
         },
         "autocompletehelp.provider": {
           "type": "string",
@@ -248,7 +302,29 @@
     "viewsWelcome": [
       {
         "view": "autocompletehelp.plan",
-        "contents": "Todavía no hay plan. Elige el stack y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo con una instrucción ach: lista para que el autocompletado te guíe."
+        "contents": "Todavía no hay plan. Elige el stack y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo con una instrucción ach: y te dicta el código para que lo escribas tú."
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "autocompletehelp.dictation.back",
+        "key": "backspace",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      },
+      {
+        "command": "autocompletehelp.dictation.tab",
+        "key": "tab",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      },
+      {
+        "command": "autocompletehelp.dictation.enter",
+        "key": "enter",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
+      },
+      {
+        "command": "autocompletehelp.dictation.menu",
+        "key": "escape",
+        "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
       }
     ]
   },

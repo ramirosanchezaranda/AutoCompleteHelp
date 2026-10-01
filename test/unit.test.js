@@ -134,5 +134,38 @@ eq('parseProjectFile lee el perfil', parseProjectFile('{"prompt":"x","perfil":"d
 const { buildStackSystemPrompt } = require(out + 'prompts.js');
 eq('prompt del asesor incluye el perfil curado', buildStackSystemPrompt('Django', getProfile('django')).includes('PERFIL CURADO'), true);
 
+console.log('— fase 3: dictado (escribir encima del gris)');
+const T = require(out + 'typing.js');
+const js = T.commentPrefixes('javascript');
+const dict = "// Primero importamos express: es el framework.\nconst express = require('express');\n\n// Creamos la app en vez de usar http a mano.\nconst app = express();\napp.get('/', (req, res) => {\n  res.send('Hola');\n});";
+const mask = T.autoMask(dict, js);
+let pos = T.skipAuto(mask, 0);
+eq('el primer comentario avanza solo: arrancas en el código', dict.slice(pos, pos + 5), 'const');
+let k = T.typeKeys(dict, mask, pos, 'const');
+eq('acierto avanza', [k.ok, dict.slice(k.pos, k.pos + 8)], [true, ' express']);
+const err = T.typeKeys(dict, mask, k.pos, 'x');
+eq('error no avanza y dice qué esperaba', [err.ok, err.pos === k.pos, err.expected], [false, true, ' ']);
+k = T.typeKeys(dict, mask, k.pos, " express = require('express');");
+eq('al terminar la línea se espera Enter', dict[k.pos], '\n');
+k = T.typeKeys(dict, mask, k.pos, '\n');
+eq('Enter salta la línea en blanco y el comentario siguiente', dict.slice(k.pos, k.pos + 9), 'const app');
+k = T.typeKeys(dict, mask, k.pos, "const app = express();\napp.get('/', (req, res) => {\n");
+eq('la indentación avanza sola', dict.slice(k.pos, k.pos + 3), 'res');
+eq('retroceso vuelve al último carácter tecleado, no a la indentación', dict[T.backPos(mask, k.pos)], '\n');
+eq('Tab dicta una palabra', dict.slice(k.pos, T.nextWordEnd(dict, mask, k.pos)), 'res');
+eq('la explicación dictada es el comentario del bloque', T.explanationAt(dict, k.pos, js), 'Creamos la app en vez de usar http a mano.');
+eq('progreso parcial', T.progressOf(mask, k.pos) > 50 && T.progressOf(mask, k.pos) < 100, true);
+k = T.typeKeys(dict, mask, k.pos, "res.send('Hola');\n});");
+eq('fin del dictado', [k.ok, k.pos, T.progressOf(mask, k.pos)], [true, dict.length, 100]);
+eq('las tildes no frenan: «a» vale por «á»', T.typeKeys("x = 'número'", T.autoMask("x = 'número'", js), 0, "x = 'numero'").ok, true);
+eq('con typeComments el comentario se escribe', T.skipAuto(T.autoMask(dict, js, true), 0), 0);
+const py = "# Leemos el archivo con with: lo cierra aunque falle.\nwith open('a.txt') as f:\n    datos = f.read()";
+const pm = T.autoMask(py, T.commentPrefixes('python'));
+eq('python: # avanza solo', py.slice(T.skipAuto(pm, 0), T.skipAuto(pm, 0) + 4), 'with');
+const { buildDictationSystemPrompt } = require(out + 'prompts.js');
+const dp = buildDictationSystemPrompt('guiado', 'Objetivo: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología', true);
+eq('prompt de dictado: comentarios antes de cada bloque, metodología y objetivo',
+  [dp.includes('ANTES de cada bloque'), dp.includes('METODOLOGÍA'), dp.includes('e-commerce completa'), dp.includes('@ach-concepts')], [true, true, true, true]);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);

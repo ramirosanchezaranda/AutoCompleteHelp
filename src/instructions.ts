@@ -1,12 +1,14 @@
 import * as vscode from 'vscode';
 import { commentSyntax } from './projectContext';
 import type { PlanStep } from './projectFile';
+import { buildHere } from './dictation';
 
 /**
  * Inserta una instrucción `ach:` como comentario en la línea actual, con la
- * sintaxis del lenguaje, y dispara la sugerencia. Sin `preset`, la pide.
+ * sintaxis del lenguaje, y la construye (dictado o sugerencia, según el modo).
+ * Sin `preset`, la pide.
  */
-export async function insertInstruction(preset?: string): Promise<void> {
+export async function insertInstruction(preset?: string, stepIndex?: number): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     return;
@@ -37,7 +39,7 @@ export async function insertInstruction(preset?: string): Promise<void> {
   const cursorLine = line.lineNumber + (line.isEmptyOrWhitespace ? 1 : 2);
   const cursor = new vscode.Position(cursorLine, indent.length);
   editor.selection = new vscode.Selection(cursor, cursor);
-  await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+  await buildHere(editor, text.trim(), stepIndex);
 }
 
 // ---------------------------------------------------------------------------

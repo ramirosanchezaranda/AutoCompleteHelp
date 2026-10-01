@@ -2,20 +2,29 @@
 
 Extensión para **VS Code, Cursor, Windsurf, VSCodium** y cualquier IDE basado en VS Code.
 
-Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la IA completa el código mientras escribes — pero con un objetivo distinto al de un copilot clásico: **que aprendas y entiendas cada parte de tu proyecto**, no que dependas de la IA.
+Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué estás construyendo y cómo quieres que te expliquen, y la IA te **dicta** el código en gris para que **lo escribas tú encima**, con comentarios que explican qué hace cada parte y por qué se eligió esa forma. El objetivo no es que la IA programe por ti: es **que aprendas y entiendas cada parte de tu proyecto**.
 
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 
-1. **Describe el proyecto** (*Definir prompt del proyecto*): con tus palabras, sin saber de tecnología.
+1. **Describe el proyecto** (*Definir prompt del proyecto*) en una frase: **qué construyes + cómo quieres que te expliquen**. Por ejemplo:
+   > e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología
+
+   La segunda mitad no es decorativa: la IA la cumple en cada comentario que te dicta.
 2. **Elige el stack** (*Elegir stack del proyecto*): uno de los perfiles curados para aprender (HTML + CSS + JS, Node + Express, Python + FastAPI, React + Vite, Django), el que tú quieras, o una recomendación. Queda en `autocompletehelp.json` con convenciones y un plan paso a paso.
 3. **Crea la estructura** (*Crear estructura del proyecto*): manifiesto, `.gitignore` y los archivos del plan, **vacíos salvo su instrucción `ach:`**. Nunca sobrescribe. El comando de instalación se escribe en la terminal con su explicación, y lo ejecutas tú.
-4. **Sigue el plan** desde el panel **Plan del proyecto** del explorador: un clic abre el archivo del paso y el autocompletado arranca; la casilla lo marca como hecho.
-5. **Escribe código**: cada sugerencia conoce tu stack, los archivos que existen, tus dependencias y lo que exportan los archivos que importas — no inventa rutas ni campos.
+4. **Sigue el plan** desde el panel **Plan del proyecto** del explorador: un clic abre (o crea) el archivo del paso, por ejemplo `server.js`, y empieza el **dictado**; la casilla marca el paso como hecho.
+5. **Escribe encima del código gris** (modo dictado, el predeterminado):
+   - El código del paso aparece en gris. Lo que tecleas bien se vuelve código normal; un error marca el carácter en rojo y no avanza.
+   - Antes de cada bloque hay comentarios que **dictan** qué escribir y por qué: el primero te dice cómo empezar. Los comentarios y la indentación avanzan solos (se leen, no se copian); el código y cada Enter los escribes tú.
+   - **Tab** te dicta una palabra si te trabas, **Retroceso** vuelve atrás, **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta (en el archivo queda solo lo que escribiste).
+   - Cada sugerencia conoce tu stack, los archivos que existen, tus dependencias y lo que exportan los archivos que importas: no inventa rutas ni campos.
 6. **Pide lo que quieras con un comentario**:
    ```js
    // ach: ruta para listar productos con paginación
    ```
-   Pulsa Enter y la sugerencia implementa la instrucción, en tu stack y en tu nivel de aprendizaje (en `pista` recibes los pasos, no el código).
+   Pulsa Enter y se prepara el dictado de esa instrucción, en tu stack y en tu nivel de aprendizaje (en `pista` recibes los pasos, no el código).
+
+¿Prefieres el autocompletado clásico (sugerencia en gris que aceptas con Tab)? Comando **Elegir modo** → `autocompletar`.
 
 `autocompletehelp.json` vive en la raíz del proyecto y se versiona con tu código:
 
@@ -30,7 +39,7 @@ Autocompletado guiado por **tu prompt**: describes qué estás construyendo y la
 
 ## ✨ Características
 
-- **Autocompletado inline** (texto fantasma) en cualquier lenguaje, aceptas con `Tab`.
+- **Modo dictado** (predeterminado): el código aparece en gris y lo escribes encima; nada entra al archivo sin que lo teclees. Modo **autocompletar** opcional (texto fantasma que aceptas con `Tab`), en cualquier lenguaje.
 - **Prompt del proyecto**: define qué estás construyendo y cómo quieres que te ayude; cada sugerencia usa ese contexto.
 - **4 niveles de aprendizaje** (el corazón de la extensión):
   | Nivel | Qué hace | Para qué |
@@ -97,7 +106,9 @@ src/
 |---|---|---|
 | `autocompletehelp.provider` | `anthropic` | Proveedor de LLM |
 | `autocompletehelp.model` | *(default del proveedor)* | ID del modelo |
-| `autocompletehelp.learningLevel` | `guiado` | `pista` / `guiado` / `completo` |
+| `autocompletehelp.interactionMode` | `dictado` | `dictado` (escribes encima del gris) / `autocompletar` (Tab acepta) |
+| `autocompletehelp.dictation.typeComments` | `false` | En el dictado, escribir también los comentarios |
+| `autocompletehelp.learningLevel` | `guiado` | `educame` / `pista` / `guiado` / `completo` |
 | `autocompletehelp.maxTokens` | `400` | Tokens máximos por sugerencia |
 | `autocompletehelp.debounceMs` | `350` | Espera tras dejar de teclear |
 | `autocompletehelp.ollamaUrl` | `http://localhost:11434/v1` | URL de Ollama local |

@@ -31,7 +31,8 @@ export async function setProjectPrompt(context: vscode.ExtensionContext): Promis
   const value = await vscode.window.showInputBox({
     title: 'Prompt del proyecto',
     prompt:
-      'Describe qué estás construyendo y cómo quieres que te ayude (ej: "API REST para una tienda; explícame cada middleware").',
+      'Qué construyes + cómo quieres que te explique. Ej: "e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología".',
+    placeHolder: 'e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología',
     value: getProjectPrompt(),
     ignoreFocusOut: true
   });
@@ -173,6 +174,90 @@ export function buildSystemPrompt(
     case 'completo':
     default:
       base.push('MODO COMPLETO: sugiere directamente el código, limpio y idiomático, sin comentarios pedagógicos.');
+      break;
+  }
+  return base.join('\n');
+}
+
+/**
+ * Prompt de sistema del MODO DICTADO: la IA no autocompleta, dicta. Genera la
+ * pieza completa que el usuario escribirá a mano encima del texto en gris, con
+ * los comentarios ANTES de cada bloque para que se lean antes de teclear.
+ */
+export function buildDictationSystemPrompt(
+  level: LearningLevel,
+  projectBlock: string,
+  guidance: boolean,
+  known: string[] = [],
+  workspaceSnapshot = ''
+): string {
+  const base = [
+    'Eres AutoCompleteHelp en MODO DICTADO, dentro de un IDE.',
+    'No es un autocompletado: generas el código de una pieza del proyecto y el ALUMNO lo va a ESCRIBIR A MANO, carácter a carácter, encima de tu texto en gris.',
+    'Tu respuesta se inserta literalmente en el cursor, así que:',
+    '- Responde SOLO con el código. Sin markdown, sin ``` , sin texto fuera de comentarios.',
+    '- No repitas el PREFIX ni el SUFFIX, ni la línea de la instrucción "ach:".',
+    '- Indenta con espacios, siguiendo el estilo del archivo.',
+    'PRIMERA LÍNEA OBLIGATORIA: un comentario con el formato exacto "@ach-concepts: concepto-1, concepto-2" (1 a 4 conceptos con nombres canónicos). Se elimina antes de insertar.',
+    '',
+    'CÓMO SE DICTA:',
+    '- Divide el código en BLOQUES pequeños (1 a 6 líneas) en el orden en que se escriben.',
+    '- ANTES de cada bloque van comentarios de línea completa que dictan qué se escribe y por qué. El alumno los lee antes de teclear el bloque.',
+    '  Nunca pongas comentarios al final de una línea de código: el alumno los tendría que escribir.',
+    '- El PRIMER comentario dice cómo empezar: qué es lo primero que se escribe en este archivo y por qué se empieza por ahí.',
+    '- Explica la METODOLOGÍA, no solo la sintaxis: por qué esta forma de organizar o resolver y no otra.',
+    '- Código completo y funcional para la instrucción. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
+    '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).'
+  ];
+
+  if (projectBlock) {
+    base.push(
+      '',
+      'PROYECTO (fuente de verdad, definido por el usuario en autocompletehelp.json):',
+      projectBlock,
+      'El texto del objetivo también dice CÓMO quiere el usuario que le expliques (ej: "explica cada código que agregues y por qué elegiste esa metodología"): cúmplelo al pie de la letra.',
+      'Usa EXACTAMENTE el stack indicado, con APIs propias de esas versiones, y respeta las convenciones.'
+    );
+    if (guidance) {
+      base.push(
+        'Termina con una línea de comentario que empiece con "➜ Siguiente paso:" con la próxima pieza concreta del plan.'
+      );
+    }
+  }
+
+  if (workspaceSnapshot) {
+    base.push(
+      '',
+      'ESTADO REAL DEL PROYECTO (no inventes archivos ni dependencias que no estén aquí):',
+      workspaceSnapshot,
+      'Importa solo archivos que existen o que el plan crea. Si falta una dependencia, dilo en un comentario con el comando para instalarla.'
+    );
+  }
+
+  if (known.length && level !== 'completo') {
+    base.push(
+      '',
+      `El alumno YA DOMINA: ${known.join(', ')}. No le expliques eso de nuevo; reserva los comentarios para lo nuevo.`
+    );
+  }
+
+  base.push('');
+  switch (level) {
+    case 'educame':
+      base.push(
+        'NIVEL EDÚCAME: el alumno empieza desde cero. Bloques de 1 a 3 líneas.',
+        'Define cada concepto la primera vez que aparece, con palabras sencillas, antes del bloque que lo usa.',
+        CONTRASTIVE_RULE,
+        'Adaptación: en el movimiento 2 contrasta contra lo que alguien haría por intuición, no contra tecnicismos.'
+      );
+      break;
+    case 'completo':
+      base.push(
+        'NIVEL COMPLETO: un único comentario corto antes de cada bloque, con el porqué de la decisión. Nada más.'
+      );
+      break;
+    default:
+      base.push('NIVEL GUIADO: cada bloque con su comentario contrastivo.', CONTRASTIVE_RULE);
       break;
   }
   return base.join('\n');

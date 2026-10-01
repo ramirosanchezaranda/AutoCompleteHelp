@@ -13,6 +13,7 @@ import {
 } from './prompts';
 import { knownConcepts } from './conceptLedger';
 import { ProjectContext, detectInstruction } from './projectContext';
+import { DictationManager, usesDictation } from './dictation';
 
 const MAX_PREFIX_CHARS = 6000;
 const MAX_SUFFIX_CHARS = 2000;
@@ -35,7 +36,8 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly output: vscode.OutputChannel,
-    private readonly project: ProjectContext
+    private readonly project: ProjectContext,
+    private readonly dictation: DictationManager
   ) {
     this.progress = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
     context.subscriptions.push(this.progress);
@@ -48,7 +50,7 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
     token: vscode.CancellationToken
   ): Promise<vscode.InlineCompletionItem[] | undefined> {
     const cfg = vscode.workspace.getConfiguration('autocompletehelp');
-    if (!cfg.get<boolean>('enabled', true)) {
+    if (!cfg.get<boolean>('enabled', true) || this.dictation.owns(document)) {
       return undefined;
     }
 
@@ -67,6 +69,16 @@ export class AutoCompleteHelpProvider implements vscode.InlineCompletionItemProv
         new vscode.Range(position, document.lineAt(document.lineCount - 1).range.end)
       )
       .slice(0, MAX_SUFFIX_CHARS);
+
+    // Modo dictado: no hay autocompletado mientras escribes. Una instrucción
+    // «ach: …» + Enter prepara el dictado, que escribes encima del gris.
+    if (usesDictation(cfg)) {
+      const instruction = detectInstruction(prefix);
+      if (instruction) {
+        this.dictation.autoStart(document, position, instruction);
+      }
+      return undefined;
+    }
 
     // Caché trivial: mismo punto de inserción → misma sugerencia.
     const cacheKey = `${document.uri.toString()}#${prefix}#${suffix.slice(0, 200)}`;

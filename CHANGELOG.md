@@ -2,6 +2,26 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.5.0] — 2026-10-01
+
+### Añadido
+
+- **Modo dictado** (nuevo modo predeterminado): la IA no autocompleta, dicta.
+  Al abrir un paso del plan (o escribir `ach: …` + Enter) el código aparece en
+  gris y lo escribes encima: lo correcto se vuelve código normal y un error
+  marca el carácter sin avanzar. Los comentarios van antes de cada bloque y
+  dictan qué escribir y por qué esa metodología; el primero dice cómo empezar.
+  Comentarios, indentación y líneas en blanco avanzan solos; el código y cada
+  Enter se teclean. Tab dicta una palabra, Retroceso vuelve, Esc ofrece
+  dictar la línea, completar el resto o terminar borrando lo que falta. Al
+  terminar muestra caracteres, errores y ayudas, y ofrece marcar el paso como
+  hecho. Lo escrito en el dictado cuenta como practicado en «Ver mi progreso».
+- Comando **«Elegir modo»** (`autocompletehelp.interactionMode`): `dictado` o
+  `autocompletar` (el comportamiento anterior, con Tab).
+- El prompt del proyecto se describe como **qué construyes + cómo quieres que
+  te expliquen** (ej: «e-commerce completa, explica cada código que agregues y
+  por qué elegiste esa metodología»), y el dictado cumple esa segunda parte.
+
 ## [0.4.0] — 2026-09-30
 
 ### Añadido

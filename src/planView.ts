@@ -9,6 +9,7 @@ import {
   projectRoot
 } from './projectFile';
 import { findStepLine, insertInstruction, stepFileContent, stepInstruction } from './instructions';
+import { buildHere } from './dictation';
 
 /**
  * Panel «Plan del proyecto» en el explorador. Convierte la guía
@@ -137,8 +138,8 @@ async function openStep(index: number): Promise<void> {
 
   const uri = vscode.Uri.joinPath(root, step.archivo);
   if (!(await exists(uri))) {
-    // Archivo nuevo: vacío salvo la instrucción del paso. El código llega con
-    // el autocompletado, en tu nivel, y lo aceptas línea a línea.
+    // Archivo nuevo: vacío salvo la instrucción del paso. El código llega
+    // dictado en gris y lo escribes encima (o como sugerencia, según el modo).
     const content = stepFileContent(step.archivo, step);
     await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
@@ -146,7 +147,7 @@ async function openStep(index: number): Promise<void> {
     if (content) {
       const end = editor.document.lineAt(editor.document.lineCount - 1).range.end;
       editor.selection = new vscode.Selection(end, end);
-      await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+      await buildHere(editor, stepInstruction(step), index);
     }
     return;
   }
@@ -173,7 +174,7 @@ async function openStep(index: number): Promise<void> {
     }
     const pos = new vscode.Position(found.line + 1, 0);
     editor.selection = new vscode.Selection(pos, pos);
-    await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+    await buildHere(editor, stepInstruction(step), index);
     return;
   }
 
@@ -184,6 +185,6 @@ async function openStep(index: number): Promise<void> {
     'Insertar la instrucción aquí'
   );
   if (action) {
-    await insertInstruction(stepInstruction(step));
+    await insertInstruction(stepInstruction(step), index);
   }
 }

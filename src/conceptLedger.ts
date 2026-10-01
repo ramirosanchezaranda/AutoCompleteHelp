@@ -102,8 +102,9 @@ export async function recordAccepted(
   }
   const ledger = readLedger(context);
   const now = new Date().toISOString();
-  // En modo pista/hueco la IA no escribió la solución: el mérito es del usuario.
-  const userWroteIt = level === 'pista';
+  // En modo pista la IA no escribió la solución, y en el dictado la tecleó el
+  // usuario: cuenta como práctica, no como código aceptado.
+  const userWroteIt = level === 'pista' || level === 'dictado';
 
   for (const raw of concepts) {
     const { id, label } = normalizeConcept(raw);
