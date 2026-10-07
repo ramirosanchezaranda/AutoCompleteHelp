@@ -1,23 +1,62 @@
 import * as vscode from 'vscode';
-import { PROVIDERS, getProvider, resolveActiveConfig } from './providers/catalog';
+import { allProviders, getProvider, resolveActiveConfig } from './providers/catalog';
+import { addProvider } from './addProvider';
 import { AutoCompleteHelpProvider } from './inlineProvider';
 import { setApiKeyCommand, ensureApiKey } from './secrets';
 import { setProjectPrompt, LearningLevel } from './prompts';
 import { explainSelection } from './explain';
+import { recommendStack } from './stackAdvisor';
+import { showMarkdownPanel } from './explain';
+import { progressReport, recordAccepted, resetLedger } from './conceptLedger';
+import { initProjectFile, openProjectFile } from './projectFile';
+import { ProjectContext } from './projectContext';
+import { insertInstruction } from './instructions';
+import { registerPlanView } from './planView';
+import { createStructure } from './scaffold';
+import { DictationManager } from './dictation';
+import { ReviewReminder, startReview } from './review';
+import { ErrorHelpProvider, explainError } from './errorHelp';
 
 let statusBarItem: vscode.StatusBarItem;
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('AutoCompleteHelp');
   context.subscriptions.push(output);
 
-  // Autocompletado inline en todos los lenguajes.
+  // autocompletehelp.json: prompt, stack, convenciones y plan del proyecto.
+  await initProjectFile(context);
+
+  // Árbol de archivos, dependencias y archivos importados, para cada sugerencia.
+  const projectContext = new ProjectContext();
+  context.subscriptions.push(projectContext);
+
+  // Modo dictado: el código del paso en gris, y lo escribes encima.
+  const dictation = new DictationManager(context, output, projectContext);
+  context.subscriptions.push(dictation);
+
+  // Repaso espaciado: aviso en la barra de estado cuando vence un concepto.
+  const reminder = new ReviewReminder(context);
+  dictation.afterFinish = () => reminder.refresh();
+  context.subscriptions.push(reminder);
+
+  // «Entender este error» en la bombita de los errores del editor.
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider({ pattern: '**' }, new ErrorHelpProvider(), {
+      providedCodeActionKinds: ErrorHelpProvider.kinds
+    })
+  );
+
+  // Autocompletado inline en todos los lenguajes (en modo dictado solo
+  // detecta las instrucciones «ach:»).
   context.subscriptions.push(
     vscode.languages.registerInlineCompletionItemProvider(
       { pattern: '**' },
-      new AutoCompleteHelpProvider(context, output)
+      new AutoCompleteHelpProvider(context, output, projectContext, dictation)
     )
   );
+
+  // Panel «Plan del proyecto» en el explorador.
+  registerPlanView(context);
 
   // Barra de estado con proveedor/modelo/nivel activos.
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -44,10 +83,36 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('autocompletehelp.explainSelection', () =>
       explainSelection(context)
     ),
+    vscode.commands.registerCommand('autocompletehelp.recommendStack', () =>
+      recommendStack(context)
+    ),
+    vscode.commands.registerCommand('autocompletehelp.addProvider', () =>
+      addProvider(context)
+    ),
+    vscode.commands.registerCommand('autocompletehelp.showProgress', () =>
+      showProgress(context)
+    ),
+    vscode.commands.registerCommand('autocompletehelp.instruct', () => insertInstruction()),
+    vscode.commands.registerCommand('autocompletehelp.createStructure', () =>
+      createStructure(context)
+    ),
+    vscode.commands.registerCommand('autocompletehelp.openProjectFile', openProjectFile),
+    // Interno: lo dispara el propio InlineCompletionItem al ser aceptado.
+    vscode.commands.registerCommand(
+      'autocompletehelp.recordAccepted',
+      (concepts: string[], level: string) => recordAccepted(context, concepts, level)
+    ),
     vscode.commands.registerCommand('autocompletehelp.selectModel', () =>
       selectModel(context)
     ),
     vscode.commands.registerCommand('autocompletehelp.selectLearningLevel', selectLearningLevel),
+    vscode.commands.registerCommand('autocompletehelp.selectMode', selectMode),
+    vscode.commands.registerCommand('autocompletehelp.review', () => startReview(context, dictation)),
+    vscode.commands.registerCommand(
+      'autocompletehelp.explainError',
+      (uri?: vscode.Uri, range?: vscode.Range, message?: string, source?: string) =>
+        explainError(context, uri, range, message, source)
+    ),
     vscode.commands.registerCommand('autocompletehelp.toggle', toggleEnabled)
   );
 }
@@ -61,6 +126,7 @@ function refreshStatusBar(): void {
   const enabled = cfg.get<boolean>('enabled', true);
   const { provider, model } = resolveActiveConfig();
   const level = cfg.get<string>('learningLevel', 'guiado');
+  const mode = cfg.get<string>('interactionMode', 'dictado');
   statusBarItem.text = `${enabled ? '$(sparkle)' : '$(circle-slash)'} ACH: ${model}`;
   statusBarItem.tooltip = new vscode.MarkdownString(
     [
@@ -68,6 +134,7 @@ function refreshStatusBar(): void {
       `- Proveedor: ${provider.label}`,
       `- Modelo: ${model}`,
       `- Nivel de aprendizaje: ${level}`,
+      `- Modo: ${mode}${mode === 'dictado' && level === 'pista' ? ' (en nivel pista se dan solo pistas)' : ''}`,
       '',
       'Haz clic para cambiar proveedor/modelo.'
     ].join('\n')
@@ -79,15 +146,24 @@ async function selectModel(context: vscode.ExtensionContext): Promise<void> {
   const cfg = vscode.workspace.getConfiguration('autocompletehelp');
   const currentProviderId = cfg.get<string>('provider', 'anthropic');
 
+  const ADD_AI = '__add_ai__';
   const providerPick = await vscode.window.showQuickPick(
-    PROVIDERS.map((p) => ({
-      label: p.label,
-      description: p.id === currentProviderId ? '(actual)' : undefined,
-      id: p.id
-    })),
+    [
+      ...allProviders().map((p) => ({
+        label: p.label,
+        description: p.id === currentProviderId ? '(actual)' : undefined,
+        id: p.id
+      })),
+      { label: '$(add) Agregar IA (endpoint + API key)…', id: ADD_AI }
+    ],
     { title: 'Paso 1/2 — Elige el proveedor de LLM' }
   );
   if (!providerPick) {
+    return;
+  }
+  if (providerPick.id === ADD_AI) {
+    await vscode.commands.executeCommand('autocompletehelp.addProvider');
+    refreshStatusBar();
     return;
   }
   const provider = getProvider(providerPick.id);
@@ -128,6 +204,11 @@ async function selectLearningLevel(): Promise<void> {
   const pick = await vscode.window.showQuickPick(
     [
       {
+        label: 'educame',
+        description: 'Desde cero 🌱 — cada línea explicada como un profesor paciente',
+        detail: 'Para quien está empezando: conceptos definidos la primera vez, una idea nueva por sugerencia.'
+      },
+      {
         label: 'pista',
         description: 'Solo pistas en comentarios — tú escribes el código (máximo aprendizaje)',
         detail: 'Ideal para practicar: la IA te guía paso a paso pero nunca resuelve por ti.'
@@ -152,6 +233,50 @@ async function selectLearningLevel(): Promise<void> {
     .getConfiguration('autocompletehelp')
     .update('learningLevel', pick.label as LearningLevel, vscode.ConfigurationTarget.Global);
   refreshStatusBar();
+}
+
+/** Panel con los conceptos registrados y cuánto escribió el usuario por su cuenta. */
+async function showProgress(context: vscode.ExtensionContext): Promise<void> {
+  showMarkdownPanel('AutoCompleteHelp — Tu progreso', progressReport(context));
+  const action = await vscode.window.showInformationMessage(
+    'AutoCompleteHelp baja las explicaciones de los conceptos que ya repetiste.',
+    'Reiniciar progreso'
+  );
+  if (action === 'Reiniciar progreso') {
+    const confirm = await vscode.window.showWarningMessage(
+      'Se borrarán todos los conceptos registrados y volverás a recibir las explicaciones completas. ¿Continuar?',
+      { modal: true },
+      'Reiniciar'
+    );
+    if (confirm === 'Reiniciar') {
+      await resetLedger(context);
+      vscode.window.showInformationMessage('AutoCompleteHelp: progreso reiniciado.');
+    }
+  }
+}
+
+async function selectMode(): Promise<void> {
+  const cfg = vscode.workspace.getConfiguration('autocompletehelp');
+  const current = cfg.get<string>('interactionMode', 'dictado');
+  const pick = await vscode.window.showQuickPick(
+    [
+      {
+        label: 'dictado',
+        description: `${current === 'dictado' ? '(actual) ' : ''}El código aparece en gris y lo escribes encima (recomendado para aprender)`,
+        detail: 'Los comentarios te dictan qué escribir y por qué. Nada entra al archivo sin que lo teclees.'
+      },
+      {
+        label: 'autocompletar',
+        description: `${current === 'autocompletar' ? '(actual) ' : ''}Sugerencias en gris que aceptas con Tab`,
+        detail: 'Más rápido; útil cuando ya dominas lo que vas a escribir.'
+      }
+    ],
+    { title: '¿Cómo quieres construir el código?' }
+  );
+  if (pick) {
+    await cfg.update('interactionMode', pick.label, vscode.ConfigurationTarget.Global);
+    refreshStatusBar();
+  }
 }
 
 async function toggleEnabled(): Promise<void> {

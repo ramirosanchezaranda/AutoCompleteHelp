@@ -55,7 +55,7 @@ async function completeAnthropic(req: CompletionRequest, signal: AbortSignal): P
     body: JSON.stringify({
       model: req.model,
       max_tokens: req.maxTokens,
-      system: req.system,
+      system: cachedSystem(req.system),
       messages: [{ role: 'user', content: req.user }]
     })
   });
@@ -159,7 +159,7 @@ export async function streamComplete(
           body: JSON.stringify({
             model: req.model,
             max_tokens: req.maxTokens,
-            system: req.system,
+            system: cachedSystem(req.system),
             stream: true,
             messages: [{ role: 'user', content: req.user }]
           })
@@ -237,6 +237,16 @@ export async function streamComplete(
     sub?.dispose();
   }
   return total;
+}
+
+/**
+ * Prompt de sistema de Anthropic como bloque cacheable. Lleva el proyecto, el
+ * árbol de archivos y las dependencias: cambia poco entre sugerencias, así que
+ * las siguientes lo leen de caché (~10% del costo, menos latencia). Si el
+ * prompt es más corto que el mínimo cacheable, la API simplemente no lo cachea.
+ */
+function cachedSystem(system: string) {
+  return [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }];
 }
 
 /** Lee un cuerpo SSE línea a línea e invoca onData con cada JSON. */

@@ -134,8 +134,38 @@ export const PROVIDERS: ProviderInfo[] = [
   }
 ];
 
+/** IAs agregadas por el usuario (endpoints OpenAI-compatibles con API key propia). */
+export interface CustomProviderConfig {
+  name: string;
+  baseUrl: string;
+  models?: string[];
+}
+
+export function customProviders(): ProviderInfo[] {
+  const cfg = vscode.workspace.getConfiguration('autocompletehelp');
+  const list = cfg.get<CustomProviderConfig[]>('customProviders', []);
+  return list
+    .filter((p) => p && p.name && p.baseUrl)
+    .map((p) => ({
+      id: `custom:${p.name}`,
+      label: `${p.name} (tu IA)`,
+      style: 'openai' as ApiStyle,
+      baseUrl: p.baseUrl.replace(/\/$/, ''),
+      // needsKey false: la clave se envía solo si existe, así también
+      // funcionan endpoints propios sin autenticación (LM Studio, vLLM local…)
+      needsKey: false,
+      keyUrl: '',
+      models: p.models ?? [],
+      defaultModel: p.models?.[0] ?? ''
+    }));
+}
+
+export function allProviders(): ProviderInfo[] {
+  return [...PROVIDERS, ...customProviders()];
+}
+
 export function getProvider(id: string): ProviderInfo {
-  return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
+  return allProviders().find((p) => p.id === id) ?? PROVIDERS[0];
 }
 
 /** Resuelve proveedor, modelo y URL base según la configuración actual. */
