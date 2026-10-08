@@ -16,7 +16,7 @@ Todos los cambios notables de AutoCompleteHelp se documentan aquí.
   la nube; se pueden pedir otros o escribir una idea propia. Sin conexión, se
   ofrecen las ideas del catálogo. **«Recomiéndame un proyecto»** parte de lo
   que le interesa a la persona y recomienda proyectos de cualquier tema.
-- **Catálogo ampliado a más de 40 temas**: Go, Rust, Java con Spring Boot,
+- **Catálogo ampliado a 40 temas**: Go, Rust, Java con Spring Boot,
   C# y .NET, Next.js, FastAPI, GraphQL, patrones de diseño, SOLID y código
   limpio, DDD, arquitectura orientada a eventos, AWS, Azure, Google Cloud,
   Terraform, Kubernetes, CI/CD con GitHub Actions, entrenar un modelo de IA,

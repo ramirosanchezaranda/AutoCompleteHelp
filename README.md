@@ -16,7 +16,7 @@ En los tres casos se construye igual: **completamos juntos** cada archivo, una l
 
 ## 🎓 Quiero aprender
 
-Más de 40 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **arquitectura y patrones** (patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
+40 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **arquitectura y patrones** (patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
 
 1. Eliges el tema y desde dónde arrancas (desde cero, ya programo en otra cosa, lo usé un poco).
 2. **La IA te recomienda tres proyectos** —uno sencillo, uno intermedio y uno más ambicioso— con lo que aprendes en cada uno, la duración y si usan Docker o la nube. Puedes pedir otras recomendaciones o escribir tu propia idea. Sin conexión, se ofrecen las ideas del catálogo.
