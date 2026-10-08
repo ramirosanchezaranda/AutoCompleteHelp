@@ -23,6 +23,10 @@ export function commentPrefixes(languageId: string): string[] {
   if (['html', 'xml', 'vue-html', 'svg'].includes(languageId)) {
     return ['<!--'];
   }
+  // Apuntes de teoría: las citas (>) son la explicación que se lee; lo demás se escribe.
+  if (languageId === 'markdown') {
+    return ['>', '<!--'];
+  }
   if (['css', 'scss', 'less'].includes(languageId)) {
     return ['/*', '*'];
   }

@@ -258,6 +258,7 @@
           "tipo": {
             "type": "string",
             "enum": [
+              "teoria",
               "codigo",
               "test",
               "config",

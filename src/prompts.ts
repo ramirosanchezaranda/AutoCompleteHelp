@@ -26,7 +26,13 @@ export async function saveProjectPrompt(
   await saveProject(context, { prompt: value });
 }
 
-export async function setProjectPrompt(context: vscode.ExtensionContext): Promise<void> {
+export async function setProjectPrompt(context: vscode.ExtensionContext, preset?: string): Promise<void> {
+  // Escrito en «Empezar»: se guarda y se sigue directo a elegir el stack.
+  if (typeof preset === 'string' && preset.trim()) {
+    await saveProject(context, { prompt: preset.trim() });
+    await vscode.commands.executeCommand('autocompletehelp.recommendStack');
+    return;
+  }
   const value = await vscode.window.showInputBox({
     title: 'Prompt del proyecto',
     prompt:
@@ -79,6 +85,18 @@ const CONTRASTIVE_RULE = [
  * mano, línea por línea, encima del texto en gris. Los comentarios van ANTES
  * de cada línea o bloque, porque se muestran justo antes de escribirlo.
  */
+/**
+ * Apuntes de teoría (.md): se completan escribiendo igual que el código. Las
+ * citas (>) son la explicación que se lee; lo demás lo escribe la persona.
+ */
+export const TEORIA_RULE = [
+  '- Si el archivo es Markdown (.md), es un APUNTE DE TEORÍA que el alumno completa escribiendo. Aquí SÍ usas Markdown:',
+  '  · la línea @ach-concepts va como comentario HTML: <!-- @ach-concepts: … -->',
+  '  · las explicaciones van en líneas que empiezan con "> " (se leen, no se escriben): qué es, para qué sirve, por qué así;',
+  '  · justo debajo de cada explicación, 1 a 3 líneas CORTAS que el alumno escribe para fijar la idea: un título "## …", una definición en una frase, o un mini ejemplo en un bloque ``` con su lenguaje;',
+  '  · sin líneas en blanco entre una explicación y lo que se escribe debajo; entre 15 y 40 líneas en total.'
+].join('\n');
+
 export function buildDictationSystemPrompt(
   projectBlock: string,
   guidance: boolean,
@@ -106,7 +124,8 @@ export function buildDictationSystemPrompt(
     '- Código completo y funcional. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
     '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).',
     '- Si el archivo es JSON u otro formato que no admite comentarios, no escribas comentarios ni la línea @ach-concepts como comentario: escribe "@ach-concepts: …" sola en la primera línea y después el contenido válido.',
-    '- Si el paso es un TEST, explica qué comportamiento comprueba cada test y por qué ese caso importa (el caso normal, el borde, el error).'
+    '- Si el paso es un TEST, explica qué comportamiento comprueba cada test y por qué ese caso importa (el caso normal, el borde, el error).',
+    TEORIA_RULE
   ];
 
   if (projectBlock) {
@@ -246,9 +265,10 @@ export function buildStackSystemPrompt(
     '{',
     '  "stack": { "resumen": "frase corta", "lenguaje": "nombre y versión", "framework": "nombre y versión", "datos": "base de datos y librería", "tests": "framework de tests" },',
     '  "convenciones": ["3 a 5 convenciones concretas: sistema de módulos, dónde van rutas/componentes, estilo de manejo de errores…"],',
-    '  "plan": [ { "paso": "qué construir", "archivo": "ruta/relativa.ext", "concepto": "concepto que enseña" } ]',
+    '  "plan": [ { "paso": "qué construir", "tipo": "teoria|codigo|test|config", "archivo": "ruta/relativa.ext", "concepto": "concepto que enseña" } ]',
     '}',
     '```',
+    'Cuando un paso introduce un concepto que el usuario probablemente no conoce, agrega antes un paso tipo "teoria" con archivo notas/NN-concepto.md: un apunte que también completa escribiendo.',
     'El plan debe coincidir con la Ruta de aprendizaje. Omite en "stack" las claves que no apliquen (ej: sin base de datos). Usa versiones estables actuales.',
     ...base,
     ...arch
@@ -282,7 +302,11 @@ export function sanitizeCompletion(raw: string, prefix: string): string {
   if (fence) {
     text = fence[1];
   }
-  text = text.replace(/^\s*```[\w-]*\n?/, '').replace(/\n?```\s*$/, '');
+  // Fence abierto sin cerrar (streaming cortado). Un apunte .md puede terminar
+  // en un bloque de código: su ``` final se respeta si no empezó con uno.
+  else if (/^\s*```/.test(text)) {
+    text = text.replace(/^\s*```[\w-]*\n?/, '').replace(/\n?```\s*$/, '');
+  }
 
   // Si el modelo repitió el final del prefix, recortarlo.
   const tail = prefix.slice(-200);

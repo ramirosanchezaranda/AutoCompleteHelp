@@ -359,10 +359,28 @@ for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos))
 eq('lecciones: todo lo que se teclea se puede escribir con un teclado en español', badChars, []);
 const lpfLesson = LS.lessonProjectFile(LS.getLesson('python-descargas'));
 const reread = parseProjectFile(JSON.stringify(lpfLesson));
-eq('lección → autocompletehelp.json (con «leccion», entorno y plan tipado)', [reread.leccion, reread.aprender.nivel, reread.plan.length, reread.plan[3].tipo, !!reread.entorno.testear], ['python-descargas', 'lección sin IA', 9, 'test', true]);
+eq('lección → autocompletehelp.json (con «leccion», entorno y plan tipado)', [reread.leccion, reread.aprender.nivel, reread.plan.length, reread.plan[2].tipo, reread.plan[4].tipo, !!reread.entorno.testear], ['python-descargas', 'lección sin IA', 11, 'teoria', 'test', true]);
 eq('el código de la lección se encuentra por la ruta del archivo', [LS.lessonCode('typescript-gastos', 'src/gasto.ts').text.startsWith('// Cómo empezar'), LS.lessonCode('typescript-gastos', './src/main.ts') !== undefined, LS.lessonCode('typescript-gastos', 'otro.ts'), LS.lessonCode(undefined, 'src/gasto.ts')], [true, true, undefined, undefined]);
 eq('lecciones por tema', LS.lessonsForTopic('typescript').map((l) => l.id), ['typescript-gastos']);
 eq('el esquema JSON conoce las lecciones', JSON.stringify(jsonSchema.properties.leccion.enum), JSON.stringify(LS.LESSONS.map((l) => l.id)));
+// Teoría que también se completa escribiendo
+const md = T.commentPrefixes('markdown');
+const note = LS.lessonCode('typescript-gastos', 'notas/01-tipos.md').text;
+const nm = T.autoMask(note, md);
+const firstTyped = T.skipAuto(nm, 0);
+eq('apunte de teoría: las citas (>) avanzan solas y se escribe el título', note.slice(firstTyped, note.indexOf('\n', firstTyped)), '## Tipos en TypeScript');
+const atDef = note.indexOf('Un tipo dice');
+eq('apunte de teoría: la explicación que se dicta es la cita de arriba', T.explanationAt(note, atDef, md).startsWith('Un tipo describe la forma'), true);
+eq('apunte de teoría: dentro del bloque de código, la cita de arriba sigue siendo la explicación', T.explanationAt(note, note.indexOf('let monto'), md).startsWith('Los tipos básicos'), true);
+eq('cada lección tiene apuntes de teoría antes del código', LS.LESSONS.map((l) => l.plan.findIndex((st) => st.tipo === 'teoria') < l.plan.findIndex((st) => st.tipo === 'codigo')), LS.LESSONS.map(() => true));
+const P2 = require(out + 'prompts.js');
+eq('un apunte .md que termina en un bloque de código no pierde su ``` final', P2.sanitizeCompletion('> idea\n```ts\nlet a = 1;\n```', ''), '> idea\n```ts\nlet a = 1;\n```');
+eq('una respuesta envuelta en ``` se sigue limpiando', P2.sanitizeCompletion('```ts\nlet a = 1;\n```', ''), 'let a = 1;');
+eq('el prompt de dictado explica cómo escribir apuntes de teoría', P2.buildDictationSystemPrompt('', false).includes('APUNTE DE TEORÍA'), true);
+eq('el prompt de «Quiero aprender» pide pasos de teoría', L.buildLearnSystemPrompt({ tema: 'Rust', nivel: 'cero', tamano: 'corto' }).includes('"teoria'), true);
+const SV = require(out + 'startView.js');
+const sh = SV.startHtml('abc');
+eq('«Empezar»: una caja para escribir en cada camino', [SV.START_BOXES.map((b) => b.kind), (sh.match(/<textarea/g) || []).length, sh.includes("nonce-abc")], [['project', 'learn', 'recommend'], 3, true]);
 eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
 
 function finish() {

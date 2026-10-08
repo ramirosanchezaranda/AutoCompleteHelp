@@ -18,6 +18,13 @@ export interface StepOptions<T> {
   placeholder?: string;
   /** Valor elegido antes: se marca al volver con ← Atrás. */
   current?: T;
+  /** Texto escrito antes: se muestra al volver con ← Atrás. */
+  value?: string;
+  /**
+   * Para escribir en vez de elegir: con lo que tecleas arma una opción que se
+   * muestran primeras (ej: «Aprender «Rust»»). Enter elige la primera.
+   */
+  freeText?: (text: string) => Item<T> | Item<T>[];
 }
 
 /** Un paso con opciones. Devuelve el valor, BACK, o undefined si se cancela. */
@@ -32,6 +39,23 @@ export function pickStep<T>(items: (Item<T> | vscode.QuickPickItem)[], o: StepOp
   qp.matchOnDescription = true;
   qp.matchOnDetail = true;
   qp.buttons = o.step > 1 ? [vscode.QuickInputButtons.Back] : [];
+  if (o.freeText) {
+    const free = o.freeText;
+    // Con texto escrito, la opción libre va primera y siempre visible (alwaysShow).
+    const update = (text: string) => {
+      const t = text.trim();
+      const own = t ? ([] as Item<T>[]).concat(free(t)).map((i) => ({ ...i, alwaysShow: true })) : [];
+      qp.items = [...own, ...items];
+      if (t) {
+        qp.activeItems = [qp.items[0]];
+      }
+    };
+    qp.onDidChangeValue(update);
+    if (o.value) {
+      qp.value = o.value;
+      update(o.value);
+    }
+  }
   const prev = items.find((i) => 'value' in i && o.current !== undefined && (i as Item<T>).value === o.current);
   if (prev) {
     qp.activeItems = [prev];

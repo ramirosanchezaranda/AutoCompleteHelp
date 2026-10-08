@@ -21,8 +21,9 @@ export interface StackInfo {
   [clave: string]: string | undefined;
 }
 
-export type StepKind = 'codigo' | 'test' | 'config' | 'docker' | 'comando';
-export const STEP_KINDS: StepKind[] = ['codigo', 'test', 'config', 'docker', 'comando'];
+/** teoria: apuntes en notas/*.md que también se completan escribiendo, antes del código que los usa. */
+export type StepKind = 'teoria' | 'codigo' | 'test' | 'config' | 'docker' | 'comando';
+export const STEP_KINDS: StepKind[] = ['teoria', 'codigo', 'test', 'config', 'docker', 'comando'];
 
 export interface PlanStep {
   paso: string;

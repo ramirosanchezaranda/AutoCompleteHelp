@@ -51,8 +51,8 @@ Monolito en capas, mínimo: los tipos (gasto.ts), la lógica pura y testeada (ga
 
 ## Paso a paso
 1. package.json y tsconfig.json: el proyecto y el compilador en modo estricto.
-2. src/gasto.ts: los tipos, antes que la lógica.
-3. src/gastos.test.ts: los tests ANTES que la función. Fallan (rojo): es lo esperado.
+2. notas/01-tipos.md y src/gasto.ts: primero el apunte sobre tipos (lo escribes tú), después los tipos del proyecto.
+3. notas/02-tests.md y src/gastos.test.ts: por qué los tests van primero, y los tests ANTES que la función. Fallan (rojo): es lo esperado.
 4. src/gastos.ts: lo justo para que pasen (verde).
 5. src/main.ts: la entrada desde la terminal, validando lo que llega.
 
@@ -87,8 +87,8 @@ En capas: reglas.py (qué extensión va a qué carpeta), plan.py (calcula los mo
 
 ## Paso a paso
 1. pyproject.toml y ordenar/__init__.py: el proyecto y el paquete.
-2. ordenar/reglas.py y su test.
-3. ordenar/plan.py y su test con una carpeta temporal.
+2. notas/01-diccionarios.md (el apunte, lo escribes tú), ordenar/reglas.py y su test.
+3. notas/02-rutas.md, ordenar/plan.py y su test con una carpeta temporal.
 4. ordenar/ejecutar.py: la única parte que mueve archivos.
 5. ordenar/__main__.py: la línea de comandos, con --simular.
 
@@ -124,7 +124,9 @@ export const LESSONS: Lesson[] = [
     plan: [
       { paso: 'Manifiesto del proyecto', tipo: 'config', archivo: 'package.json', concepto: 'scripts y módulos ES' },
       { paso: 'Configurar el compilador', tipo: 'config', archivo: 'tsconfig.json', concepto: 'modo estricto' },
+      { paso: 'Apunte: qué es un tipo', tipo: 'teoria', archivo: 'notas/01-tipos.md', concepto: 'tipos, uniones e interfaces' },
       { paso: 'Tipos de un gasto', tipo: 'codigo', archivo: 'src/gasto.ts', concepto: 'type, union e interface' },
+      { paso: 'Apunte: tests primero', tipo: 'teoria', archivo: 'notas/02-tests.md', concepto: 'rojo, verde' },
       { paso: 'Tests del total y por categoría', tipo: 'test', archivo: 'src/gastos.test.ts', concepto: 'tests primero (rojo)', verificar: 'npx vitest run' },
       { paso: 'Calcular total y por categoría', tipo: 'codigo', archivo: 'src/gastos.ts', concepto: 'reduce y Record (verde)', verificar: 'npx vitest run' },
       { paso: 'Usarlo desde la terminal', tipo: 'codigo', archivo: 'src/main.ts', concepto: 'validar la entrada' },
@@ -132,6 +134,47 @@ export const LESSONS: Lesson[] = [
     ],
     guia: TS_GUIA,
     archivos: {
+      'notas/01-tipos.md': [
+        '> Apunte 1. Antes de escribir los tipos del proyecto, la idea. Las líneas con > se leen; lo demás lo escribes tú.',
+        '## Tipos en TypeScript',
+        '> Un tipo describe la forma de un dato. TypeScript lo revisa mientras escribes, ANTES de ejecutar.',
+        'Un tipo dice qué forma tiene un dato.',
+        '> Los tipos básicos tienen nombre: string (texto), number (número) y boolean (verdadero o falso).',
+        '```ts',
+        'let nombre: string = "Ana";',
+        'let monto: number = 1200;',
+        '```',
+        '> Una unión de textos limita los valores posibles: solo esos, ningún otro. Un error de tipeo ya no pasa.',
+        '```ts',
+        'type Categoria = "comida" | "transporte";',
+        '```',
+        '> Una interface describe un objeto: qué propiedades tiene y de qué tipo es cada una. El ? marca una opcional.',
+        '```ts',
+        'interface Gasto {',
+        '  monto: number;',
+        '  categoria: Categoria;',
+        '  nota?: string;',
+        '}',
+        '```',
+        '> Para recordar: el error aparece en el editor, no cuando el programa ya falló.',
+        'Los errores de tipo se ven al escribir, no al ejecutar.'
+      ],
+      'notas/02-tests.md': [
+        '> Apunte 2. Vas a escribir los tests ANTES que la función. Por qué conviene, en tres ideas.',
+        '## Tests primero',
+        '> Un test es código que usa tu función con un caso concreto y comprueba el resultado.',
+        'Un test comprueba un caso concreto.',
+        '> Rojo: escribes el test y falla, porque la función todavía no existe. Eso prueba que el test sirve.',
+        'Rojo: el test falla primero.',
+        '> Verde: escribes lo justo para que pase. Ni más ni menos.',
+        'Verde: lo justo para que pase.',
+        '> Así se ve un test en Vitest: describe agrupa, it nombra el caso y expect compara.',
+        '```ts',
+        'it("suma los montos", () => {',
+        '  expect(total([])).toBe(0);',
+        '});',
+        '```'
+      ],
       'package.json': [
         '{',
         '  "name": "aprender-typescript",',
@@ -249,6 +292,8 @@ export const LESSONS: Lesson[] = [
       ]
     },
     conceptos: {
+      'notas/01-tipos.md': ['tipos', 'uniones de texto', 'interfaces'],
+      'notas/02-tests.md': ['tests'],
       'src/gasto.ts': ['tipos', 'interfaces', 'uniones de texto'],
       'src/gastos.test.ts': ['tests con Vitest'],
       'src/gastos.ts': ['funciones tipadas', 'reduce'],
@@ -278,8 +323,10 @@ export const LESSONS: Lesson[] = [
     plan: [
       { paso: 'Configuración del proyecto', tipo: 'config', archivo: 'pyproject.toml', concepto: 'un archivo para el proyecto y sus herramientas' },
       { paso: 'El paquete ordenar', tipo: 'config', archivo: 'ordenar/__init__.py', concepto: 'paquetes de Python' },
+      { paso: 'Apunte: diccionarios y funciones', tipo: 'teoria', archivo: 'notas/01-diccionarios.md', concepto: 'diccionarios y funciones puras' },
       { paso: 'Reglas por extensión', tipo: 'codigo', archivo: 'ordenar/reglas.py', concepto: 'diccionarios' },
       { paso: 'Tests de las reglas', tipo: 'test', archivo: 'tests/test_reglas.py', concepto: 'pytest', verificar: 'pytest' },
+      { paso: 'Apunte: rutas y dataclasses', tipo: 'teoria', archivo: 'notas/02-rutas.md', concepto: 'pathlib y dataclasses' },
       { paso: 'Planificar sin tocar nada', tipo: 'codigo', archivo: 'ordenar/plan.py', concepto: 'pathlib y dataclasses' },
       { paso: 'Tests con carpetas temporales', tipo: 'test', archivo: 'tests/test_plan.py', concepto: 'tmp_path', verificar: 'pytest' },
       { paso: 'Mover de verdad', tipo: 'codigo', archivo: 'ordenar/ejecutar.py', concepto: 'efectos al final' },
@@ -288,6 +335,47 @@ export const LESSONS: Lesson[] = [
     ],
     guia: PY_GUIA,
     archivos: {
+      'notas/01-diccionarios.md': [
+        '> Apunte 1. Las reglas del proyecto son un diccionario y una función. Primero la idea; las líneas con > se leen.',
+        '## Diccionarios',
+        '> Un diccionario guarda pares clave → valor. Buscar por la clave es directo: no recorre nada.',
+        'Un diccionario relaciona una clave con un valor.',
+        '```python',
+        'precios = {"pan": 900, "leche": 1200}',
+        'precios["pan"]',
+        '```',
+        '> Con corchetes, una clave que no existe da KeyError. .get(clave, defecto) devuelve el defecto en su lugar.',
+        '```python',
+        'precios.get("queso", 0)',
+        '```',
+        '## Funciones puras',
+        '> Una función pura solo calcula: misma entrada, misma salida, sin tocar el disco ni la pantalla. Por eso se testea fácil.',
+        'Una función pura no tiene efectos: solo calcula.',
+        '```python',
+        'def doble(n: int) -> int:',
+        '    return n * 2',
+        '```'
+      ],
+      'notas/02-rutas.md': [
+        '> Apunte 2. Para planificar qué mover, dos herramientas de la biblioteca estándar.',
+        '## pathlib',
+        '> Path representa una ruta como objeto: sirve igual en Windows, macOS y Linux, sin pegar textos con barras.',
+        'Path es una ruta que entiende cualquier sistema.',
+        '```python',
+        'from pathlib import Path',
+        'foto = Path("Descargas") / "foto.PNG"',
+        'foto.suffix.lower()',
+        '```',
+        '## dataclasses',
+        '> @dataclass arma una clase para guardar datos sin escribir __init__ a mano. frozen=True la vuelve inmutable.',
+        'Una dataclass es una clase solo para datos.',
+        '```python',
+        '@dataclass(frozen=True)',
+        'class Movimiento:',
+        '    origen: Path',
+        '    destino: Path',
+        '```'
+      ],
       'pyproject.toml': [
         '# Cómo empezar: la configuración del proyecto y de sus herramientas en un solo archivo.',
         '[project]',
@@ -450,6 +538,8 @@ export const LESSONS: Lesson[] = [
       ]
     },
     conceptos: {
+      'notas/01-diccionarios.md': ['diccionarios', 'funciones'],
+      'notas/02-rutas.md': ['pathlib', 'dataclasses'],
       'ordenar/reglas.py': ['diccionarios', 'funciones'],
       'tests/test_reglas.py': ['pytest'],
       'ordenar/plan.py': ['pathlib', 'dataclasses'],

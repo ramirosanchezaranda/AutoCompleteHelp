@@ -2,6 +2,22 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.11.0] — 2026-10-09
+
+### Añadido
+
+- **Empezar para escribir**: la sección Empezar tiene una caja de texto en
+  cada camino —tu proyecto, lo que quieres aprender, lo que te interesa— con
+  ejemplos para tocar. Lo escrito arranca el asistente de ese camino.
+- El comando *Empezar* y el primer paso de «Quiero aprender» aceptan texto
+  libre: lo que escribes aparece como primera opción.
+- **Teoría que se completa escribiendo**: nuevo tipo de paso `teoria`, un
+  apunte en `notas/NN-concepto.md` antes del código que lo usa. Las líneas
+  `>` son la explicación (se leen); el resto —título, definición, mini
+  ejemplo— lo escribes en gris, línea por línea. La IA los agrega al diseñar
+  proyectos para aprender y, cuando hace falta, en los planes de proyectos
+  propios. Las dos lecciones sin IA traen dos apuntes cada una.
+
 ## [0.10.0] — 2026-10-09
 
 ### Añadido

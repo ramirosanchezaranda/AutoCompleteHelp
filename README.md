@@ -20,13 +20,15 @@ El comando **Elegir la IA** (o un clic en la barra de estado) es un asistente de
 
 ## 🧭 Empezar
 
-AutoCompleteHelp tiene su propio ícono en la barra lateral, con tres secciones: **Empezar**, **Quiero aprender** y **Plan del proyecto**. En **Empezar** (o con el comando *Empezar*) eliges siempre qué hacer:
+AutoCompleteHelp tiene su propio ícono en la barra lateral, con tres secciones: **Empezar**, **Quiero aprender** y **Plan del proyecto**. **Empezar** tiene una caja para escribir en cada camino (Enter o el botón lo arranca, ya con tu texto):
 
-- **Tengo un proyecto**: lo describes y eliges stack y arquitectura.
-- **Quiero aprender algo**: un tema, y la IA te recomienda proyectos para aprenderlo.
-- **Recomiéndame un proyecto**: cuentas qué te interesa («quiero trabajar de backend», «me gustan los videojuegos», «entender la IA») y la IA te recomienda proyectos de cualquier tema.
+- **Tengo un proyecto**: escribes qué construyes y cómo quieres que te expliquen, y eliges stack y arquitectura.
+- **Quiero aprender**: escribes el tema —«TypeScript», «patrones de API», «configurar AWS», «entrenar una IA»— y la IA te recomienda proyectos para aprenderlo.
+- **Recomiéndame un proyecto**: escribes qué te interesa («quiero trabajar de backend», «me gustan los videojuegos») y la IA te recomienda proyectos de cualquier tema.
 
-En los tres casos se construye igual: **completamos juntos** cada archivo, una línea en gris a la vez, con su explicación.
+El comando *Empezar* hace lo mismo desde la paleta: escribes y eliges si es tu proyecto, lo que quieres aprender o lo que te interesa.
+
+En los tres casos **todo se completa escribiendo**: el código, la configuración y también la **teoría**. Los pasos de teoría son apuntes (`notas/01-tipos.md`…) que aparecen antes del código que los usa: la explicación se lee (las líneas `>`) y debajo escribes, en gris, una línea a la vez, la definición y un mini ejemplo.
 
 ## 🎓 Quiero aprender
 

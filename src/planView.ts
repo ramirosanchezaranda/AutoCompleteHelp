@@ -22,6 +22,7 @@ import { writeCommand } from './terminal';
  */
 
 const KIND_ICON: Record<StepKind, string> = {
+  teoria: 'book',
   codigo: 'code',
   test: 'beaker',
   config: 'gear',
@@ -29,6 +30,7 @@ const KIND_ICON: Record<StepKind, string> = {
   comando: 'terminal'
 };
 const KIND_LABEL: Record<StepKind, string> = {
+  teoria: 'teoría',
   codigo: 'código',
   test: 'test',
   config: 'configuración',

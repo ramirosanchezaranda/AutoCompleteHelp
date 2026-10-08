@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Construye tus proyectos o aprende cualquier tema —lenguajes, nube, patrones, IA— con proyectos que la IA te recomienda: dicta cada línea en gris y tú la escribes, con explicaciones, arquitectura, tests y Docker. Multi-LLM.",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -325,6 +325,7 @@
     "views": {
       "autocompletehelp": [
         {
+          "type": "webview",
           "id": "autocompletehelp.start",
           "name": "Empezar"
         },
@@ -339,10 +340,6 @@
       ]
     },
     "viewsWelcome": [
-      {
-        "view": "autocompletehelp.start",
-        "contents": "¿Qué quieres hacer hoy?\n[$(rocket) Tengo un proyecto](command:autocompletehelp.setProjectPrompt)\n[$(mortar-board) Quiero aprender algo](command:autocompletehelp.learn)\n[$(lightbulb) Recomiéndame un proyecto](command:autocompletehelp.recommendProject)\nEn todos los casos completamos juntos el código: una línea en gris a la vez, con su explicación.\n[$(sparkle) Elegir la IA: con API key, local o sin IA](command:autocompletehelp.selectModel)"
-      },
       {
         "view": "autocompletehelp.plan",
         "contents": "Todavía no hay plan. Elige el stack y la arquitectura de tu proyecto, o aprende un tema nuevo con un proyecto pensado para eso.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\n[Quiero aprender…](command:autocompletehelp.learn)\nCada paso abre su archivo y completamos juntos el código, línea por línea."
