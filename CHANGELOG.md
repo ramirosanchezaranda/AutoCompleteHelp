@@ -2,6 +2,32 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.8.0] — 2026-10-08
+
+### Añadido
+
+- **Quiero aprender**: sección en el explorador y comando. De un tema
+  («TypeScript», «Three.js», «arquitectura hexagonal», «automatizaciones con
+  Python», «Docker», «SQL» o cualquier otro) a un proyecto completo para
+  aprenderlo: guía en `docs/APRENDER.md`, stack, arquitectura del catálogo,
+  plan y entorno. Se crea en una carpeta nueva (o en la abierta, si está
+  vacía) y se construye con el flujo de siempre. Trece temas curados traen
+  una semilla (stack, arquitectura, ideas de proyecto); el resto lo diseña la
+  IA.
+- **Pasos tipados** en el plan: código, test, configuración, Docker y
+  comando, con su ícono. Los tests son obligatorios en los proyectos de
+  aprendizaje; Docker solo cuando aporta. Un paso de comando se escribe en la
+  terminal al abrirlo.
+- **Verificación al terminar un paso**: si el paso tiene `verificar`, se
+  ofrece correr sus tests.
+- **«Preparar el entorno»**: instalar, Docker, ejecutar y tests del
+  proyecto, cada comando con su explicación, escritos en la terminal sin
+  ejecutarse.
+- `autocompletehelp.json` suma `entorno`, `aprender` y, en cada paso, `tipo`,
+  `comando`, `explicacion` y `verificar`.
+- Se reconocen `Dockerfile`, `Makefile` y `.env` para crear sus archivos con
+  la instrucción del paso; los archivos JSON también se completan juntos.
+
 ## [0.7.0] — 2026-10-08
 
 ### Cambiado

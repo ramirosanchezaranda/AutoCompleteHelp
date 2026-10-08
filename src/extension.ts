@@ -16,6 +16,9 @@ import { DictationManager } from './dictation';
 import { ReviewReminder, startReview } from './review';
 import { ErrorHelpProvider, explainError } from './errorHelp';
 import { chooseArchitecture } from './archPicker';
+import { registerLearnView, resumePendingLearn } from './learn';
+import { prepareEnvironment } from './terminal';
+import { getProject } from './projectFile';
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -48,8 +51,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
 
-  // Panel «Plan del proyecto» en el explorador.
+  // Panel «Plan del proyecto» y sección «Quiero aprender» en el explorador.
   registerPlanView(context);
+  registerLearnView(context);
+  void resumePendingLearn(context, getProject()?.aprender?.tema);
 
   // Barra de estado con el proveedor y el modelo activos.
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -94,6 +99,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       selectModel(context)
     ),
     vscode.commands.registerCommand('autocompletehelp.chooseArchitecture', () => chooseArchitecture(context)),
+    vscode.commands.registerCommand('autocompletehelp.environment', prepareEnvironment),
     vscode.commands.registerCommand('autocompletehelp.review', () => startReview(context, dictation)),
     vscode.commands.registerCommand(
       'autocompletehelp.explainError',

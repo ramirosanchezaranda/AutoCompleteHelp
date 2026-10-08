@@ -104,7 +104,9 @@ export function buildDictationSystemPrompt(
     '- La primera vez que aparece un concepto, defínelo en una frase sencilla. Nada de jerga sin explicar.',
     CONTRASTIVE_RULE,
     '- Código completo y funcional. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
-    '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).'
+    '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).',
+    '- Si el archivo es JSON u otro formato que no admite comentarios, no escribas comentarios ni la línea @ach-concepts como comentario: escribe "@ach-concepts: …" sola en la primera línea y después el contenido válido.',
+    '- Si el paso es un TEST, explica qué comportamiento comprueba cada test y por qué ese caso importa (el caso normal, el borde, el error).'
   ];
 
   if (projectBlock) {

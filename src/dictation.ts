@@ -12,7 +12,8 @@ import {
 import { knownConcepts, recordAccepted } from './conceptLedger';
 import { REVIEW_DAYS, recordReview } from './review';
 import { ProjectContext, detectInstruction } from './projectContext';
-import { markStep } from './projectFile';
+import { getProject, markStep } from './projectFile';
+import { writeCommand } from './terminal';
 import {
   autoMask,
   Range2,
@@ -622,9 +623,16 @@ export class DictationManager implements vscode.Disposable {
         ? `✓ Lo escribiste tú: ${typed} caracteres, ${s.errors} ${s.errors === 1 ? 'error' : 'errores'}` +
           (s.helped ? `, ${s.helped} ${s.helped === 1 ? 'ayuda' : 'ayudas'}.` : '.')
         : 'Completado sin escribirlo. Repasa los comentarios: explican cada decisión.';
-    const actions = s.stepIndex !== undefined ? ['Marcar el paso como hecho'] : [];
+    const step = s.stepIndex !== undefined ? getProject()?.plan?.[s.stepIndex] : undefined;
+    const VERIFY = step?.tipo === 'test' ? 'Correr los tests' : 'Comprobarlo';
+    const actions = [...(step?.verificar ? [VERIFY] : []), ...(step ? ['Marcar el paso como hecho'] : [])];
     const action = await vscode.window.showInformationMessage(message, ...actions);
-    if (action && s.stepIndex !== undefined) {
+    if (action === VERIFY && step?.verificar) {
+      writeCommand(
+        { comando: step.verificar, explicacion: '' },
+        'Si pasa, marca el paso como hecho en el plan; si falla, la bombita del error te ayuda a entender por qué.'
+      );
+    } else if (action && s.stepIndex !== undefined) {
       await markStep(this.context, s.stepIndex, true);
     }
   }

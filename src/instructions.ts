@@ -62,7 +62,18 @@ const EXT_LANG: Record<string, string> = {
 
 /** Identificador de lenguaje del IDE a partir de la extensión del archivo. */
 export function languageForPath(path: string): string | undefined {
-  const ext = path.split('/').pop()?.split('.').pop()?.toLowerCase();
+  const name = path.split('/').pop() ?? '';
+  // Archivos sin extensión que se reconocen por el nombre.
+  if (/^dockerfile(\..+)?$/i.test(name) || /\.dockerfile$/i.test(name)) {
+    return 'dockerfile';
+  }
+  if (/^makefile$/i.test(name)) {
+    return 'makefile';
+  }
+  if (/^\.env(\..+)?$/i.test(name)) {
+    return 'shellscript';
+  }
+  const ext = name.includes('.') ? name.split('.').pop()?.toLowerCase() : undefined;
   return ext ? EXT_LANG[ext] : undefined;
 }
 

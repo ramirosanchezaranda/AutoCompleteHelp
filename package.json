@@ -1,8 +1,8 @@
 {
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
-  "description": "Construye tu proyecto desde el IDE con prompts: elige stack y arquitectura, y completamos juntos — la IA dicta cada línea en gris y tú la escribes, con comentarios que explican qué y por qué. Multi-LLM.",
-  "version": "0.7.0",
+  "description": "Construye proyectos desde el IDE con prompts, o aprende cualquier tema con un proyecto hecho para eso: la IA dicta cada línea en gris y tú la escribes, con explicaciones, arquitectura, tests y Docker. Multi-LLM.",
+  "version": "0.8.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -32,6 +32,11 @@
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "autocompletehelp.learn",
+        "title": "AutoCompleteHelp: Quiero aprender…",
+        "icon": "$(mortar-board)"
+      },
       {
         "command": "autocompletehelp.setProjectPrompt",
         "title": "AutoCompleteHelp: Definir prompt del proyecto"
@@ -83,6 +88,11 @@
         "command": "autocompletehelp.createStructure",
         "title": "AutoCompleteHelp: Crear estructura del proyecto",
         "icon": "$(new-folder)"
+      },
+      {
+        "command": "autocompletehelp.environment",
+        "title": "AutoCompleteHelp: Preparar el entorno (instalar, ejecutar, tests, Docker)",
+        "icon": "$(terminal)"
       },
       {
         "command": "autocompletehelp.openStep",
@@ -138,19 +148,29 @@
           "group": "navigation@1"
         },
         {
-          "command": "autocompletehelp.recommendStack",
+          "command": "autocompletehelp.environment",
           "when": "view == autocompletehelp.plan",
           "group": "navigation@2"
         },
         {
-          "command": "autocompletehelp.chooseArchitecture",
+          "command": "autocompletehelp.recommendStack",
           "when": "view == autocompletehelp.plan",
           "group": "navigation@3"
         },
         {
-          "command": "autocompletehelp.openProjectFile",
+          "command": "autocompletehelp.chooseArchitecture",
           "when": "view == autocompletehelp.plan",
           "group": "navigation@4"
+        },
+        {
+          "command": "autocompletehelp.openProjectFile",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@5"
+        },
+        {
+          "command": "autocompletehelp.learn",
+          "when": "view == autocompletehelp.learn",
+          "group": "navigation@1"
         }
       ],
       "commandPalette": [
@@ -276,13 +296,17 @@
         {
           "id": "autocompletehelp.plan",
           "name": "Plan del proyecto"
+        },
+        {
+          "id": "autocompletehelp.learn",
+          "name": "Quiero aprender"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "autocompletehelp.plan",
-        "contents": "Todavía no hay plan. Elige el stack y la arquitectura, y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo y completamos juntos el código, línea por línea."
+        "contents": "Todavía no hay plan. Elige el stack y la arquitectura de tu proyecto, o aprende un tema nuevo con un proyecto pensado para eso.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\n[Quiero aprender…](command:autocompletehelp.learn)\nCada paso abre su archivo y completamos juntos el código, línea por línea."
       }
     ],
     "keybindings": [

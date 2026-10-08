@@ -4,6 +4,21 @@ Extensión para **VS Code, Cursor, Windsurf, VSCodium** y cualquier IDE basado e
 
 Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué estás construyendo y cómo quieres que te expliquen, eliges el stack y la arquitectura, y **completamos juntos** el código: la IA te muestra en gris una línea a la vez, con comentarios que explican qué hace y por qué se eligió esa forma, y **tú la escribes encima**. No hay autocompletado: nada entra a tu proyecto sin que lo teclees. El objetivo no es que la IA programe por ti: es **que aprendas y entiendas cada parte de tu proyecto**.
 
+## 🎓 Quiero aprender
+
+¿Quieres aprender un tema y no un proyecto en particular? La sección **Quiero aprender** del explorador (o el comando *Quiero aprender…*) parte de lo que quieras: *«TypeScript»*, *«Three.js»*, *«arquitectura hexagonal»*, *«automatizaciones con Python»*, *«Docker»*, *«SQL»* o cualquier otro tema escrito a mano.
+
+1. Eliges el tema, desde dónde arrancas (desde cero, ya programo en otra cosa, lo usé un poco) y el tamaño (corto, mediano o completo).
+2. La IA diseña **un proyecto concreto para aprenderlo, explicado de principio a fin**:
+   - **guía** en `docs/APRENDER.md`: qué vas a construir, qué vas a aprender, qué instalar, cómo está organizado, el paso a paso, los tests, Docker y cómo seguir;
+   - **stack** y **arquitectura** del catálogo (con `docs/ARQUITECTURA.md`);
+   - **plan con pasos tipados**: código, **tests** (obligatorios: cada pieza de lógica tiene el suyo; en temas de testing, el test va primero), configuración, **Docker** solo cuando aporta (una base de datos, varios servicios, o el tema es Docker) y comandos;
+   - **entorno**: cómo instalar, ejecutar, correr los tests y levantar Docker, cada comando con su explicación.
+3. Se crea en una carpeta nueva (o en la abierta, si está vacía) y la abre. Desde ahí es el flujo de siempre: crear estructura, plan y completamos juntos.
+4. Al terminar un paso que tiene verificación, AutoCompleteHelp ofrece **correr sus tests**; **Preparar el entorno** lista los comandos de instalar, Docker, ejecutar y tests. Todos se escriben en la terminal **sin ejecutarse**: los lanzas tú.
+
+Los temas curados traen una semilla probada (stack, arquitectura e ideas de proyecto) para que el resultado sea consistente; cualquier otro tema lo diseña la IA desde cero.
+
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 
 1. **Describe el proyecto** (*Definir prompt del proyecto*) en una frase: **qué construyes + cómo quieres que te expliquen**. Por ejemplo:
@@ -46,6 +61,7 @@ Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué est
 ## ✨ Características
 
 - **Completamos juntos**: el único modo. Una línea en gris a la vez, que escribes encima; sin autocompletado.
+- **Quiero aprender**: cualquier tema (lenguaje, librería, arquitectura, herramienta) se convierte en un proyecto explicado de principio a fin, con tests y Docker cuando hace falta.
 - **Arquitectura y diseño de sistemas**: elección guiada, explicación de cada estilo y registro de decisión en `docs/ARQUITECTURA.md`.
 - **Comentarios que dan criterio, no descripciones**: cada explicación dice qué hace, **en vez de qué** alternativa, y **cuándo no** convendría — que es lo que separa entender de memorizar.
 - **La explicación se acorta a medida que aprendes**: AutoCompleteHelp anota cada concepto que escribes y, cuando lo repetiste varias veces, deja de explicártelo en detalle. **Ver mi progreso** muestra qué dominas y qué proporción escribiste tú.
@@ -91,6 +107,9 @@ src/
 ├── typing.ts          # motor de tipeo puro (avance, errores, huecos, qué se muestra)
 ├── architectures.ts   # catálogo de arquitecturas, recomendación y registro de decisión
 ├── archPicker.ts      # preguntas y elección de arquitectura en el IDE
+├── learnTopics.ts     # «Quiero aprender»: temas curados, prompt, lectura del proyecto
+├── learn.ts           # «Quiero aprender»: comando y sección del explorador
+├── terminal.ts        # comandos escritos en la terminal (sin ejecutarse) y «Preparar el entorno»
 ├── stackAdvisor.ts    # elegir stack + arquitectura → plan
 ├── stackProfiles.ts   # perfiles de stack curados
 ├── planView.ts        # panel «Plan del proyecto»
@@ -125,6 +144,7 @@ src/
 - [ ] Paquetes de stack en JSON (cualquier tecnología, creados con ayuda de la IA)
 - [ ] Capa sin IA: conceptos con tree-sitter, Bayesian Knowledge Tracing, FSRS, catálogo de errores
 - [ ] Desarrollo guiado por especificaciones (spec → tareas → tests de aceptación)
+- [ ] Verificar cada paso automáticamente con las herramientas del stack
 - [ ] Agentes con permisos y autonomía según lo que ya dominas
 - [ ] IDE descargable (.exe) y publicación en VS Code Marketplace y Open VSX
 

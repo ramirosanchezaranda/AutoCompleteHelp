@@ -21,11 +21,44 @@ export interface StackInfo {
   [clave: string]: string | undefined;
 }
 
+export type StepKind = 'codigo' | 'test' | 'config' | 'docker' | 'comando';
+export const STEP_KINDS: StepKind[] = ['codigo', 'test', 'config', 'docker', 'comando'];
+
 export interface PlanStep {
   paso: string;
   archivo?: string;
   concepto?: string;
+  /** Qué tipo de paso es: escribir código, un test, configuración, Docker o correr un comando. */
+  tipo?: StepKind;
+  /** Pasos de tipo «comando»: lo que se escribe en la terminal (nunca se ejecuta solo). */
+  comando?: string;
+  explicacion?: string;
+  /** Comando que comprueba el paso al terminarlo (ej: npm test). */
+  verificar?: string;
   hecho?: boolean;
+}
+
+/** Un comando de terminal con su porqué. */
+export interface EnvCommand {
+  comando: string;
+  /** Variante para Windows, si cambia. */
+  windows?: string;
+  explicacion: string;
+}
+
+/** Cómo se prepara, ejecuta y testea el proyecto (y Docker, si hace falta). */
+export interface ProjectEnvironment {
+  instalar?: EnvCommand[];
+  ejecutar?: EnvCommand;
+  testear?: EnvCommand;
+  docker?: { porQue: string; comandos: EnvCommand[] };
+}
+
+/** Proyecto generado por «Quiero aprender». */
+export interface LearnInfo {
+  tema: string;
+  nivel?: string;
+  objetivos?: string[];
 }
 
 /** Arquitectura elegida (src/architectures.ts) y lo que el código debe respetar. */
@@ -44,6 +77,8 @@ export interface ProjectFile {
   stack?: StackInfo;
   convenciones?: string[];
   arquitectura?: ProjectArchitecture;
+  entorno?: ProjectEnvironment;
+  aprender?: LearnInfo;
   plan?: PlanStep[];
 }
 
@@ -103,17 +138,102 @@ export function parseProjectFile(text: string): ProjectFile | undefined {
       reglas: strings(a.reglas)
     };
   }
+  const entorno = parseEnvironment(data.entorno);
+  if (entorno) {
+    project.entorno = entorno;
+  }
+  if (data.aprender && typeof data.aprender === 'object' && typeof data.aprender.tema === 'string' && data.aprender.tema.trim()) {
+    project.aprender = {
+      tema: data.aprender.tema.trim(),
+      nivel: str(data.aprender.nivel),
+      objetivos: Array.isArray(data.aprender.objetivos)
+        ? data.aprender.objetivos.filter((o: unknown): o is string => typeof o === 'string')
+        : undefined
+    };
+  }
   if (Array.isArray(data.plan)) {
-    project.plan = data.plan
-      .filter((s: any) => s && typeof s.paso === 'string')
-      .map((s: any) => ({
-        paso: s.paso,
-        archivo: typeof s.archivo === 'string' ? s.archivo : undefined,
-        concepto: typeof s.concepto === 'string' ? s.concepto : undefined,
-        hecho: s.hecho === true
-      }));
+    project.plan = data.plan.map(parseStep).filter((s: PlanStep | undefined): s is PlanStep => !!s);
   }
   return project;
+}
+
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined;
+}
+
+/** Un paso del plan validado. Rutas fuera del proyecto se descartan. */
+export function parseStep(s: any): PlanStep | undefined {
+  if (!s || typeof s.paso !== 'string' || !s.paso.trim()) {
+    return undefined;
+  }
+  let archivo = str(s.archivo)?.replace(/^\.?\//, '');
+  if (archivo && (/(^|\/)\.\.(\/|$)/.test(archivo) || archivo.startsWith('/') || /^[a-z]:/i.test(archivo))) {
+    archivo = undefined;
+  }
+  const tipo = STEP_KINDS.includes(s.tipo) ? (s.tipo as StepKind) : undefined;
+  const step: PlanStep = { paso: s.paso.trim(), hecho: s.hecho === true };
+  if (archivo) step.archivo = archivo;
+  if (str(s.concepto)) step.concepto = str(s.concepto);
+  if (tipo) step.tipo = tipo;
+  if (str(s.comando)) step.comando = str(s.comando);
+  if (str(s.explicacion)) step.explicacion = str(s.explicacion);
+  if (str(s.verificar)) step.verificar = str(s.verificar);
+  return step;
+}
+
+function parseCommand(c: any): EnvCommand | undefined {
+  const comando = c && str(c.comando);
+  if (!comando) {
+    return undefined;
+  }
+  return { comando, windows: str(c.windows), explicacion: str(c.explicacion) ?? '' };
+}
+
+export function parseEnvironment(e: any): ProjectEnvironment | undefined {
+  if (!e || typeof e !== 'object') {
+    return undefined;
+  }
+  const list = (x: unknown) =>
+    Array.isArray(x) ? x.map(parseCommand).filter((c): c is EnvCommand => !!c) : [];
+  const env: ProjectEnvironment = {};
+  const instalar = list(e.instalar);
+  if (instalar.length) env.instalar = instalar;
+  const ejecutar = parseCommand(e.ejecutar);
+  if (ejecutar) env.ejecutar = ejecutar;
+  const testear = parseCommand(e.testear);
+  if (testear) env.testear = testear;
+  if (e.docker && typeof e.docker === 'object') {
+    const comandos = list(e.docker.comandos);
+    if (comandos.length) {
+      env.docker = { porQue: str(e.docker.porQue) ?? '', comandos };
+    }
+  }
+  return Object.keys(env).length ? env : undefined;
+}
+
+/**
+ * Comandos del entorno en el orden en que se usan: instalar → (Docker) →
+ * ejecutar → testear. Lo que lista «Preparar el entorno».
+ */
+export function environmentSteps(env: ProjectEnvironment | undefined): (EnvCommand & { grupo: string })[] {
+  if (!env) {
+    return [];
+  }
+  return [
+    ...(env.instalar ?? []).map((c) => ({ ...c, grupo: 'Instalar' })),
+    ...(env.docker?.comandos ?? []).map((c) => ({ ...c, grupo: 'Docker' })),
+    ...(env.ejecutar ? [{ ...env.ejecutar, grupo: 'Ejecutar' }] : []),
+    ...(env.testear ? [{ ...env.testear, grupo: 'Tests' }] : [])
+  ];
+}
+
+/** Escribe un autocompletehelp.json completo en una carpeta (proyecto nuevo). */
+export async function writeProjectFileAt(folder: vscode.Uri, project: ProjectFile): Promise<void> {
+  const uri = vscode.Uri.joinPath(folder, PROJECT_FILE);
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(JSON.stringify(project, null, 2) + '\n'));
+  if (projectRoot()?.toString() === folder.toString()) {
+    await reload();
+  }
 }
 
 async function reload(): Promise<void> {
@@ -210,6 +330,13 @@ export function formatProjectForPrompt(project: ProjectFile | undefined): string
   if (project.prompt) {
     lines.push(`Objetivo: ${project.prompt}`);
   }
+  if (project.aprender) {
+    lines.push(
+      `Proyecto para APRENDER ${project.aprender.tema}` +
+        (project.aprender.nivel ? ` (punto de partida: ${project.aprender.nivel})` : '') +
+        (project.aprender.objetivos?.length ? `. Objetivos: ${project.aprender.objetivos.join('; ')}` : '')
+    );
+  }
   if (project.stack) {
     const parts = Object.entries(project.stack)
       .filter(([k]) => k !== 'resumen')
@@ -236,8 +363,10 @@ export function formatProjectForPrompt(project: ProjectFile | undefined): string
     if (next) {
       lines.push(
         `Paso actual del plan: ${next.paso}` +
+          (next.tipo ? ` [${next.tipo}]` : '') +
           (next.archivo ? ` (archivo ${next.archivo})` : '') +
-          (next.concepto ? ` — concepto a enseñar: ${next.concepto}` : '')
+          (next.concepto ? ` — concepto a enseñar: ${next.concepto}` : '') +
+          (next.verificar ? ` — se comprueba con: ${next.verificar}` : '')
       );
     }
   }

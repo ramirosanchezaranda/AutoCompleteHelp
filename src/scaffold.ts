@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectFile, getProject, openProjectFile, projectRoot } from './projectFile';
 import { StackProfile, getProfile, packageName } from './stackProfiles';
 import { stepFileContent } from './instructions';
+import { writeCommand } from './terminal';
 
 export interface ScaffoldEntry {
   archivo: string;
@@ -125,13 +126,24 @@ export async function createStructure(_context: vscode.ExtensionContext): Promis
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(entry.contenido));
   }
 
-  await afterCreate(picked.length, profile);
+  await afterCreate(picked.length, profile, project);
 }
 
-async function afterCreate(count: number, profile: StackProfile | undefined): Promise<void> {
+async function afterCreate(count: number, profile: StackProfile | undefined, project: ProjectFile): Promise<void> {
   const created = `AutoCompleteHelp: ${count} ${count === 1 ? 'archivo creado' : 'archivos creados'}.`;
   if (profile?.nota) {
     vscode.window.showInformationMessage(profile.nota);
+  }
+  // Proyectos de «Quiero aprender»: el entorno viene en autocompletehelp.json.
+  if (!profile?.instalar && project.entorno) {
+    const action = await vscode.window.showInformationMessage(
+      `${created} Falta preparar el entorno (instalar${project.entorno.docker ? ', Docker' : ''} y tests): cada comando con su explicación.`,
+      'Preparar el entorno'
+    );
+    if (action) {
+      await vscode.commands.executeCommand('autocompletehelp.environment');
+    }
+    return;
   }
   if (!profile?.instalar) {
     const action = await vscode.window.showInformationMessage(
@@ -166,12 +178,6 @@ async function afterCreate(count: number, profile: StackProfile | undefined): Pr
 
 /** Escribe el comando en una terminal SIN ejecutarlo: lo lanzas tú con Enter. */
 function writeInTerminal(cmd: string, profile: StackProfile): void {
-  const terminal = vscode.window.createTerminal('AutoCompleteHelp');
-  terminal.show();
-  terminal.sendText(cmd, false);
   const run = profile.ejecutar;
-  vscode.window.showInformationMessage(
-    'Revisa el comando y pulsa Enter en la terminal para ejecutarlo.' +
-      (run ? ` Después, para arrancar el proyecto: ${run.comando}. ${run.explicacion}` : '')
-  );
+  writeCommand(cmd, run ? `Después, para arrancar el proyecto: ${run.comando}. ${run.explicacion}` : undefined);
 }

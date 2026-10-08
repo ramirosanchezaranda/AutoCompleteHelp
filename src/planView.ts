@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import {
   PROJECT_FILE,
   PlanStep,
+  StepKind,
   getProject,
   markStep,
   nextStep,
@@ -10,6 +11,7 @@ import {
 } from './projectFile';
 import { findStepLine, insertInstruction, stepFileContent, stepInstruction } from './instructions';
 import { buildHere } from './dictation';
+import { writeCommand } from './terminal';
 
 /**
  * Panel «Plan del proyecto» en el explorador. Convierte la guía
@@ -18,6 +20,21 @@ import { buildHere } from './dictation';
  *  - un clic abre el archivo del paso, o lo crea vacío con la instrucción del
  *    paso lista para que el autocompletado arranque.
  */
+
+const KIND_ICON: Record<StepKind, string> = {
+  codigo: 'code',
+  test: 'beaker',
+  config: 'gear',
+  docker: 'package',
+  comando: 'terminal'
+};
+const KIND_LABEL: Record<StepKind, string> = {
+  codigo: 'código',
+  test: 'test',
+  config: 'configuración',
+  docker: 'Docker',
+  comando: 'comando'
+};
 
 class StepItem extends vscode.TreeItem {
   constructor(
@@ -30,17 +47,23 @@ class StepItem extends vscode.TreeItem {
     this.checkboxState = step.hecho
       ? vscode.TreeItemCheckboxState.Checked
       : vscode.TreeItemCheckboxState.Unchecked;
+    const where = step.archivo ?? (step.comando ? `$ ${step.comando}` : '');
+    this.description = where;
+    this.iconPath = new vscode.ThemeIcon(KIND_ICON[step.tipo ?? 'codigo']);
     if (isCurrent) {
       this.iconPath = new vscode.ThemeIcon('arrow-right', new vscode.ThemeColor('charts.yellow'));
-      this.description = `${step.archivo ?? ''}  ← siguiente`;
+      this.description = `${where}  ← siguiente`;
     }
     this.tooltip = new vscode.MarkdownString(
       [
         `**${step.paso}**`,
+        step.tipo ? `Tipo: ${KIND_LABEL[step.tipo]}` : '',
         step.concepto ? `Concepto: ${step.concepto}` : '',
         step.archivo ? `Archivo: \`${step.archivo}\`` : '',
+        step.comando ? `Comando: \`${step.comando}\`${step.explicacion ? ` — ${step.explicacion}` : ''}` : '',
+        step.verificar ? `Se comprueba con: \`${step.verificar}\`` : '',
         '',
-        'Clic: abrir el archivo del paso con su instrucción `ach:`.',
+        step.comando ? 'Clic: escribir el comando en la terminal (sin ejecutarlo).' : 'Clic: abrir el archivo del paso y completarlo juntos.',
         'Casilla: marcar como hecho.'
       ]
         .filter(Boolean)
@@ -129,6 +152,13 @@ async function openStep(index: number): Promise<void> {
   if (!step || !root) {
     return;
   }
+  if (step.comando && !step.archivo) {
+    writeCommand(
+      { comando: step.comando, explicacion: step.explicacion ?? '' },
+      `Cuando termine bien, marca el paso ${index + 1} como hecho en el plan.`
+    );
+    return;
+  }
   if (!step.archivo) {
     vscode.window.showInformationMessage(
       `Este paso no indica archivo. Escribe «ach: ${stepInstruction(step)}» donde quieras construirlo.`
@@ -144,11 +174,10 @@ async function openStep(index: number): Promise<void> {
     await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
     const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
-    if (content) {
-      const end = editor.document.lineAt(editor.document.lineCount - 1).range.end;
-      editor.selection = new vscode.Selection(end, end);
-      await buildHere(editor, stepInstruction(step), index);
-    }
+    // También los archivos sin comentarios (JSON): la instrucción va directo a la IA.
+    const end = editor.document.lineAt(editor.document.lineCount - 1).range.end;
+    editor.selection = new vscode.Selection(end, end);
+    await buildHere(editor, stepInstruction(step), index);
     return;
   }
 

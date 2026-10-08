@@ -98,7 +98,7 @@ eq('findStepLine: archivo de «Crear estructura» → paso sin empezar (no se du
 eq('findStepLine: con código debajo', findStepLine('x\n// ach: Listar (enseña: rutas)\nrouter.get();\n', paso), { line: 1, hasCodeAfter: true });
 eq('findStepLine: instrucción ausente', findStepLine('const a = 1;', paso), undefined);
 eq('stepInstruction', stepInstruction({ paso: 'Listar productos', concepto: 'paginación' }), 'Listar productos (enseña: paginación)');
-eq('languageForPath', ['a/b.py', 'x.JSX', 'index.html', 'Makefile', 'c.json'].map(languageForPath), ['python', 'javascriptreact', 'html', undefined, undefined]);
+eq('languageForPath', ['a/b.py', 'x.JSX', 'index.html', 'Makefile', 'c.json'].map(languageForPath), ['python', 'javascriptreact', 'html', 'makefile', undefined]);
 eq('archivo nuevo: solo la instrucción, con sintaxis del lenguaje', [
   stepFileContent('app/main.py', { paso: 'App base' }),
   stepFileContent('index.html', { paso: 'Estructura' }),
@@ -238,6 +238,60 @@ eq('sin estilo no hay arquitectura', parseProjectFile('{"prompt":"x","arquitectu
 eq('la IA recibe la arquitectura y sus reglas', formatProjectForPrompt(pa).includes('Arquitectura: Hexagonal') && formatProjectForPrompt(pa).includes('El dominio no importa'), true);
 eq('el plan se arma con la arquitectura elegida', buildStackSystemPrompt('Node', undefined, hex).includes('ARQUITECTURA ELEGIDA: Hexagonal (puertos y adaptadores)'), true);
 eq('el esquema JSON conoce todas las arquitecturas', JSON.stringify(jsonSchema.properties.arquitectura.properties.estilo.enum), JSON.stringify(A.ARCHITECTURES.map((a) => a.id)));
+
+console.log('— quiero aprender');
+const L = require(out + 'learnTopics.js');
+eq('temas curados por palabra clave', ['quiero aprender typescript', 'Three.js', 'arquitectura hexagonal', 'automatizaciones con Python', 'Docker y compose'].map((x) => L.matchTopic(x)?.id),
+  ['typescript', 'threejs', 'hexagonal', 'automatizacion-python', 'docker']);
+eq('palabra completa: «ts» no coincide dentro de «tests»; gana la clave más larga', [L.matchTopic('tests unitarios')?.id, L.matchTopic('clean architecture con node')?.id], ['testing', 'clean']);
+eq('tema desconocido → sin semilla (lo diseña la IA)', L.matchTopic('Rust embebido'), undefined);
+eq('cada tema curado usa una arquitectura del catálogo', L.LEARN_TOPICS.every((t) => !!A.getArchitecture(t.arquitectura)), true);
+const lp = L.buildLearnSystemPrompt({ tema: 'Three.js', nivel: 'cero', tamano: 'corto', topic: L.matchTopic('three.js') });
+eq('prompt: tests obligatorios, Docker solo si hace falta, arquitecturas del catálogo y semilla',
+  [lp.includes('TESTS OBLIGATORIOS'), lp.includes('## Docker'), lp.includes('hexagonal, clean'), lp.includes('SEMILLA CURADA'), lp.includes('nunca programó')], [true, true, true, true, true]);
+const learnJson = {
+  proyecto: 'gestor de gastos en TypeScript; explica cada tipo',
+  objetivos: ['tipos', 'interfaces', 'tests'],
+  stack: { resumen: 'TypeScript 5 + Node 22 + Vitest', tests: 'Vitest' },
+  convenciones: ['ES modules'],
+  arquitectura: 'capas',
+  entorno: {
+    instalar: [{ comando: 'npm install -D typescript vitest', explicacion: 'compilador y tests' }, { comando: '' }],
+    testear: { comando: 'npx vitest run', explicacion: 'corre los tests' },
+    docker: null
+  },
+  plan: [
+    { paso: 'Configurar TypeScript', tipo: 'config', archivo: 'tsconfig.json', concepto: 'compilador' },
+    { paso: 'Tipos de un gasto', tipo: 'codigo', archivo: './src/tipos.ts', concepto: 'interfaces' },
+    { paso: 'Test del total', tipo: 'test', archivo: 'src/gastos.test.ts', concepto: 'tests', verificar: 'npx vitest run' },
+    { paso: 'Ruta peligrosa', tipo: 'codigo', archivo: '../fuera.ts' },
+    { paso: 'Correr la app', tipo: 'comando', comando: 'npx tsx src/main.ts', explicacion: 'ejecuta sin compilar' },
+    { paso: 'Tipo inventado', tipo: 'magia', archivo: 'x.ts' }
+  ]
+};
+const parsed = L.parseLearnAnswer('## Qué vas a construir\nUn gestor.\n```ach-learn\n' + JSON.stringify(learnJson) + '\n```');
+const pr = parsed.proposal;
+eq('separa la guía del JSON', parsed.markdown, '## Qué vas a construir\nUn gestor.');
+eq('pasos tipados, rutas dentro del proyecto, tipo desconocido descartado',
+  pr.plan.map((s) => [s.tipo, s.archivo]), [['config', 'tsconfig.json'], ['codigo', 'src/tipos.ts'], ['test', 'src/gastos.test.ts'], ['codigo', undefined], ['comando', undefined], [undefined, 'x.ts']]);
+eq('comandos vacíos fuera; docker null → sin docker', [pr.entorno.instalar.length, pr.entorno.docker, pr.entorno.testear.comando], [1, undefined, 'npx vitest run']);
+eq('arquitectura inventada → ninguna', L.parseLearnAnswer('```ach-learn\n' + JSON.stringify(Object.assign({}, learnJson, { arquitectura: 'cuantica' })) + '\n```').proposal.arquitectura, undefined);
+eq('sin plan o JSON roto → sin proyecto', [L.parseLearnAnswer('```ach-learn\n{"stack":{"resumen":"x"},"plan":[]}\n```').proposal, L.parseLearnAnswer('```ach-learn\n{roto\n```').proposal], [undefined, undefined]);
+const lpf = L.learnProjectFile(pr, { tema: 'TypeScript', nivel: 'cero' });
+eq('autocompletehelp.json del proyecto de aprendizaje', [lpf.aprender.tema, lpf.aprender.nivel, lpf.arquitectura.estilo, lpf.plan.length, !!lpf.entorno], ['TypeScript', 'nunca programó', 'capas', 6, true]);
+const round = parseProjectFile(JSON.stringify(lpf));
+eq('se relee igual (tipo, verificar, comando, entorno, aprender)', [round.plan[2].verificar, round.plan[4].comando, round.entorno.testear.comando, round.aprender.objetivos.length], ['npx vitest run', 'npx tsx src/main.ts', 'npx vitest run', 3]);
+eq('la IA sabe qué tema se aprende y cómo se comprueba el paso', [formatProjectForPrompt(round).includes('Proyecto para APRENDER TypeScript'), formatProjectForPrompt(round).includes('[config]')], [true, true]);
+const { environmentSteps } = require(out + 'projectFile.js');
+eq('entorno en orden: instalar → Docker → ejecutar → tests', environmentSteps({ instalar: [{ comando: 'a' }], docker: { porQue: 'db', comandos: [{ comando: 'docker compose up -d' }] }, ejecutar: { comando: 'b' }, testear: { comando: 'c' } }).map((x) => x.grupo + ':' + x.comando),
+  ['Instalar:a', 'Docker:docker compose up -d', 'Ejecutar:b', 'Tests:c']);
+eq('guía docs/APRENDER.md', L.learnGuideDoc('## Paso a paso\nuno', 'Three.js', '2026-10-08').startsWith('# Aprender Three.js'), true);
+eq('nombre de carpeta', [L.folderNameFor('Three.js'), L.folderNameFor('Automatizaciones con Python')], ['aprender-three-js', 'aprender-automatizaciones-con-python']);
+const { languageForPath: lfp } = require(out + 'instructions.js');
+eq('Dockerfile y compose se reconocen', [lfp('Dockerfile'), lfp('docker/api.Dockerfile'), lfp('docker-compose.yml'), lfp('.env')], ['dockerfile', 'dockerfile', 'yaml', 'shellscript']);
+const scaffold = require(out + 'scaffold.js').scaffoldEntries(lpf, undefined, 'aprender-typescript');
+eq('crear estructura: archivos del plan, sin los pasos de comando', scaffold.map((e) => e.archivo), ['tsconfig.json', 'src/tipos.ts', 'src/gastos.test.ts', 'x.ts']);
+eq('el esquema JSON conoce los tipos de paso', JSON.stringify(jsonSchema.properties.plan.items.properties.tipo.enum), JSON.stringify(require(out + 'projectFile.js').STEP_KINDS));
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);
