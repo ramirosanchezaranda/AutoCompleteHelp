@@ -411,6 +411,18 @@ eq('el prompt de aprender pide estudiar diseño escribiendo', L.buildLearnSystem
 eq('el prompt de dictado sabe que #version no va en el archivo', P2.buildDictationSystemPrompt('', false).includes('NO escribas #version'), true);
 eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
 
+console.log('— núcleo compartido (src/core)');
+{
+  const fs = require('fs');
+  const dir = require('path').join(__dirname, '..', 'src', 'core');
+  const conVscode = fs.readdirSync(dir).filter((f) => /from ['"]vscode['"]|require\(['"]vscode['"]\)/.test(fs.readFileSync(require('path').join(dir, f), 'utf8')));
+  eq('src/core no depende del IDE (lo usa la web app)', conVscode, []);
+  const CC = require(out + 'core/concepts.js');
+  const l1 = CC.withAccepted({}, ['async/await'], 'dictado', '2026-01-01T00:00:00.000Z');
+  eq('withAccepted cuenta práctica sin mutar', [l1['async-await'].practiced, Object.keys({}).length], [1, 0]);
+  eq('reviewInstruction', CC.reviewInstruction('reduce').includes('«reduce»'), true);
+}
+
 function finish() {
   console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
   process.exit(fails ? 1 : 0);
