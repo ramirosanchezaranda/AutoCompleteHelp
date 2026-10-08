@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { noAI, resolveActiveConfig } from './providers/catalog';
-import { LESSONS, Lesson, getLesson, lessonProjectFile, lessonsForTopic } from './lessons';
+import { LESSONS, Lesson, getLesson, lessonIdea, lessonProjectFile, lessonsForTopic } from './lessons';
 import { BACK, Item, inputStep, pickStep, runSteps } from './wizard';
 import { StartViewProvider } from './startView';
 import { complete } from './providers/client';
@@ -20,7 +20,7 @@ import {
   buildLearnSystemPrompt,
   curatedIdeas,
   folderNameFor,
-  learnGuideDoc,
+  learnProjectDocs,
   learnProjectFile,
   matchTopic,
   parseIdeas,
@@ -304,20 +304,6 @@ export async function learn(
   await design(context, llm, { tema: st.tema, nivel: st.nivel, tamano: st.tamano, topic: st.topic, idea: st.idea }, st.folder);
 }
 
-function lessonIdea(l: Lesson): ProjectIdea {
-  return {
-    titulo: l.titulo,
-    descripcion: `Lección sin IA: el código y las explicaciones ya están escritos y probados. ${l.proyecto.charAt(0).toUpperCase()}${l.proyecto.slice(1)}.`,
-    aprendes: l.objetivos,
-    dificultad: l.dificultad,
-    duracion: l.duracion,
-    docker: !!l.entorno.docker,
-    nube: false,
-    tema: l.tema,
-    leccion: l.id
-  };
-}
-
 /**
  * Proyectos para elegir: primero las lecciones sin IA del tema; después los
  * que recomienda la IA o, sin respuesta (o sin IA), las ideas del catálogo.
@@ -459,22 +445,9 @@ async function chooseFolder(tema: string, step: number, total: number): Promise<
 
 async function writeLearnProject(folder: vscode.Uri, project: ProjectFile, markdown: string, tema: string): Promise<void> {
   const fecha = new Date().toISOString().slice(0, 10);
-  const docs = vscode.Uri.joinPath(folder, 'docs');
-  await vscode.workspace.fs.createDirectory(docs);
-  const write = (uri: vscode.Uri, text: string) => vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
-  await write(vscode.Uri.joinPath(docs, 'APRENDER.md'), learnGuideDoc(markdown, tema, fecha));
-  const arch = getArchitecture(project.arquitectura?.estilo);
-  if (arch) {
-    await write(
-      vscode.Uri.joinPath(docs, 'ARQUITECTURA.md'),
-      architectureDoc(arch, {
-        prompt: project.prompt,
-        stack: project.stack?.resumen,
-        razones: project.arquitectura?.razones ?? [],
-        alternativas: [],
-        fecha
-      })
-    );
+  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(folder, 'docs'));
+  for (const [path, text] of Object.entries(learnProjectDocs(project, markdown, tema, fecha))) {
+    await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(folder, path), new TextEncoder().encode(text));
   }
   await writeProjectFileAt(folder, project);
 }
@@ -626,7 +599,8 @@ export async function start(context: vscode.ExtensionContext): Promise<void> {
   await startWith(context, what as StartKind, text);
 }
 
-export type StartKind = 'project' | 'learn' | 'recommend';
+export type { StartKind } from './core/start';
+import type { StartKind } from './core/start';
 
 /** Arranca un camino con lo que la persona ya escribió (desde «Empezar» o la paleta). */
 export async function startWith(context: vscode.ExtensionContext, what: StartKind, text = ''): Promise<void> {

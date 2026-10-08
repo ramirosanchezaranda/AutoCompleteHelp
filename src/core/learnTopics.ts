@@ -1,4 +1,4 @@
-import { ARCHITECTURES, ArchId, getArchitecture } from './architectures';
+import { ARCHITECTURES, ArchId, architectureDoc, getArchitecture } from './architectures';
 import {
   LearnInfo,
   PlanStep,
@@ -336,4 +336,23 @@ export function folderNameFor(tema: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
   return `aprender-${slug || 'proyecto'}`;
+}
+
+/**
+ * Documentos de un proyecto nuevo: docs/APRENDER.md (la guía) y, si hay
+ * arquitectura, docs/ARQUITECTURA.md (registro de decisión). Ruta → texto.
+ */
+export function learnProjectDocs(project: ProjectFile, markdown: string, tema: string, fecha: string): Record<string, string> {
+  const docs: Record<string, string> = { 'docs/APRENDER.md': learnGuideDoc(markdown, tema, fecha) };
+  const arch = getArchitecture(project.arquitectura?.estilo);
+  if (arch) {
+    docs['docs/ARQUITECTURA.md'] = architectureDoc(arch, {
+      prompt: project.prompt,
+      stack: project.stack?.resumen,
+      razones: project.arquitectura?.razones ?? [],
+      alternativas: [],
+      fecha
+    });
+  }
+  return docs;
 }

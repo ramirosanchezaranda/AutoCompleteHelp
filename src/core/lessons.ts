@@ -2,6 +2,7 @@ import type { ArchId } from './architectures';
 import { getArchitecture } from './architectures';
 import type { PlanStep, ProjectEnvironment, ProjectFile, StackInfo } from './project';
 import { LESSONS_CREATIVAS } from './lessonsCreative';
+import type { ProjectIdea } from './learnTopics';
 
 /**
  * Lecciones sin IA: proyectos completos con el código y las explicaciones ya
@@ -600,4 +601,19 @@ export function lessonCode(lessonId: string | undefined, path: string): { text: 
   const lesson = getLesson(lessonId);
   const lines = lesson?.archivos[path.replace(/^\.?\//, '')];
   return lines ? { text: lines.join('\n'), concepts: lesson!.conceptos[path] ?? [] } : undefined;
+}
+
+/** Una lección sin IA como proyecto recomendado. */
+export function lessonIdea(l: Lesson): ProjectIdea {
+  return {
+    titulo: l.titulo,
+    descripcion: `Lección sin IA: el código y las explicaciones ya están escritos y probados. ${l.proyecto.charAt(0).toUpperCase()}${l.proyecto.slice(1)}.`,
+    aprendes: l.objetivos,
+    dificultad: l.dificultad,
+    duracion: l.duracion,
+    docker: !!l.entorno.docker,
+    nube: false,
+    tema: l.tema,
+    leccion: l.id
+  };
 }
