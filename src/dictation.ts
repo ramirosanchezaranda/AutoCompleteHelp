@@ -24,8 +24,8 @@ import {
   commentPrefixes,
   inGap,
   explanationAt,
+  summaryAt,
   lineEnd,
-  nextWordEnd,
   progressOf,
   revealEnd,
   skipAuto,
@@ -386,7 +386,7 @@ export class DictationManager implements vscode.Disposable {
     if (!this.context.globalState.get<boolean>(TIP_KEY)) {
       void this.context.globalState.update(TIP_KEY, true);
       vscode.window.showInformationMessage(
-        'Completamos juntos: escribe encima de la línea en gris. Lee el comentario de arriba: dice qué escribir y por qué. Al terminar la línea pulsa Enter y aparece la siguiente. Tab: te dicto una palabra · Retroceso: volver · Esc: opciones.'
+        'Completamos juntos: escribe encima de la línea en gris. Lee el comentario de arriba: dice qué escribir y por qué. Al terminar la línea pulsa Enter y aparece la siguiente. Al cerrar un bloque, el comentario ↑ resume lo que hace. Retroceso: volver · Esc: opciones.'
       );
     }
   }
@@ -487,12 +487,9 @@ export class DictationManager implements vscode.Disposable {
     if (!s || !this.writingEditor()) {
       return vscode.commands.executeCommand('tab');
     }
-    const pos = nextWordEnd(s.text, s.mask, s.pos);
-    if (pos === s.pos) {
-      vscode.window.setStatusBarMessage('AutoCompleteHelp: fin de línea, pulsa Enter.', 2500);
-      return;
-    }
-    await this.advance({ ok: true, pos: skipAuto(s.mask, pos) }, true);
+    // Tab no completa nada: cada palabra la escribes tú. La tecla queda tomada
+    // para que no inserte una tabulación ni acepte sugerencias del editor.
+    vscode.window.setStatusBarMessage('AutoCompleteHelp: Tab está desactivado; escribe tú cada palabra. Si te trabas, Esc › opciones.', 3500);
   }
 
   private async enter(): Promise<unknown> {
@@ -749,17 +746,19 @@ export class DictationManager implements vscode.Disposable {
       s.lastExpected === undefined
         ? ''
         : inGap(s.gaps, s.pos)
-          ? ' · hueco: recuérdalo (Tab lo revela)'
+          ? ' · hueco: recuérdalo (Esc › díctame la línea si no sale)'
           : ` · esperaba ${showChar(s.lastExpected)}`;
     const label = s.options.reviewConcept ? 'Repaso' : 'Completamos juntos';
     this.status.text = `$(pencil) ${label} ${pct}% · ${s.errors} ${s.errors === 1 ? 'error' : 'errores'}${hint}`;
     const explanation = explanationAt(s.text, s.pos, s.prefixes);
+    const summary = summaryAt(s.text, s.pos, s.prefixes);
     this.status.tooltip = new vscode.MarkdownString(
       [
         `**${label}:** ${s.instruction}`,
         s.gaps.length ? `Huecos: ${s.gaps.length} palabras para escribir de memoria.` : '',
+        summary ? `**↑ Lo que acabas de escribir:** ${summary}` : '',
         explanation ? `> ${explanation}` : '',
-        'Escribe encima de la línea en gris; Enter muestra la siguiente. **Tab**: te dicto una palabra · **Retroceso**: volver · **Esc** o clic aquí: opciones.'
+        'Escribe encima de la línea en gris; Enter muestra la siguiente. Tab no completa: escribes tú cada palabra. **Retroceso**: volver · **Esc** o clic aquí: opciones.'
       ]
         .filter(Boolean)
         .join('\n\n')

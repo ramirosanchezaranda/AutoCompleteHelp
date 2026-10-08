@@ -381,6 +381,20 @@ eq('el prompt de «Quiero aprender» pide pasos de teoría', L.buildLearnSystemP
 const SV = require(out + 'startView.js');
 const sh = SV.startHtml('abc');
 eq('«Empezar»: una caja para escribir en cada camino', [SV.START_BOXES.map((b) => b.kind), (sh.match(/<textarea/g) || []).length, sh.includes("nonce-abc")], [['project', 'learn', 'recommend'], 3, true]);
+// Resumen al cerrar cada bloque (↑)
+const tsCode = LS.lessonCode('typescript-gastos', 'src/gastos.ts').text;
+const afterTotal = tsCode.indexOf('export function porCategoria');
+eq('al empezar el bloque siguiente, se muestra el resumen del que cerraste', T.summaryAt(tsCode, afterTotal, js), 'total: suma los montos de todos los gastos; sin gastos devuelve 0.');
+eq('el resumen (↑) no se confunde con la explicación de lo que viene', T.explanationAt(tsCode, afterTotal, js).startsWith('Partial<Record'), true);
+eq('dentro de una función, un ↑ de un bloque interno no corta la explicación', T.explanationAt(tsCode, tsCode.indexOf('  return resultado'), js).startsWith('?? 0'), true);
+eq('lejos de un cierre no hay resumen', T.summaryAt(tsCode, tsCode.indexOf('return gastos.reduce'), js), '');
+const unsummarized = [];
+for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) {
+  if (!/\.ts$/.test(f)) continue;
+  lines.forEach((x, i) => { if (/^\}\)?;?$/.test(x) && i > 3 && !(lines[i + 1] || '').includes('↑')) unsummarized.push(f + ':' + i); });
+}
+eq('lecciones: cada bloque de varias líneas que se cierra tiene su resumen ↑', unsummarized, []);
+eq('el prompt de dictado pide el resumen ↑ al cerrar cada bloque', P2.buildDictationSystemPrompt('', false).includes('AL CERRAR UN BLOQUE'), true);
 eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
 
 function finish() {

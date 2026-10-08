@@ -130,7 +130,7 @@
       },
       {
         "command": "autocompletehelp.dictation.tab",
-        "title": "AutoCompleteHelp: Dictado — dictarme una palabra"
+        "title": "AutoCompleteHelp: Dictado — Tab (desactivado: escribes tú)"
       },
       {
         "command": "autocompletehelp.dictation.enter",

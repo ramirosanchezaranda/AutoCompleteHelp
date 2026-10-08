@@ -6,6 +6,13 @@ Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
 ### Añadido
 
+- **Resumen al cerrar cada bloque**: después de la `}` de una función,
+  clase, `if` u objeto (y al terminar el cuerpo de una función o clase en
+  Python) aparece un comentario `↑` que resume qué hace ese bloque. La IA lo
+  escribe siempre; las lecciones sin IA lo traen; la barra de estado lo
+  muestra mientras empiezas lo siguiente.
+- **Tab ya no completa**: durante «Completamos juntos» cada palabra la
+  escribes tú (Tab queda tomado para que tampoco inserte tabulaciones).
 - **Empezar para escribir**: la sección Empezar tiene una caja de texto en
   cada camino —tu proyecto, lo que quieres aprender, lo que te interesa— con
   ejemplos para tocar. Lo escrito arranca el asistente de ese camino.

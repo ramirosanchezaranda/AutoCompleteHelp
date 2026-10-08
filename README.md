@@ -74,7 +74,8 @@ Reglas que siguen todos los proyectos de aprendizaje:
    - Se ve en gris **solo la línea que vas a escribir**, con los comentarios que la explican justo arriba. El primero te dice cómo empezar y en qué parte de la arquitectura vive el archivo.
    - Lo que tecleas bien se vuelve código; un error marca el carácter en rojo y no avanza. Al terminar la línea pulsas Enter y aparece la siguiente.
    - Los comentarios y la indentación avanzan solos (se leen, no se copian); el código y cada Enter los escribes tú.
-   - **Tab** te dicta una palabra si te trabas, **Retroceso** vuelve atrás, **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta.
+   - **Tab no completa nada**: cada palabra la escribes tú. **Retroceso** vuelve atrás y **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta.
+   - **Al cerrar cada bloque** (la `}` de una función, un `if`, una clase; en Python, al terminar su cuerpo) aparece un comentario `↑` que resume qué hace lo que acabas de escribir. La barra de estado lo muestra mientras empiezas lo siguiente.
    - El código conoce tu stack, tu arquitectura, los archivos que existen, tus dependencias y lo que exportan los archivos que importas: no inventa rutas ni campos.
 7. **Pide lo que quieras con un comentario**:
    ```js

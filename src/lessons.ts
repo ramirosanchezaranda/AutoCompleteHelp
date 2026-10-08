@@ -212,7 +212,8 @@ export const LESSONS: Lesson[] = [
         '  monto: number;',
         '  // El ? la vuelve opcional: un gasto puede no tener descripción.',
         '  descripcion?: string;',
-        '}'
+        '}',
+        '// ↑ Gasto: la forma de cada gasto: una categoría válida, un monto numérico y una descripción opcional.'
       ],
       'src/gastos.test.ts': [
         '// Cómo empezar: los tests van ANTES que la función. Fallan (rojo) porque',
@@ -227,6 +228,7 @@ export const LESSONS: Lesson[] = [
         "  { categoria: 'transporte', monto: 300 },",
         "  { categoria: 'comida', monto: 800 }",
         '];',
+        '// ↑ gastos: tres gastos de ejemplo; los resultados esperados (2300 en total) se calculan a mano.',
         '',
         "describe('total', () => {",
         '  // El caso normal: la suma de todos los montos.',
@@ -238,11 +240,13 @@ export const LESSONS: Lesson[] = [
         '    expect(total([])).toBe(0);',
         '  });',
         '});',
+        '// ↑ total: comprueba la suma normal y que una lista vacía dé 0.',
         '',
         '// toEqual y no toBe: compara el contenido del objeto, no si es el mismo objeto.',
         "it('agrupa por categoría', () => {",
         '  expect(porCategoria(gastos)).toEqual({ comida: 2000, transporte: 300 });',
-        '});'
+        '});',
+        '// ↑ porCategoria: comprueba que agrupa los gastos y suma los montos de cada categoría.'
       ],
       'src/gastos.ts': [
         '// Cómo empezar: lo justo para que los tests pasen (verde). Esta es la capa',
@@ -254,6 +258,7 @@ export const LESSONS: Lesson[] = [
         'export function total(gastos: Gasto[]): number {',
         '  return gastos.reduce((suma, g) => suma + g.monto, 0);',
         '}',
+        '// ↑ total: suma los montos de todos los gastos; sin gastos devuelve 0.',
         '',
         '// Partial<Record<…>>: un objeto con categorías como claves, donde puede',
         '// faltar alguna (las que no tienen gastos).',
@@ -263,8 +268,10 @@ export const LESSONS: Lesson[] = [
         '    // ?? 0: si la categoría todavía no tiene suma, arranca en 0.',
         '    resultado[g.categoria] = (resultado[g.categoria] ?? 0) + g.monto;',
         '  }',
+        '  // ↑ for: va sumando cada monto en la categoría que le corresponde.',
         '  return resultado;',
-        '}'
+        '}',
+        '// ↑ porCategoria: devuelve cuánto se gastó en cada categoría.'
       ],
       'src/main.ts': [
         '// Cómo empezar: este archivo conecta la lógica con el mundo: lee lo que',
@@ -284,6 +291,7 @@ export const LESSONS: Lesson[] = [
         "  console.error('Uso: npx tsx src/main.ts <comida|transporte|ocio|otros> <monto>');",
         '  process.exit(1);',
         '}',
+        '// ↑ if: si la categoría o el monto no son válidos, muestra cómo se usa y termina con error (código 1).',
         '',
         '// as Categoria le pide al compilador que confíe: es seguro porque lo validamos arriba.',
         'const gastos = [{ categoria: categoria as Categoria, monto }];',
@@ -406,6 +414,7 @@ export const LESSONS: Lesson[] = [
         '    ".mp4": "Videos",',
         '    ".zip": "Comprimidos",',
         '}',
+        '# ↑ CARPETAS: a qué carpeta va cada extensión.',
         '',
         '# Lo que no reconocemos va a «Otros» en vez de quedarse suelto o dar error.',
         'OTROS = "Otros"',
@@ -417,7 +426,8 @@ export const LESSONS: Lesson[] = [
         '    _, punto, extension = nombre.lower().rpartition(".")',
         '    if not punto:',
         '        return OTROS',
-        '    return CARPETAS.get("." + extension, OTROS)'
+        '    return CARPETAS.get("." + extension, OTROS)',
+        '# ↑ carpeta_para: mira la extensión del nombre y devuelve su carpeta, u Otros si no la conoce.'
       ],
       'tests/test_reglas.py': [
         '# Cómo empezar: probamos las reglas con nombres inventados; ningún archivo real.',
@@ -454,6 +464,7 @@ export const LESSONS: Lesson[] = [
         'class Movimiento:',
         '    origen: Path',
         '    destino: Path',
+        '# ↑ Movimiento: un archivo y adónde iría; solo datos, sin lógica.',
         '',
         '',
         'def planificar(carpeta: Path) -> list[Movimiento]:',
@@ -465,7 +476,9 @@ export const LESSONS: Lesson[] = [
         '            continue',
         '        destino = carpeta / carpeta_para(archivo.name) / archivo.name',
         '        movimientos.append(Movimiento(archivo, destino))',
-        '    return movimientos'
+        '    # ↑ for: arma un movimiento por cada archivo, saltando las carpetas.',
+        '    return movimientos',
+        '# ↑ planificar: devuelve qué se movería y adónde, sin mover nada.'
       ],
       'tests/test_plan.py': [
         '# Cómo empezar: tmp_path es una carpeta temporal que pytest crea y borra:',
@@ -481,6 +494,7 @@ export const LESSONS: Lesson[] = [
         '    assert [m.destino.parent.name for m in plan] == ["Imágenes", "Documentos"]',
         '    # Y lo más importante: los archivos siguen donde estaban.',
         '    assert (tmp_path / "foto.png").exists()',
+        '# ↑ test: con dos archivos, el plan manda cada uno a su carpeta y no mueve ninguno.',
         '',
         '',
         '# Las subcarpetas no se mueven: el plan solo mira archivos.',
@@ -507,7 +521,9 @@ export const LESSONS: Lesson[] = [
         '        # shutil.move y no rename: también funciona entre discos distintos.',
         '        shutil.move(m.origen, m.destino)',
         '        movidos += 1',
-        '    return movidos'
+        '    # ↑ for: crea la carpeta destino y mueve cada archivo, sin pisar los que ya existen.',
+        '    return movidos',
+        '# ↑ ejecutar: aplica el plan en el disco y devuelve cuántos archivos movió.'
       ],
       'ordenar/__main__.py': [
         '# Cómo empezar: el punto de entrada. «python -m ordenar» ejecuta este archivo.',
@@ -534,7 +550,8 @@ export const LESSONS: Lesson[] = [
         'if args.simular:',
         '    print(f"Simulación: {len(plan)} archivos se moverían.")',
         'else:',
-        '    print(f"Movidos: {ejecutar(plan)} archivos.")'
+        '    print(f"Movidos: {ejecutar(plan)} archivos.")',
+        '# ↑ if/else: con --simular solo cuenta los archivos; sin él, los mueve de verdad.'
       ]
     },
     conceptos: {

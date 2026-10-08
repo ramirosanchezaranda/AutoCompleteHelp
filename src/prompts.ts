@@ -97,6 +97,12 @@ export const TEORIA_RULE = [
   '  · sin líneas en blanco entre una explicación y lo que se escribe debajo; entre 15 y 40 líneas en total.'
 ].join('\n');
 
+/** Al cerrar cada bloque, un comentario «↑» que resume qué hace lo que se acaba de escribir. */
+export const SUMMARY_RULE = [
+  '- AL CERRAR UN BLOQUE (la llave } de una función, clase, método, if, for, try u objeto de configuración; en Python, al terminar el cuerpo de una función o clase), agrega en la línea siguiente un comentario de línea completa, con la indentación del bloque, que empiece con "↑ " y resuma en una frase QUÉ HACE ese bloque y para qué sirve (ej: "// ↑ reservar: rechaza la cancha ocupada y, si está libre, la guarda").',
+  '  Después del comentario ↑, una línea en blanco antes del siguiente bloque. No lo agregues para bloques de una sola línea.'
+].join('\n');
+
 export function buildDictationSystemPrompt(
   projectBlock: string,
   guidance: boolean,
@@ -120,6 +126,7 @@ export function buildDictationSystemPrompt(
     '- Si hay una ARQUITECTURA en el proyecto, el primer comentario también dice en qué parte de ella vive este archivo y qué regla respeta (ej: «esta es la capa de servicios: no conoce req ni res»).',
     '- Explica la METODOLOGÍA y el diseño, no solo la sintaxis: por qué esta forma de organizar o resolver y no otra.',
     '- La primera vez que aparece un concepto, defínelo en una frase sencilla. Nada de jerga sin explicar.',
+    SUMMARY_RULE,
     CONTRASTIVE_RULE,
     '- Código completo y funcional. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
     '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).',
