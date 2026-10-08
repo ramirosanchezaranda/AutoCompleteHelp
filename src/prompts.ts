@@ -7,8 +7,7 @@ import {
   saveProject
 } from './projectFile';
 import type { StackProfile } from './stackProfiles';
-
-export type LearningLevel = 'completo' | 'guiado' | 'pista' | 'educame';
+import type { Architecture } from './architectures';
 
 /** El prompt del proyecto (texto libre). Vive en autocompletehelp.json. */
 export function getProjectPrompt(_context?: vscode.ExtensionContext): string {
@@ -27,7 +26,13 @@ export async function saveProjectPrompt(
   await saveProject(context, { prompt: value });
 }
 
-export async function setProjectPrompt(context: vscode.ExtensionContext): Promise<void> {
+export async function setProjectPrompt(context: vscode.ExtensionContext, preset?: string): Promise<void> {
+  // Escrito en «Empezar»: se guarda y se sigue directo a elegir el stack.
+  if (typeof preset === 'string' && preset.trim()) {
+    await saveProject(context, { prompt: preset.trim() });
+    await vscode.commands.executeCommand('autocompletehelp.recommendStack');
+    return;
+  }
   const value = await vscode.window.showInputBox({
     title: 'Prompt del proyecto',
     prompt:
@@ -74,126 +79,40 @@ const CONTRASTIVE_RULE = [
   'Si no encuentras una alternativa real que contrastar, no escribas el comentario: el código va solo.'
 ].join('\n');
 
-/** Prompt de sistema para el autocompletado inline, según el nivel de aprendizaje. */
-export function buildSystemPrompt(
-  level: LearningLevel,
-  projectBlock: string,
-  guidance: boolean,
-  known: string[] = [],
-  workspaceSnapshot = ''
-): string {
-  const base = [
-    'Eres AutoCompleteHelp, un motor de autocompletado de código dentro de un IDE.',
-    'Recibirás el código ANTES del cursor (PREFIX) y DESPUÉS del cursor (SUFFIX).',
-    'Tu respuesta se inserta literalmente en la posición del cursor, así que:',
-    '- Responde SOLO con el texto a insertar. Sin markdown, sin ``` , sin explicaciones fuera de comentarios de código.',
-    '- No repitas el PREFIX ni el SUFFIX.',
-    '- Respeta la indentación, el estilo y el lenguaje del archivo.',
-    '- Completa una unidad razonable (resto de la línea, una función, un bloque). No escribas el archivo entero.'
-  ];
-
-  // Marcador de conceptos: primera línea de la respuesta (va primero para que
-  // sobreviva al corte temprano del streaming). La extensión lo elimina antes
-  // de insertar y lo usa para saber qué ya te explicó.
-  base.push(
-    'PRIMERA LÍNEA OBLIGATORIA de tu respuesta: un comentario (sintaxis del lenguaje) con el formato exacto',
-    '  @ach-concepts: concepto-1, concepto-2',
-    'listando de 1 a 4 conceptos de programación que usa tu sugerencia, con nombres canónicos y estables',
-    '(ej: async/await, try/catch, destructuring, middleware, códigos de estado HTTP, promesas).',
-    'Esa línea se elimina antes de insertar el código: no la comentes ni la expliques.'
-  );
-
-  if (projectBlock) {
-    base.push(
-      'PROYECTO (fuente de verdad, definido por el usuario en autocompletehelp.json):',
-      projectBlock,
-      'TODO el autocompletado está al servicio de este proyecto: cada sugerencia debe acercar el archivo actual al objetivo.',
-      'Usa EXACTAMENTE el stack indicado, con APIs propias de esas versiones (no mezcles sintaxis de versiones anteriores) y respeta las convenciones.',
-      'Si el PREFIX está vacío o casi vacío, este archivo es nuevo: propone el esqueleto inicial que le corresponde SEGÚN SU NOMBRE/RUTA, el stack y el objetivo (imports, estructura base, primera pieza).'
-    );
-    if (guidance) {
-      base.push(
-        'GUÍA DEL PROYECTO: termina SIEMPRE la sugerencia con una línea de comentario (sintaxis del lenguaje) que empiece con "➜ Siguiente paso:" indicando la próxima pieza concreta que falta. Si hay un "Paso actual del plan" y ya está resuelto en este archivo, apunta al siguiente del plan; si no, a lo que falte para completarlo. Una sola línea.'
-      );
-    }
-  }
-
-  if (workspaceSnapshot) {
-    base.push(
-      'ESTADO REAL DEL PROYECTO (no inventes archivos ni dependencias que no estén aquí):',
-      workspaceSnapshot,
-      'Importa solo archivos que existen en esta lista o que el usuario está creando ahora. Si falta una dependencia necesaria, indícalo en un comentario con el comando para instalarla, en vez de asumirla.',
-      'Cuando uses un archivo que aparece en ARCHIVOS RELACIONADOS, usa sus nombres, exports y campos reales.'
-    );
-  }
-
-  base.push(
-    'INSTRUCCIONES EN LÍNEA: si el mensaje trae una INSTRUCCIÓN DEL USUARIO (escrita en el código como un comentario "ach: …"),',
-    'implementa exactamente eso debajo de ese comentario, con el nivel de ayuda de este modo. No repitas ni modifiques la línea de la instrucción.'
-  );
-
-  // Andamiaje decreciente: lo que ya se repitió no se vuelve a explicar.
-  if (known.length && (level === 'guiado' || level === 'educame')) {
-    base.push(
-      'MEMORIA DEL APRENDIZ — el usuario YA DOMINA estos conceptos porque los repitió varias veces:',
-      `  ${known.join(', ')}`,
-      'NO vuelvas a explicarlos: da ese código sin comentario, como se lo darías a alguien con experiencia.',
-      'Reserva los comentarios para lo que sea nuevo o poco frecuente en esta sugerencia.',
-      'Explicar de más a quien ya sabe entorpece la lectura y hace que deje de leer los comentarios que sí importan.'
-    );
-  }
-
-  switch (level) {
-    case 'educame':
-      base.push(
-        'MODO EDÚCAME (el usuario está empezando desde cero): asume que todavía NO sabe programar.',
-        'Sugiere el código en pasos muy pequeños y comenta cada parte nueva como un profesor paciente.',
-        'La primera vez que aparezca un concepto, defínelo en una frase sencilla. Nada de jerga sin explicar.',
-        'Introduce como máximo una idea nueva por sugerencia: mejor corto y entendido que largo y mágico.',
-        CONTRASTIVE_RULE,
-        'Adaptación para este nivel: en el movimiento 2 contrasta contra lo que alguien haría por intuición, no contra tecnicismos que el usuario aún no conoce.',
-        '  // Guardamos el resultado en una variable en vez de usarlo suelto:',
-        '  // así podemos volver a usarlo más abajo sin repetir el trabajo.'
-      );
-      break;
-    case 'guiado':
-      base.push(
-        'MODO GUIADO (objetivo: que el usuario aprenda el criterio, no que copie):',
-        'comenta cada decisión no trivial del código que sugieras, en español y con la sintaxis de comentarios del lenguaje.',
-        CONTRASTIVE_RULE
-      );
-      break;
-    case 'pista':
-      base.push(
-        'MODO PISTA (objetivo: que el usuario escriba su propio código): NO escribas la solución.',
-        'Responde ÚNICAMENTE con comentarios en español (sintaxis del lenguaje) que den los pasos y pistas concretas para que el usuario lo implemente por sí mismo. Máximo 5 comentarios cortos.',
-        'Puedes mencionar nombres de funciones o APIs relevantes, pero nunca líneas de código completas.',
-        'En al menos una pista, plantea la decisión como una elección: menciona la alternativa obvia y pregunta cuál conviene aquí y por qué (sin dar la respuesta).'
-      );
-      break;
-    case 'completo':
-    default:
-      base.push('MODO COMPLETO: sugiere directamente el código, limpio y idiomático, sin comentarios pedagógicos.');
-      break;
-  }
-  return base.join('\n');
-}
-
 /**
- * Prompt de sistema del MODO DICTADO: la IA no autocompleta, dicta. Genera la
- * pieza completa que el usuario escribirá a mano encima del texto en gris, con
- * los comentarios ANTES de cada bloque para que se lean antes de teclear.
+ * Prompt de sistema de «COMPLETAMOS JUNTOS», el único modo: la IA no
+ * autocompleta, dicta. Genera la pieza completa que la persona escribirá a
+ * mano, línea por línea, encima del texto en gris. Los comentarios van ANTES
+ * de cada línea o bloque, porque se muestran justo antes de escribirlo.
  */
+/**
+ * Apuntes de teoría (.md): se completan escribiendo igual que el código. Las
+ * citas (>) son la explicación que se lee; lo demás lo escribe la persona.
+ */
+export const TEORIA_RULE = [
+  '- Si el archivo es Markdown (.md), es un APUNTE DE TEORÍA que el alumno completa escribiendo. Aquí SÍ usas Markdown:',
+  '  · la línea @ach-concepts va como comentario HTML: <!-- @ach-concepts: … -->',
+  '  · las explicaciones van en líneas que empiezan con "> " (se leen, no se escriben): qué es, para qué sirve, por qué así;',
+  '  · justo debajo de cada explicación, 1 a 3 líneas CORTAS que el alumno escribe para fijar la idea: un título "## …", una definición en una frase, o un mini ejemplo en un bloque ``` con su lenguaje;',
+  '  · sin líneas en blanco entre una explicación y lo que se escribe debajo; entre 15 y 40 líneas en total.'
+].join('\n');
+
+/** Al cerrar cada bloque, un comentario «↑» que resume qué hace lo que se acaba de escribir. */
+export const SUMMARY_RULE = [
+  '- AL CERRAR UN BLOQUE (la llave } de una función, clase, método, if, for, try u objeto de configuración; en Python, al terminar el cuerpo de una función o clase), agrega en la línea siguiente un comentario de línea completa, con la indentación del bloque, que empiece con "↑ " y resuma en una frase QUÉ HACE ese bloque y para qué sirve (ej: "// ↑ reservar: rechaza la cancha ocupada y, si está libre, la guarda").',
+  '  Después del comentario ↑, una línea en blanco antes del siguiente bloque. No lo agregues para bloques de una sola línea.'
+].join('\n');
+
 export function buildDictationSystemPrompt(
-  level: LearningLevel,
   projectBlock: string,
   guidance: boolean,
   known: string[] = [],
   workspaceSnapshot = ''
 ): string {
   const base = [
-    'Eres AutoCompleteHelp en MODO DICTADO, dentro de un IDE.',
-    'No es un autocompletado: generas el código de una pieza del proyecto y el ALUMNO lo va a ESCRIBIR A MANO, carácter a carácter, encima de tu texto en gris.',
+    'Eres AutoCompleteHelp en el modo «COMPLETAMOS JUNTOS», dentro de un IDE.',
+    'No es un autocompletado: generas el código de una pieza del proyecto y el ALUMNO lo va a ESCRIBIR A MANO, línea por línea, encima de tu texto en gris.',
+    'Se le muestra UNA línea de código a la vez, con los comentarios que tiene justo encima. Por eso cada comentario debe preparar la línea o el bloque que viene a continuación.',
     'Tu respuesta se inserta literalmente en el cursor, así que:',
     '- Responde SOLO con el código. Sin markdown, sin ``` , sin texto fuera de comentarios.',
     '- No repitas el PREFIX ni el SUFFIX, ni la línea de la instrucción "ach:".',
@@ -201,13 +120,20 @@ export function buildDictationSystemPrompt(
     'PRIMERA LÍNEA OBLIGATORIA: un comentario con el formato exacto "@ach-concepts: concepto-1, concepto-2" (1 a 4 conceptos con nombres canónicos). Se elimina antes de insertar.',
     '',
     'CÓMO SE DICTA:',
-    '- Divide el código en BLOQUES pequeños (1 a 6 líneas) en el orden en que se escriben.',
-    '- ANTES de cada bloque van comentarios de línea completa que dictan qué se escribe y por qué. El alumno los lee antes de teclear el bloque.',
-    '  Nunca pongas comentarios al final de una línea de código: el alumno los tendría que escribir.',
-    '- El PRIMER comentario dice cómo empezar: qué es lo primero que se escribe en este archivo y por qué se empieza por ahí.',
-    '- Explica la METODOLOGÍA, no solo la sintaxis: por qué esta forma de organizar o resolver y no otra.',
-    '- Código completo y funcional para la instrucción. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
-    '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).'
+    '- Divide el código en BLOQUES pequeños (1 a 4 líneas) en el orden en que se escriben.',
+    '- ANTES de cada bloque van comentarios de línea completa que dicen qué se escribe y POR QUÉ. Nunca comentarios al final de una línea de código: el alumno los tendría que escribir.',
+    '- Cada línea de comentario tiene como máximo unos 80 caracteres: si la explicación es más larga, sigue en otra línea de comentario. Así se lee entera sin salirse de la pantalla.',
+    '- El PRIMER comentario dice cómo empezar: qué se escribe primero en este archivo y por qué se empieza por ahí.',
+    '- Si hay una ARQUITECTURA en el proyecto, el primer comentario también dice en qué parte de ella vive este archivo y qué regla respeta (ej: «esta es la capa de servicios: no conoce req ni res»).',
+    '- Explica la METODOLOGÍA y el diseño, no solo la sintaxis: por qué esta forma de organizar o resolver y no otra.',
+    '- La primera vez que aparece un concepto, defínelo en una frase sencilla. Nada de jerga sin explicar.',
+    SUMMARY_RULE,
+    CONTRASTIVE_RULE,
+    '- Código completo y funcional. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
+    '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).',
+    '- Si el archivo es JSON u otro formato que no admite comentarios, no escribas comentarios ni la línea @ach-concepts como comentario: escribe "@ach-concepts: …" sola en la primera línea y después el contenido válido.',
+    '- Si el paso es un TEST, explica qué comportamiento comprueba cada test y por qué ese caso importa (el caso normal, el borde, el error).',
+    TEORIA_RULE
   ];
 
   if (projectBlock) {
@@ -216,12 +142,10 @@ export function buildDictationSystemPrompt(
       'PROYECTO (fuente de verdad, definido por el usuario en autocompletehelp.json):',
       projectBlock,
       'El texto del objetivo también dice CÓMO quiere el usuario que le expliques (ej: "explica cada código que agregues y por qué elegiste esa metodología"): cúmplelo al pie de la letra.',
-      'Usa EXACTAMENTE el stack indicado, con APIs propias de esas versiones, y respeta las convenciones.'
+      'Usa EXACTAMENTE el stack indicado, con APIs propias de esas versiones, y respeta las convenciones y las reglas de la arquitectura.'
     );
     if (guidance) {
-      base.push(
-        'Termina con una línea de comentario que empiece con "➜ Siguiente paso:" con la próxima pieza concreta del plan.'
-      );
+      base.push('Termina con una línea de comentario que empiece con "➜ Siguiente paso:" con la próxima pieza concreta del plan.');
     }
   }
 
@@ -234,31 +158,11 @@ export function buildDictationSystemPrompt(
     );
   }
 
-  if (known.length && level !== 'completo') {
+  if (known.length) {
     base.push(
       '',
-      `El alumno YA DOMINA: ${known.join(', ')}. No le expliques eso de nuevo; reserva los comentarios para lo nuevo.`
+      `El alumno YA DOMINA: ${known.join(', ')}. No le expliques eso de nuevo: una línea de porqué basta. Reserva las explicaciones largas para lo nuevo.`
     );
-  }
-
-  base.push('');
-  switch (level) {
-    case 'educame':
-      base.push(
-        'NIVEL EDÚCAME: el alumno empieza desde cero. Bloques de 1 a 3 líneas.',
-        'Define cada concepto la primera vez que aparece, con palabras sencillas, antes del bloque que lo usa.',
-        CONTRASTIVE_RULE,
-        'Adaptación: en el movimiento 2 contrasta contra lo que alguien haría por intuición, no contra tecnicismos.'
-      );
-      break;
-    case 'completo':
-      base.push(
-        'NIVEL COMPLETO: un único comentario corto antes de cada bloque, con el porqué de la decisión. Nada más.'
-      );
-      break;
-    default:
-      base.push('NIVEL GUIADO: cada bloque con su comentario contrastivo.', CONTRASTIVE_RULE);
-      break;
   }
   return base.join('\n');
 }
@@ -316,8 +220,20 @@ export function buildUserPrompt(
 /** Prompt de sistema para el comando "Recomendar stack para mi proyecto". */
 export function buildStackSystemPrompt(
   preferredStack?: string,
-  profile?: Pick<StackProfile, 'stack' | 'convenciones' | 'planBase' | 'crearArchivosDelPlan'>
+  profile?: Pick<StackProfile, 'stack' | 'convenciones' | 'planBase' | 'crearArchivosDelPlan'>,
+  architecture?: Pick<Architecture, 'nombre' | 'carpetas' | 'reglas'>
 ): string {
+  const arch = architecture
+    ? [
+        '',
+        `ARQUITECTURA ELEGIDA: ${architecture.nombre}. Es obligatoria para el plan:`,
+        `  estructura orientativa: ${architecture.carpetas.join('; ')}`,
+        `  reglas: ${architecture.reglas.join(' ')}`,
+        'Las rutas de archivo del plan siguen esa estructura, adaptada a las convenciones del stack.',
+        'Ordena los pasos para que cada capa o módulo se construya antes que lo que depende de él, y nombra en "concepto" la idea de arquitectura que enseña cada paso cuando aplique.',
+        'En "## Estructura inicial" explica en qué parte de la arquitectura va cada archivo.'
+      ]
+    : [];
   const base = profile
     ? [
         '',
@@ -357,11 +273,13 @@ export function buildStackSystemPrompt(
     '{',
     '  "stack": { "resumen": "frase corta", "lenguaje": "nombre y versión", "framework": "nombre y versión", "datos": "base de datos y librería", "tests": "framework de tests" },',
     '  "convenciones": ["3 a 5 convenciones concretas: sistema de módulos, dónde van rutas/componentes, estilo de manejo de errores…"],',
-    '  "plan": [ { "paso": "qué construir", "archivo": "ruta/relativa.ext", "concepto": "concepto que enseña" } ]',
+    '  "plan": [ { "paso": "qué construir", "tipo": "teoria|codigo|test|config", "archivo": "ruta/relativa.ext", "concepto": "concepto que enseña" } ]',
     '}',
     '```',
+    'Cuando un paso introduce un concepto que el usuario probablemente no conoce, agrega antes un paso tipo "teoria" con archivo notas/NN-concepto.md: un apunte que también completa escribiendo.',
     'El plan debe coincidir con la Ruta de aprendizaje. Omite en "stack" las claves que no apliquen (ej: sin base de datos). Usa versiones estables actuales.',
-    ...base
+    ...base,
+    ...arch
   ]
     .filter((line, i, all) => line !== '' || all[i - 1] !== '')
     .join('\n');
@@ -392,7 +310,11 @@ export function sanitizeCompletion(raw: string, prefix: string): string {
   if (fence) {
     text = fence[1];
   }
-  text = text.replace(/^\s*```[\w-]*\n?/, '').replace(/\n?```\s*$/, '');
+  // Fence abierto sin cerrar (streaming cortado). Un apunte .md puede terminar
+  // en un bloque de código: su ``` final se respeta si no empezó con uno.
+  else if (/^\s*```/.test(text)) {
+    text = text.replace(/^\s*```[\w-]*\n?/, '').replace(/\n?```\s*$/, '');
+  }
 
   // Si el modelo repitió el final del prefix, recortarlo.
   const tail = prefix.slice(-200);

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AutoCompleteHelp — proyecto",
-  "description": "Fuente de verdad del proyecto para AutoCompleteHelp: objetivo, stack, convenciones y plan. Se versiona junto al código.",
+  "description": "Fuente de verdad del proyecto para AutoCompleteHelp: objetivo, stack, convenciones, arquitectura y plan. Se versiona junto al código.",
   "type": "object",
   "required": [
     "prompt"
@@ -10,6 +10,14 @@
     "prompt": {
       "type": "string",
       "description": "Qué estás construyendo y cómo quieres que te ayude."
+    },
+    "leccion": {
+      "type": "string",
+      "description": "Lección sin IA de AutoCompleteHelp: el código de cada paso ya está escrito y no necesita modelo.",
+      "enum": [
+        "typescript-gastos",
+        "python-descargas"
+      ]
     },
     "perfil": {
       "type": "string",
@@ -58,6 +66,169 @@
         "type": "string"
       }
     },
+    "arquitectura": {
+      "type": "object",
+      "description": "Arquitectura del proyecto. La fija «Elegir arquitectura» (o «Elegir stack»); el plan y el código siguen su estructura y sus reglas. La decisión se explica en docs/ARQUITECTURA.md.",
+      "required": [
+        "estilo"
+      ],
+      "properties": {
+        "estilo": {
+          "type": "string",
+          "enum": [
+            "capas",
+            "mvc",
+            "modular",
+            "hexagonal",
+            "clean",
+            "componentes",
+            "microservicios",
+            "serverless",
+            "eventos"
+          ]
+        },
+        "nombre": {
+          "type": "string"
+        },
+        "razones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "carpetas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Estructura orientativa."
+        },
+        "reglas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reglas que el código respeta, sobre todo de dependencias entre partes."
+        }
+      }
+    },
+    "entorno": {
+      "type": "object",
+      "description": "Cómo se prepara, ejecuta y testea el proyecto. «Preparar el entorno» lo escribe en la terminal, sin ejecutarlo.",
+      "properties": {
+        "instalar": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "comando"
+            ],
+            "properties": {
+              "comando": {
+                "type": "string"
+              },
+              "windows": {
+                "type": "string",
+                "description": "Variante para Windows, si cambia."
+              },
+              "explicacion": {
+                "type": "string",
+                "description": "Qué hace y por qué."
+              }
+            }
+          }
+        },
+        "ejecutar": {
+          "type": "object",
+          "required": [
+            "comando"
+          ],
+          "properties": {
+            "comando": {
+              "type": "string"
+            },
+            "windows": {
+              "type": "string",
+              "description": "Variante para Windows, si cambia."
+            },
+            "explicacion": {
+              "type": "string",
+              "description": "Qué hace y por qué."
+            }
+          }
+        },
+        "testear": {
+          "type": "object",
+          "required": [
+            "comando"
+          ],
+          "properties": {
+            "comando": {
+              "type": "string"
+            },
+            "windows": {
+              "type": "string",
+              "description": "Variante para Windows, si cambia."
+            },
+            "explicacion": {
+              "type": "string",
+              "description": "Qué hace y por qué."
+            }
+          }
+        },
+        "docker": {
+          "type": "object",
+          "properties": {
+            "porQue": {
+              "type": "string"
+            },
+            "comandos": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "comando"
+                ],
+                "properties": {
+                  "comando": {
+                    "type": "string"
+                  },
+                  "windows": {
+                    "type": "string",
+                    "description": "Variante para Windows, si cambia."
+                  },
+                  "explicacion": {
+                    "type": "string",
+                    "description": "Qué hace y por qué."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "aprender": {
+      "type": "object",
+      "description": "Proyecto creado con «Quiero aprender».",
+      "required": [
+        "tema"
+      ],
+      "properties": {
+        "tema": {
+          "type": "string"
+        },
+        "nivel": {
+          "type": "string"
+        },
+        "objetivos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "plan": {
       "type": "array",
       "description": "Pasos ordenados para construir el proyecto. La guía «➜ Siguiente paso» apunta al primero sin hacer.",
@@ -83,6 +254,29 @@
             "type": "boolean",
             "description": "Marca el paso como terminado.",
             "default": false
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "teoria",
+              "codigo",
+              "test",
+              "config",
+              "docker",
+              "comando"
+            ],
+            "description": "Qué tipo de paso es."
+          },
+          "comando": {
+            "type": "string",
+            "description": "Pasos tipo comando: lo que se escribe en la terminal (nunca se ejecuta solo)."
+          },
+          "explicacion": {
+            "type": "string"
+          },
+          "verificar": {
+            "type": "string",
+            "description": "Comando que comprueba el paso al terminarlo (ej: npm test)."
           }
         }
       }

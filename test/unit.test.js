@@ -98,7 +98,7 @@ eq('findStepLine: archivo de «Crear estructura» → paso sin empezar (no se du
 eq('findStepLine: con código debajo', findStepLine('x\n// ach: Listar (enseña: rutas)\nrouter.get();\n', paso), { line: 1, hasCodeAfter: true });
 eq('findStepLine: instrucción ausente', findStepLine('const a = 1;', paso), undefined);
 eq('stepInstruction', stepInstruction({ paso: 'Listar productos', concepto: 'paginación' }), 'Listar productos (enseña: paginación)');
-eq('languageForPath', ['a/b.py', 'x.JSX', 'index.html', 'Makefile', 'c.json'].map(languageForPath), ['python', 'javascriptreact', 'html', undefined, undefined]);
+eq('languageForPath', ['a/b.py', 'x.JSX', 'index.html', 'Makefile', 'c.json'].map(languageForPath), ['python', 'javascriptreact', 'html', 'makefile', undefined]);
 eq('archivo nuevo: solo la instrucción, con sintaxis del lenguaje', [
   stepFileContent('app/main.py', { paso: 'App base' }),
   stepFileContent('index.html', { paso: 'Estructura' }),
@@ -163,13 +163,11 @@ const py = "# Leemos el archivo con with: lo cierra aunque falle.\nwith open('a.
 const pm = T.autoMask(py, T.commentPrefixes('python'));
 eq('python: # avanza solo', py.slice(T.skipAuto(pm, 0), T.skipAuto(pm, 0) + 4), 'with');
 const { buildDictationSystemPrompt } = require(out + 'prompts.js');
-const dp = buildDictationSystemPrompt('guiado', 'Objetivo: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología', true);
+const dp = buildDictationSystemPrompt('Objetivo: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología', true);
 eq('prompt de dictado: comentarios antes de cada bloque, metodología y objetivo',
   [dp.includes('ANTES de cada bloque'), dp.includes('METODOLOGÍA'), dp.includes('e-commerce completa'), dp.includes('@ach-concepts')], [true, true, true, true]);
 
-console.log('— fase 3: huecos según lo practicado');
-eq('concepto nuevo → sin huecos', T.gapRatio({ nuevos: 2, enPractica: 0, conocidos: 0 }), 0);
-eq('en práctica y dominado → más huecos', [T.gapRatio({ nuevos: 0, enPractica: 1, conocidos: 0 }), T.gapRatio({ nuevos: 0, enPractica: 0, conocidos: 2 })], [0.2, 0.4]);
+console.log('— fase 3: huecos (solo en los repasos)');
 const gaps = T.chooseGaps(dict, mask, 0.4, 7);
 eq('huecos deterministas con la misma semilla', JSON.stringify(gaps) === JSON.stringify(T.chooseGaps(dict, mask, 0.4, 7)), true);
 eq('nunca en comentarios ni en la primera palabra', gaps.every(([s]) => !mask[s]) && gaps[0][0] > dict.indexOf('const'), true);
@@ -202,8 +200,207 @@ const E = require(out + 'errorHelp.js');
 const errPrompt = E.buildErrorUserPrompt('javascript', 'server.js', "Cannot find name 'expres'.", 'ts 2304', 9, ['a();', 'expres();', 'b();'], 10, 10);
 eq('marca la línea del error con su número real', errPrompt.split('\n').filter((l) => l.startsWith('>>')), ['>> 11 | expres();']);
 eq('incluye mensaje y origen', errPrompt.includes("Error (ts 2304): Cannot find name 'expres'."), true);
-eq('sin código corregido salvo en nivel completo',
-  [E.buildErrorSystemPrompt('guiado', '').includes('NO escribas el código corregido'), E.buildErrorSystemPrompt('completo', '').includes('## Solución')], [true, true]);
+eq('nunca da el código corregido', [E.buildErrorSystemPrompt('').includes('NO escribas el código corregido'), E.buildErrorSystemPrompt('').includes('## Solución')], [true, false]);
 
-console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
-process.exit(fails ? 1 : 0);
+console.log('— completamos juntos: una línea a la vez');
+const cj = "// Importamos express: el framework.\nconst express = require('express');\n\n// La app.\nconst app = express();\n// ➜ Siguiente paso: rutas";
+const cjm = T.autoMask(cj, js);
+const p0 = T.skipAuto(cjm, 0);
+eq('al empezar se ve el comentario y la primera línea, nada más', cj.slice(0, T.revealEnd(cj, p0)), "// Importamos express: el framework.\nconst express = require('express');");
+const p1 = T.typeKeys(cj, cjm, p0, "const express = require('express');\n").pos;
+eq('tras Enter aparece el comentario y la línea siguiente', cj.slice(T.revealEnd(cj, p0), T.revealEnd(cj, p1)), "\n\n// La app.\nconst app = express();");
+const p2 = T.typeKeys(cj, cjm, p1, 'const app = express();\n').pos;
+eq('al terminar se muestra el comentario final', [p2, T.revealEnd(cj, p2)], [cj.length, cj.length]);
+eq('a mitad de línea, lo visible llega hasta el fin de esa línea', T.revealEnd(cj, p0 + 6), cj.indexOf('\n', p0));
+eq('prompt: una línea a la vez y la arquitectura en el primer comentario', [dp.includes('UNA línea de código a la vez'), dp.includes('ARQUITECTURA')], [true, true]);
+
+console.log('— arquitectura y diseño de sistemas');
+const A = require(out + 'architectures.js');
+eq('catálogo completo: cada arquitectura explica cuándo sí, cuándo no, reglas y diagrama',
+  A.ARCHITECTURES.every((a) => a.cuandoSi.length && a.cuandoNo.length && a.reglas.length && a.carpetas.length && a.diagrama.startsWith('flowchart')), true);
+const rec = (o) => A.recommendArchitecture(Object.assign({ tipo: 'api', equipo: 'solo', areas: 'pocas', objetivo: 'fundamentos' }, o)).recomendada;
+eq('API simple para aprender → monolito en capas', rec({}), 'capas');
+eq('varias áreas → monolito modular', rec({ areas: 'varias' }), 'modular');
+eq('quiere practicar diseño → hexagonal', rec({ objetivo: 'diseno' }), 'hexagonal');
+eq('varios equipos y varias áreas → microservicios', rec({ equipo: 'varios', areas: 'varias' }), 'microservicios');
+eq('web con páginas del servidor → MVC; frontend → componentes', [rec({ tipo: 'web-servidor' }), rec({ tipo: 'frontend' })], ['mvc', 'componentes']);
+eq('microservicios nunca es la recomendación para una persona sola', ['pocas', 'varias'].flatMap((areas) => ['fundamentos', 'diseno'].map((objetivo) => rec({ areas, objetivo }))).includes('microservicios'), false);
+eq('la recomendada siempre aplica al tipo de app', ['api', 'web-servidor', 'frontend', 'otra'].every((tipo) => A.getArchitecture(rec({ tipo })).tipos.includes(tipo)), true);
+eq('tipo de app según el perfil', [A.appKindForProfile('django'), A.appKindForProfile('react-vite'), A.appKindForProfile('node-express'), A.appKindForProfile('x')], ['web-servidor', 'frontend', 'api', undefined]);
+const hex = A.getArchitecture('hexagonal');
+const adr = A.architectureDoc(hex, { prompt: 'e-commerce completa', stack: 'Node.js + Express 5', razones: ['Practicar diseño.'], alternativas: ['capas', 'clean'], fecha: '2026-10-08' });
+eq('registro de decisión con contexto, decisión, alternativas, consecuencias y diagrama',
+  ['## Contexto', '## Decisión', '## Alternativas consideradas', '## Consecuencias', '```mermaid', 'Monolito en capas'].every((x) => adr.includes(x)), true);
+eq('explicación con cuándo no y costo', ['## Cuándo no', '## Lo que se paga', '## Reglas que vas a respetar'].every((x) => A.explainArchitecture(hex).includes(x)), true);
+const pa = parseProjectFile(JSON.stringify({ prompt: 'x', arquitectura: { estilo: 'hexagonal', nombre: 'Hexagonal', reglas: ['El dominio no importa nada de afuera.', 3] } }));
+eq('autocompletehelp.json guarda la arquitectura (y descarta basura)', [pa.arquitectura.estilo, pa.arquitectura.reglas], ['hexagonal', ['El dominio no importa nada de afuera.']]);
+eq('sin estilo no hay arquitectura', parseProjectFile('{"prompt":"x","arquitectura":{"nombre":"y"}}').arquitectura, undefined);
+eq('la IA recibe la arquitectura y sus reglas', formatProjectForPrompt(pa).includes('Arquitectura: Hexagonal') && formatProjectForPrompt(pa).includes('El dominio no importa'), true);
+eq('el plan se arma con la arquitectura elegida', buildStackSystemPrompt('Node', undefined, hex).includes('ARQUITECTURA ELEGIDA: Hexagonal (puertos y adaptadores)'), true);
+eq('el esquema JSON conoce todas las arquitecturas', JSON.stringify(jsonSchema.properties.arquitectura.properties.estilo.enum), JSON.stringify(A.ARCHITECTURES.map((a) => a.id)));
+
+console.log('— quiero aprender');
+const L = require(out + 'learnTopics.js');
+eq('temas curados por palabra clave', ['quiero aprender typescript', 'Three.js', 'arquitectura hexagonal', 'automatizaciones con Python', 'Docker y compose'].map((x) => L.matchTopic(x)?.id),
+  ['typescript', 'threejs', 'hexagonal', 'automatizacion-python', 'docker']);
+eq('palabra completa: «ts» no coincide dentro de «tests»; gana la clave más larga', [L.matchTopic('tests unitarios')?.id, L.matchTopic('clean architecture con node')?.id], ['testing', 'clean']);
+eq('tema desconocido → sin semilla (lo diseña la IA)', L.matchTopic('COBOL en mainframes'), undefined);
+eq('cada tema curado usa una arquitectura del catálogo', L.LEARN_TOPICS.every((t) => !!A.getArchitecture(t.arquitectura)), true);
+const lp = L.buildLearnSystemPrompt({ tema: 'Three.js', nivel: 'cero', tamano: 'corto', topic: L.matchTopic('three.js') });
+eq('prompt: tests obligatorios, Docker solo si hace falta, arquitecturas del catálogo y semilla',
+  [lp.includes('TESTS OBLIGATORIOS'), lp.includes('## Docker'), lp.includes('hexagonal, clean'), lp.includes('SEMILLA CURADA'), lp.includes('nunca programó')], [true, true, true, true, true]);
+const learnJson = {
+  proyecto: 'gestor de gastos en TypeScript; explica cada tipo',
+  objetivos: ['tipos', 'interfaces', 'tests'],
+  stack: { resumen: 'TypeScript 5 + Node 22 + Vitest', tests: 'Vitest' },
+  convenciones: ['ES modules'],
+  arquitectura: 'capas',
+  entorno: {
+    instalar: [{ comando: 'npm install -D typescript vitest', explicacion: 'compilador y tests' }, { comando: '' }],
+    testear: { comando: 'npx vitest run', explicacion: 'corre los tests' },
+    docker: null
+  },
+  plan: [
+    { paso: 'Configurar TypeScript', tipo: 'config', archivo: 'tsconfig.json', concepto: 'compilador' },
+    { paso: 'Tipos de un gasto', tipo: 'codigo', archivo: './src/tipos.ts', concepto: 'interfaces' },
+    { paso: 'Test del total', tipo: 'test', archivo: 'src/gastos.test.ts', concepto: 'tests', verificar: 'npx vitest run' },
+    { paso: 'Ruta peligrosa', tipo: 'codigo', archivo: '../fuera.ts' },
+    { paso: 'Correr la app', tipo: 'comando', comando: 'npx tsx src/main.ts', explicacion: 'ejecuta sin compilar' },
+    { paso: 'Tipo inventado', tipo: 'magia', archivo: 'x.ts' }
+  ]
+};
+const parsed = L.parseLearnAnswer('## Qué vas a construir\nUn gestor.\n```ach-learn\n' + JSON.stringify(learnJson) + '\n```');
+const pr = parsed.proposal;
+eq('separa la guía del JSON', parsed.markdown, '## Qué vas a construir\nUn gestor.');
+eq('pasos tipados, rutas dentro del proyecto, tipo desconocido descartado',
+  pr.plan.map((s) => [s.tipo, s.archivo]), [['config', 'tsconfig.json'], ['codigo', 'src/tipos.ts'], ['test', 'src/gastos.test.ts'], ['codigo', undefined], ['comando', undefined], [undefined, 'x.ts']]);
+eq('comandos vacíos fuera; docker null → sin docker', [pr.entorno.instalar.length, pr.entorno.docker, pr.entorno.testear.comando], [1, undefined, 'npx vitest run']);
+eq('arquitectura inventada → ninguna', L.parseLearnAnswer('```ach-learn\n' + JSON.stringify(Object.assign({}, learnJson, { arquitectura: 'cuantica' })) + '\n```').proposal.arquitectura, undefined);
+eq('sin plan o JSON roto → sin proyecto', [L.parseLearnAnswer('```ach-learn\n{"stack":{"resumen":"x"},"plan":[]}\n```').proposal, L.parseLearnAnswer('```ach-learn\n{roto\n```').proposal], [undefined, undefined]);
+const lpf = L.learnProjectFile(pr, { tema: 'TypeScript', nivel: 'cero' });
+eq('autocompletehelp.json del proyecto de aprendizaje', [lpf.aprender.tema, lpf.aprender.nivel, lpf.arquitectura.estilo, lpf.plan.length, !!lpf.entorno], ['TypeScript', 'nunca programó', 'capas', 6, true]);
+const round = parseProjectFile(JSON.stringify(lpf));
+eq('se relee igual (tipo, verificar, comando, entorno, aprender)', [round.plan[2].verificar, round.plan[4].comando, round.entorno.testear.comando, round.aprender.objetivos.length], ['npx vitest run', 'npx tsx src/main.ts', 'npx vitest run', 3]);
+eq('la IA sabe qué tema se aprende y cómo se comprueba el paso', [formatProjectForPrompt(round).includes('Proyecto para APRENDER TypeScript'), formatProjectForPrompt(round).includes('[config]')], [true, true]);
+const { environmentSteps } = require(out + 'projectFile.js');
+eq('entorno en orden: instalar → Docker → ejecutar → tests', environmentSteps({ instalar: [{ comando: 'a' }], docker: { porQue: 'db', comandos: [{ comando: 'docker compose up -d' }] }, ejecutar: { comando: 'b' }, testear: { comando: 'c' } }).map((x) => x.grupo + ':' + x.comando),
+  ['Instalar:a', 'Docker:docker compose up -d', 'Ejecutar:b', 'Tests:c']);
+eq('guía docs/APRENDER.md', L.learnGuideDoc('## Paso a paso\nuno', 'Three.js', '2026-10-08').startsWith('# Aprender Three.js'), true);
+eq('nombre de carpeta', [L.folderNameFor('Three.js'), L.folderNameFor('Automatizaciones con Python')], ['aprender-three-js', 'aprender-automatizaciones-con-python']);
+const { languageForPath: lfp } = require(out + 'instructions.js');
+eq('Dockerfile y compose se reconocen', [lfp('Dockerfile'), lfp('docker/api.Dockerfile'), lfp('docker-compose.yml'), lfp('.env')], ['dockerfile', 'dockerfile', 'yaml', 'shellscript']);
+const scaffold = require(out + 'scaffold.js').scaffoldEntries(lpf, undefined, 'aprender-typescript');
+eq('crear estructura: archivos del plan, sin los pasos de comando', scaffold.map((e) => e.archivo), ['tsconfig.json', 'src/tipos.ts', 'src/gastos.test.ts', 'x.ts']);
+eq('el esquema JSON conoce los tipos de paso', JSON.stringify(jsonSchema.properties.plan.items.properties.tipo.enum), JSON.stringify(require(out + 'projectFile.js').STEP_KINDS));
+
+console.log('— quiero aprender: catálogo ampliado y proyectos recomendados');
+eq('catálogo amplio: cada grupo tiene temas', [L.LEARN_TOPICS.length >= 41, L.TOPIC_KINDS.every((k) => L.LEARN_TOPICS.some((t) => t.tipo === k.tipo))], [true, true]);
+const allWords = L.LEARN_TOPICS.flatMap((t) => t.palabras);
+eq('ninguna palabra clave apunta a dos temas', allWords.filter((w, i) => allWords.indexOf(w) !== i), []);
+eq('ids únicos', new Set(L.LEARN_TOPICS.map((t) => t.id)).size, L.LEARN_TOPICS.length);
+eq('nube, patrones, IA y más', ['configuración de AWS', 'configuración de azure', 'patrones de diseño', 'cómo entrenar ia', 'redes neuronales con pytorch', 'una app con RAG', 'kubernetes', 'CI/CD con github actions', 'git y github', 'clean code', 'videojuegos', 'C# y .NET'].map((x) => L.matchTopic(x)?.id),
+  ['aws', 'azure', 'patrones-diseno', 'ml-entrenar', 'deep-learning', 'llm-apps', 'kubernetes', 'cicd', 'git', 'solid', 'unity', 'csharp']);
+eq('«java» no se confunde con «javascript»', [L.matchTopic('java')?.id, L.matchTopic('javascript')?.id], ['java', 'javascript']);
+const lpAws = L.buildLearnSystemPrompt({ tema: 'AWS', nivel: 'otro-lenguaje', tamano: 'corto', topic: L.matchTopic('aws') });
+eq('nube: presupuesto, credenciales fuera del código y destruir al final', [lpAws.includes('alerta de presupuesto'), lpAws.includes('NUNCA en el código'), lpAws.includes('destruye todo')], [true, true, true]);
+eq('entrenar IA: datos chicos, semilla y tests', [lpAws.includes('CPU en minutos'), lpAws.includes('semilla fija')], [true, true]);
+const curated = L.curatedIdeas(L.matchTopic('aws'));
+eq('ideas curadas (sin IA) marcan nube', [curated.length, curated[0].nube, curated[0].titulo.startsWith('Sitio web')], [3, true, true]);
+eq('Docker local no se marca como nube', L.curatedIdeas(L.matchTopic('docker'))[0].nube, false);
+const ideasAnswer = '```ach-ideas\n' + JSON.stringify([
+  { titulo: 'Clasificador de reseñas', descripcion: 'Entrena un modelo que distingue reseñas positivas.', aprendes: ['features', 'métricas'], dificultad: 'baja', duracion: '2 horas', docker: false, nube: false, tema: 'machine learning' },
+  { titulo: 'Sin descripción' },
+  { titulo: 'Detector de spam', descripcion: 'Filtra mails.', dificultad: 'imposible' }
+]) + '\n```';
+const ideas = L.parseIdeas(ideasAnswer);
+eq('lee las ideas y descarta las incompletas', ideas.map((i) => [i.titulo, i.dificultad]), [['Clasificador de reseñas', 'baja'], ['Detector de spam', 'media']]);
+eq('ideas sin bloque o rotas → ninguna', [L.parseIdeas('nada').length, L.parseIdeas('```ach-ideas\n{roto\n```').length], [0, 0]);
+const ip = L.buildIdeasSystemPrompt({ nivel: 'cero', interes: 'quiero trabajar en backend' });
+eq('recomendar sin tema: según lo que le interesa, con su tema', [ip.includes('quiero trabajar en backend'), ip.includes('qué tema enseña'), ip.includes('ach-ideas')], [true, true, true]);
+eq('el proyecto elegido llega al diseño', L.buildLearnSystemPrompt({ tema: 'ML', nivel: 'cero', tamano: 'corto', idea: ideas[0] }).includes('PROYECTO ELEGIDO (diseña exactamente este): «Clasificador de reseñas»'), true);
+eq('Terraform, Bicep y Dart se reconocen', [lfp('infra/main.tf'), lfp('infra/main.bicep'), lfp('lib/main.dart')], ['terraform', 'bicep', 'dart']);
+
+console.log('— patrones de API, IA con API key / local / sin IA, lecciones y asistente');
+eq('patrones de API ≠ patrones de diseño; «api rest con node» sigue siendo Node',
+  ['patrones de API', 'diseño de APIs REST', 'idempotencia y paginación', 'patrones de diseño', 'una api rest con node'].map((x) => L.matchTopic(x)?.id),
+  ['patrones-api', 'patrones-api', 'patrones-api', 'patrones-diseno', 'node-api']);
+const PC = require(out + 'providers/catalog.js');
+const kinds = (k) => PC.PROVIDERS.filter((p) => p.kind === k).map((p) => p.id);
+eq('proveedores por forma de uso', [kinds('local'), kinds('ninguna'), kinds('nube').length >= 8], [['ollama', 'lmstudio', 'llamacpp', 'jan'], ['none'], true]);
+eq('las IAs locales no piden API key y explican cómo ponerlas en marcha', PC.PROVIDERS.filter((p) => p.kind === 'local').every((p) => !p.needsKey && p.baseUrl.startsWith('http://localhost') && !!p.setup), true);
+eq('modelos de /models (OpenAI) y de /api/tags (Ollama)',
+  [PC.parseModelList({ data: [{ id: 'qwen2.5-coder' }, { id: 'llama3.1' }, { id: 'qwen2.5-coder' }] }), PC.parseModelList({ models: [{ name: 'llama3.1:8b' }] }), PC.parseModelList({ error: 'x' })],
+  [['qwen2.5-coder', 'llama3.1'], ['llama3.1:8b'], []]);
+const C = require(out + 'providers/client.js');
+let noai;
+try { C.complete({ provider: PC.PROVIDERS.find((p) => p.id === 'none'), baseUrl: '', model: '', apiKey: undefined, system: '', user: '', maxTokens: 1 }).catch((e) => { noai = e.name; }); } catch (e) { noai = e.name; }
+setTimeout(() => {}, 0);
+const W = require(out + 'wizard.js');
+(async () => {
+  const seen = [];
+  const script = [0, 'next', 1, 'back', 0, 'next', 1, 'next', 2, 'next'];
+  let k = 0;
+  const step = (i) => async () => { seen.push(i); k++; const a = script[k]; k++; return a === 'back' ? W.BACK : i + 1; };
+  const ok = await W.runSteps([step(0), step(1), step(2)]);
+  eq('asistente: ← Atrás vuelve al paso anterior y se puede seguir', [ok, seen], [true, [0, 1, 0, 1, 2]]);
+  eq('asistente: Atrás en el primer paso o cancelar → no termina', [await W.runSteps([async () => W.BACK]), await W.runSteps([async () => undefined])], [false, false]);
+  eq('sin IA: complete() avisa con NoAIError', noai, 'NoAIError');
+  finish();
+})();
+const LS = require(out + 'lessons.js');
+eq('lecciones: cada archivo del plan tiene su código y su tema existe en el catálogo',
+  LS.LESSONS.map((l) => l.plan.filter((st) => st.archivo).every((st) => Array.isArray(l.archivos[st.archivo])) && !!L.LEARN_TOPICS.find((t) => t.id === l.topicId)), LS.LESSONS.map(() => true));
+const typeable = /^[\x20-\x7E\náéíóúÁÉÍÓÚñÑüÜ¿¡]*$/;
+const badChars = [];
+for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) {
+  const text = lines.join('\n'), mask = T.autoMask(text, T.commentPrefixes(require(out + 'instructions.js').languageForPath(f) || 'json'));
+  for (let i = 0; i < text.length; i++) if (!mask[i] && !typeable.test(text[i])) badChars.push(f + ':' + text[i]);
+}
+eq('lecciones: todo lo que se teclea se puede escribir con un teclado en español', badChars, []);
+const lpfLesson = LS.lessonProjectFile(LS.getLesson('python-descargas'));
+const reread = parseProjectFile(JSON.stringify(lpfLesson));
+eq('lección → autocompletehelp.json (con «leccion», entorno y plan tipado)', [reread.leccion, reread.aprender.nivel, reread.plan.length, reread.plan[2].tipo, reread.plan[4].tipo, !!reread.entorno.testear], ['python-descargas', 'lección sin IA', 11, 'teoria', 'test', true]);
+eq('el código de la lección se encuentra por la ruta del archivo', [LS.lessonCode('typescript-gastos', 'src/gasto.ts').text.startsWith('// Cómo empezar'), LS.lessonCode('typescript-gastos', './src/main.ts') !== undefined, LS.lessonCode('typescript-gastos', 'otro.ts'), LS.lessonCode(undefined, 'src/gasto.ts')], [true, true, undefined, undefined]);
+eq('lecciones por tema', LS.lessonsForTopic('typescript').map((l) => l.id), ['typescript-gastos']);
+eq('el esquema JSON conoce las lecciones', JSON.stringify(jsonSchema.properties.leccion.enum), JSON.stringify(LS.LESSONS.map((l) => l.id)));
+// Teoría que también se completa escribiendo
+const md = T.commentPrefixes('markdown');
+const note = LS.lessonCode('typescript-gastos', 'notas/01-tipos.md').text;
+const nm = T.autoMask(note, md);
+const firstTyped = T.skipAuto(nm, 0);
+eq('apunte de teoría: las citas (>) avanzan solas y se escribe el título', note.slice(firstTyped, note.indexOf('\n', firstTyped)), '## Tipos en TypeScript');
+const atDef = note.indexOf('Un tipo dice');
+eq('apunte de teoría: la explicación que se dicta es la cita de arriba', T.explanationAt(note, atDef, md).startsWith('Un tipo describe la forma'), true);
+eq('apunte de teoría: dentro del bloque de código, la cita de arriba sigue siendo la explicación', T.explanationAt(note, note.indexOf('let monto'), md).startsWith('Los tipos básicos'), true);
+eq('cada lección tiene apuntes de teoría antes del código', LS.LESSONS.map((l) => l.plan.findIndex((st) => st.tipo === 'teoria') < l.plan.findIndex((st) => st.tipo === 'codigo')), LS.LESSONS.map(() => true));
+const P2 = require(out + 'prompts.js');
+eq('un apunte .md que termina en un bloque de código no pierde su ``` final', P2.sanitizeCompletion('> idea\n```ts\nlet a = 1;\n```', ''), '> idea\n```ts\nlet a = 1;\n```');
+eq('una respuesta envuelta en ``` se sigue limpiando', P2.sanitizeCompletion('```ts\nlet a = 1;\n```', ''), 'let a = 1;');
+eq('el prompt de dictado explica cómo escribir apuntes de teoría', P2.buildDictationSystemPrompt('', false).includes('APUNTE DE TEORÍA'), true);
+eq('el prompt de «Quiero aprender» pide pasos de teoría', L.buildLearnSystemPrompt({ tema: 'Rust', nivel: 'cero', tamano: 'corto' }).includes('"teoria'), true);
+const SV = require(out + 'startView.js');
+const sh = SV.startHtml('abc');
+eq('«Empezar»: una caja para escribir en cada camino', [SV.START_BOXES.map((b) => b.kind), (sh.match(/<textarea/g) || []).length, sh.includes("nonce-abc")], [['project', 'learn', 'recommend'], 3, true]);
+// Resumen al cerrar cada bloque (↑)
+const tsCode = LS.lessonCode('typescript-gastos', 'src/gastos.ts').text;
+const afterTotal = tsCode.indexOf('export function porCategoria');
+eq('al empezar el bloque siguiente, se muestra el resumen del que cerraste', T.summaryAt(tsCode, afterTotal, js), 'total: suma los montos de todos los gastos; sin gastos devuelve 0.');
+eq('el resumen (↑) no se confunde con la explicación de lo que viene', T.explanationAt(tsCode, afterTotal, js).startsWith('Partial<Record'), true);
+eq('dentro de una función, un ↑ de un bloque interno no corta la explicación', T.explanationAt(tsCode, tsCode.indexOf('  return resultado'), js).startsWith('?? 0'), true);
+eq('lejos de un cierre no hay resumen', T.summaryAt(tsCode, tsCode.indexOf('return gastos.reduce'), js), '');
+const unsummarized = [];
+for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) {
+  if (!/\.ts$/.test(f)) continue;
+  lines.forEach((x, i) => { if (/^\}\)?;?$/.test(x) && i > 3 && !(lines[i + 1] || '').includes('↑')) unsummarized.push(f + ':' + i); });
+}
+eq('lecciones: cada bloque de varias líneas que se cierra tiene su resumen ↑', unsummarized, []);
+eq('el prompt de dictado pide el resumen ↑ al cerrar cada bloque', P2.buildDictationSystemPrompt('', false).includes('AL CERRAR UN BLOQUE'), true);
+const pkgCfg = JSON.parse(require('fs').readFileSync(__dirname + '/../package.json', 'utf8')).contributes.configuration.properties;
+eq('ajuste de línea al completar juntos: activado por defecto', pkgCfg['autocompletehelp.dictation.wordWrap'].default, true);
+eq('el prompt pide comentarios que entren en la pantalla', P2.buildDictationSystemPrompt('', false).includes('80 caracteres'), true);
+eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
+
+function finish() {
+  console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
+  process.exit(fails ? 1 : 0);
+}

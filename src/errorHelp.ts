@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
-import { LearningLevel, getProjectBlock } from './prompts';
-import { showMarkdownPanel } from './explain';
+import { getProjectBlock } from './prompts';
+import { needsAI, showMarkdownPanel } from './explain';
 
 /**
  * «Entender este error»: aparece como acción rápida (la bombita) sobre los
@@ -85,12 +85,14 @@ export async function explainError(
     lines.push(document.lineAt(i).text);
   }
 
+  if (await needsAI('explicar el error')) {
+    return;
+  }
   const { provider, model, baseUrl } = resolveActiveConfig();
   const apiKey = await ensureApiKey(context, provider);
   if (provider.needsKey && !apiKey) {
     return;
   }
-  const level = vscode.workspace.getConfiguration('autocompletehelp').get<LearningLevel>('learningLevel', 'guiado');
   const file = vscode.workspace.asRelativePath(uri);
 
   await vscode.window.withProgress(
@@ -102,7 +104,7 @@ export async function explainError(
           baseUrl,
           model,
           apiKey,
-          system: buildErrorSystemPrompt(level, getProjectBlock()),
+          system: buildErrorSystemPrompt(getProjectBlock()),
           user: buildErrorUserPrompt(document.languageId, file, message!, source ?? '', from, lines, range!.start.line, range!.end.line),
           maxTokens: 1200
         });
@@ -118,30 +120,20 @@ export async function explainError(
 // Funciones puras (sin vscode): se prueban aisladas.
 // ---------------------------------------------------------------------------
 
-export function buildErrorSystemPrompt(level: LearningLevel, projectBlock: string): string {
+export function buildErrorSystemPrompt(projectBlock: string): string {
   const out = [
     'Eres un mentor de programación. El alumno tiene un error (o aviso) del editor en su código y quiere ENTENDERLO.',
     'Responde en español, en Markdown, con esta estructura:',
-    '## Qué dice — el mensaje traducido a palabras simples, sin jerga sin explicar.',
+    '## Qué dice — el mensaje traducido a palabras simples; define cada término técnico la primera vez.',
     '## Por qué pasa aquí — la causa concreta en SU código, señalando la línea marcada con ">>". No hables en abstracto.',
     '## Cómo encontrarlo tú — los pasos para llegar a la solución (qué mirar, qué comprobar).',
-    '## Para la próxima — cómo reconocer este tipo de error la próxima vez que aparezca, en una o dos frases.'
+    '## Para la próxima — cómo reconocer este tipo de error la próxima vez que aparezca, en una o dos frases.',
+    'NO escribas el código corregido ni la línea arreglada: el alumno debe corregirlo él mismo.',
+    'Puedes nombrar funciones, palabras clave o la parte exacta que falla, pero no la solución escrita.',
+    'Si hay una confusión de concepto detrás (no solo un descuido), nómbrala.'
   ];
-  if (level === 'completo') {
-    out.push('Al final, agrega "## Solución" con el código corregido de la línea o el bloque afectado.');
-  } else {
-    out.push(
-      'NO escribas el código corregido ni la línea arreglada: el alumno debe corregirlo él mismo.',
-      'Puedes nombrar funciones, palabras clave o la parte exacta que falla, pero no la solución escrita.',
-      level === 'educame'
-        ? 'El alumno está empezando: define cada término técnico la primera vez y usa una analogía si ayuda.'
-        : level === 'pista'
-          ? 'Da la menor ayuda posible: en "Cómo encontrarlo tú", una pregunta que lo lleve a la causa.'
-          : 'Si hay una confusión de concepto detrás (no solo un descuido), nómbrala.'
-    );
-  }
   if (projectBlock) {
-    out.push('Contexto del proyecto (usa su stack y versiones al explicar):', projectBlock);
+    out.push('Contexto del proyecto (usa su stack, versiones y arquitectura al explicar):', projectBlock);
   }
   return out.join('\n');
 }

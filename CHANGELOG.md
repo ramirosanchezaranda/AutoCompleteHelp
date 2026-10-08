@@ -2,6 +2,146 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.11.0] — 2026-10-09
+
+### Añadido
+
+- **Resumen al cerrar cada bloque**: después de la `}` de una función,
+  clase, `if` u objeto (y al terminar el cuerpo de una función o clase en
+  Python) aparece un comentario `↑` que resume qué hace ese bloque. La IA lo
+  escribe siempre; las lecciones sin IA lo traen; la barra de estado lo
+  muestra mientras empiezas lo siguiente.
+- **Ajuste de línea al completar juntos**: las líneas largas (comentarios
+  incluidos) siguen en la línea de abajo en vez de cortarse a la derecha. Se
+  activa solo durante el dictado y se devuelve al terminar
+  (`autocompletehelp.dictation.wordWrap`, activado por defecto). La IA escribe
+  comentarios de hasta unos 80 caracteres por línea.
+- **Tab ya no completa**: durante «Completamos juntos» cada palabra la
+  escribes tú (Tab queda tomado para que tampoco inserte tabulaciones).
+- **Empezar para escribir**: la sección Empezar tiene una caja de texto en
+  cada camino —tu proyecto, lo que quieres aprender, lo que te interesa— con
+  ejemplos para tocar. Lo escrito arranca el asistente de ese camino.
+- El comando *Empezar* y el primer paso de «Quiero aprender» aceptan texto
+  libre: lo que escribes aparece como primera opción.
+- **Teoría que se completa escribiendo**: nuevo tipo de paso `teoria`, un
+  apunte en `notas/NN-concepto.md` antes del código que lo usa. Las líneas
+  `>` son la explicación (se leen); el resto —título, definición, mini
+  ejemplo— lo escribes en gris, línea por línea. La IA los agrega al diseñar
+  proyectos para aprender y, cuando hace falta, en los planes de proyectos
+  propios. Las dos lecciones sin IA traen dos apuntes cada una.
+
+## [0.10.0] — 2026-10-09
+
+### Añadido
+
+- **Con API key, local o sin IA.** «Elegir la IA» es un asistente de tres
+  pasos (cómo → proveedor → modelo, con ← Atrás). IAs locales listas para
+  usar: Ollama, LM Studio, llama.cpp y Jan, con **detección de los modelos
+  instalados** y ayuda para ponerlas en marcha si no responden. «Agregar IA»
+  acepta endpoints en la nube con API key o locales sin clave. La barra de
+  estado muestra cómo se está usando la IA.
+- **Modo sin IA**: funcionan las lecciones sin IA, los perfiles curados con su
+  plan base, la arquitectura, la estructura, el entorno y el repaso; lo que
+  necesita un modelo lo avisa y ofrece elegir uno.
+- **Lecciones sin IA**: proyectos completos con el código y las explicaciones
+  ya escritos, que se completan juntos línea por línea sin modelo. Dos para
+  empezar: *Gestor de gastos en la terminal* (TypeScript) y *Ordenar la
+  carpeta Descargas* (Python), con sus tests verificados (3/3 y 5/5).
+  Aparecen en «Quiero aprender» y entre los proyectos recomendados del tema.
+- **Patrones de API** como tema propio: REST, paginación por cursor,
+  versionado, idempotencia, rate limiting, errores estándar (Problem Details),
+  webhooks firmados, OpenAPI y BFF.
+- **Asistentes paso a paso**: «Quiero aprender» y la elección de arquitectura
+  muestran «Paso n de N» y ← Atrás, conservando lo ya elegido.
+
+## [0.9.0] — 2026-10-08
+
+### Añadido
+
+- **AutoCompleteHelp en su propia barra lateral**, con las secciones
+  **Empezar**, **Quiero aprender** y **Plan del proyecto** (antes estaban en el
+  explorador). **Empezar** —y el comando del mismo nombre— deja elegir siempre
+  entre «Tengo un proyecto», «Quiero aprender algo» y «Recomiéndame un
+  proyecto».
+- **La IA recomienda proyectos**: elegido el tema, propone tres (sencillo,
+  intermedio, ambicioso) con lo que se aprende, la duración y si usan Docker o
+  la nube; se pueden pedir otros o escribir una idea propia. Sin conexión, se
+  ofrecen las ideas del catálogo. **«Recomiéndame un proyecto»** parte de lo
+  que le interesa a la persona y recomienda proyectos de cualquier tema.
+- **Catálogo ampliado a 40 temas**: Go, Rust, Java con Spring Boot,
+  C# y .NET, Next.js, FastAPI, GraphQL, patrones de diseño, SOLID y código
+  limpio, DDD, arquitectura orientada a eventos, AWS, Azure, Google Cloud,
+  Terraform, Kubernetes, CI/CD con GitHub Actions, entrenar un modelo de IA,
+  redes neuronales, apps con LLMs (RAG y agentes), análisis de datos, web
+  scraping, Flutter, Unity, Git y GitHub, seguridad web y algoritmos.
+- Reglas propias en el diseño del proyecto: nube con presupuesto, credenciales
+  fuera del código y un último paso que destruye todo; entrenamiento de IA
+  reproducible y testeado; LLMs detrás de una interfaz con tests sin tokens.
+- Se reconocen archivos de Terraform, Bicep, Dart y PowerShell.
+
+## [0.8.0] — 2026-10-08
+
+### Añadido
+
+- **Quiero aprender**: sección en el explorador y comando. De un tema
+  («TypeScript», «Three.js», «arquitectura hexagonal», «automatizaciones con
+  Python», «Docker», «SQL» o cualquier otro) a un proyecto completo para
+  aprenderlo: guía en `docs/APRENDER.md`, stack, arquitectura del catálogo,
+  plan y entorno. Se crea en una carpeta nueva (o en la abierta, si está
+  vacía) y se construye con el flujo de siempre. Trece temas curados traen
+  una semilla (stack, arquitectura, ideas de proyecto); el resto lo diseña la
+  IA.
+- **Pasos tipados** en el plan: código, test, configuración, Docker y
+  comando, con su ícono. Los tests son obligatorios en los proyectos de
+  aprendizaje; Docker solo cuando aporta. Un paso de comando se escribe en la
+  terminal al abrirlo.
+- **Verificación al terminar un paso**: si el paso tiene `verificar`, se
+  ofrece correr sus tests.
+- **«Preparar el entorno»**: instalar, Docker, ejecutar y tests del
+  proyecto, cada comando con su explicación, escritos en la terminal sin
+  ejecutarse.
+- `autocompletehelp.json` suma `entorno`, `aprender` y, en cada paso, `tipo`,
+  `comando`, `explicacion` y `verificar`.
+- Se reconocen `Dockerfile`, `Makefile` y `.env` para crear sus archivos con
+  la instrucción del paso; los archivos JSON también se completan juntos.
+
+## [0.7.0] — 2026-10-08
+
+### Cambiado
+
+- **Un solo modo: «Completamos juntos».** Se quitaron los niveles de
+  aprendizaje (`edúcame`, `pista`, `guiado`, `completo`) y el autocompletado
+  con Tab. La IA prepara el código del paso y se muestra en gris **una línea a
+  la vez**, con los comentarios que la explican justo arriba; al terminarla
+  (Enter) aparece la siguiente. El código entra al archivo a medida que
+  avanzas: nunca queda escrito por adelantado lo que no tecleaste.
+- Los comentarios combinan lo mejor de los niveles anteriores: definen cada
+  concepto la primera vez y explican qué, en vez de qué y cuándo no.
+- **Los huecos quedan solo en los repasos**: al construir el proyecto, todo el
+  código se muestra en gris.
+- «Entender este error» nunca da el código corregido.
+- Las instrucciones `// ach: …` + Enter se detectan sin depender del
+  autocompletado del editor.
+
+### Añadido
+
+- **Arquitectura y diseño de sistemas**: comando **«Elegir arquitectura»**,
+  también dentro de «Elegir stack», antes de armar el plan. Catálogo de nueve
+  estilos (monolito en capas, MVC, monolito modular, hexagonal, Clean
+  Architecture, frontend por componentes, microservicios, serverless y
+  orientada a eventos), cada uno con su organización, reglas, recorrido de una
+  petición, cuándo sí, cuándo no y costo. Tres preguntas dan una
+  recomendación calculada con reglas, sin IA.
+- La arquitectura se guarda en `autocompletehelp.json`; el plan sigue su
+  estructura y el código explica en qué parte de ella vive cada archivo.
+- **`docs/ARQUITECTURA.md`**: registro de la decisión con contexto,
+  alternativas, consecuencias y diagrama Mermaid.
+
+### Eliminado
+
+- Settings `learningLevel`, `interactionMode`, `dictation.gaps` y
+  `debounceMs`; comandos «Elegir nivel de aprendizaje» y «Elegir modo».
+
 ## [0.6.0] — 2026-10-01
 
 ### Añadido

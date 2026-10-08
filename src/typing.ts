@@ -23,6 +23,10 @@ export function commentPrefixes(languageId: string): string[] {
   if (['html', 'xml', 'vue-html', 'svg'].includes(languageId)) {
     return ['<!--'];
   }
+  // Apuntes de teoría: las citas (>) son la explicación que se lee; lo demás se escribe.
+  if (languageId === 'markdown') {
+    return ['>', '<!--'];
+  }
   if (['css', 'scss', 'less'].includes(languageId)) {
     return ['/*', '*'];
   }
@@ -135,6 +139,15 @@ export function lineEnd(text: string, pos: number): number {
   return nl < 0 ? text.length : nl;
 }
 
+/**
+ * Hasta dónde se muestra el código: la línea que estás escribiendo, con los
+ * comentarios que la explican arriba, y nada más. La siguiente aparece cuando
+ * terminas esta. Al final se muestra todo (los comentarios que cierran).
+ */
+export function revealEnd(text: string, pos: number): number {
+  return pos >= text.length ? text.length : lineEnd(text, pos);
+}
+
 /** Porcentaje escrito, contando solo lo que se teclea. */
 export function progressOf(mask: boolean[], pos: number): number {
   let total = 0;
@@ -151,22 +164,55 @@ export function progressOf(mask: boolean[], pos: number): number {
 }
 
 /**
+ * Comentario de cierre: va justo después de cerrar un bloque (la llave de una
+ * función, un if, una clase; en Python, al terminar su cuerpo) y resume qué
+ * hace lo que se acaba de escribir. Empieza con «↑».
+ */
+export const SUMMARY_MARK = '↑';
+
+export function isSummaryLine(line: string, prefixes: string[]): boolean {
+  return isCommentLine(line, prefixes) && stripComment(line, prefixes).startsWith(SUMMARY_MARK);
+}
+
+/**
  * La explicación que corresponde a lo que estás escribiendo: el bloque de
  * comentarios inmediatamente anterior a la línea actual (o al bloque de código
- * en el que está). Es lo que se «dicta» en la barra de estado.
+ * en el que está). Es lo que se «dicta» en la barra de estado. Los resúmenes
+ * de cierre (↑) de bloques internos se saltan: no explican lo que viene.
  */
 export function explanationAt(text: string, pos: number, prefixes: string[]): string {
   const lines = text.split('\n');
   let idx = text.slice(0, pos).split('\n').length - 1;
   // Subir por el bloque de código actual hasta su comentario.
-  while (idx > 0 && !isCommentLine(lines[idx - 1], prefixes) && lines[idx - 1].trim() !== '') {
+  while (
+    idx > 0 &&
+    (isSummaryLine(lines[idx - 1], prefixes) || (!isCommentLine(lines[idx - 1], prefixes) && lines[idx - 1].trim() !== ''))
+  ) {
     idx--;
   }
   const out: string[] = [];
-  for (let i = idx - 1; i >= 0 && isCommentLine(lines[i], prefixes); i--) {
+  for (let i = idx - 1; i >= 0 && isCommentLine(lines[i], prefixes) && !isSummaryLine(lines[i], prefixes); i--) {
     out.unshift(stripComment(lines[i], prefixes));
   }
   return out.filter(Boolean).join(' ');
+}
+
+/**
+ * El resumen (↑) del bloque que acabas de cerrar, mientras empiezas lo
+ * siguiente: entre la línea actual y ese resumen solo hay comentarios o líneas
+ * en blanco. Si no acabas de cerrar un bloque, ''.
+ */
+export function summaryAt(text: string, pos: number, prefixes: string[]): string {
+  const lines = text.split('\n');
+  let idx = text.slice(0, pos).split('\n').length - 1;
+  while (idx > 0 && !isSummaryLine(lines[idx - 1], prefixes) && (lines[idx - 1].trim() === '' || isCommentLine(lines[idx - 1], prefixes))) {
+    idx--;
+  }
+  const out: string[] = [];
+  for (let i = idx - 1; i >= 0 && isSummaryLine(lines[i], prefixes); i--) {
+    out.unshift(stripComment(lines[i], prefixes).slice(SUMMARY_MARK.length).trim());
+  }
+  return out.join(' ');
 }
 
 function stripComment(line: string, prefixes: string[]): string {
@@ -185,19 +231,6 @@ function stripComment(line: string, prefixes: string[]): string {
 // ---------------------------------------------------------------------------
 
 export type Range2 = [number, number];
-
-/**
- * Proporción de huecos según cuánto practicaste los conceptos de este código:
- * lo nuevo se dicta entero; lo que ya escribiste varias veces, se recuerda.
- * Recordar (en vez de copiar) es lo que fija lo aprendido.
- */
-export function gapRatio(stages: { nuevos: number; enPractica: number; conocidos: number }): number {
-  const total = stages.nuevos + stages.enPractica + stages.conocidos;
-  if (!total) {
-    return 0;
-  }
-  return Math.round(((0.2 * stages.enPractica + 0.4 * stages.conocidos) / total) * 100) / 100;
-}
 
 /**
  * Elige qué palabras del código quedan como hueco. Solo identificadores y

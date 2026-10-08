@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { resolveActiveConfig } from './providers/catalog';
+import { noAI, resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
 import { buildStackSystemPrompt, getProjectPrompt, saveProjectPrompt } from './prompts';
 import { showMarkdownPanel } from './explain';
 import { PROFILES, StackProfile, getProfile, matchProfile } from './stackProfiles';
+import { pickArchitecture, toProjectArchitecture, writeArchitectureDoc } from './archPicker';
 import {
   PROJECT_FILE,
   ProjectFile,
@@ -44,15 +45,29 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
   const { preferred } = choice;
   let profile = choice.profile;
 
-  const { provider, model, baseUrl } = resolveActiveConfig();
-  const apiKey = await ensureApiKey(context, provider);
-  if (provider.needsKey && !apiKey) {
+  // Antes del plan, la arquitectura: decide dónde vive cada archivo.
+  const arch = await pickArchitecture(profile?.id);
+  if (!arch) {
     return;
   }
 
   let answer = '';
   let failure = '';
-  await vscode.window.withProgress(
+  const sinIA = noAI();
+  if (sinIA && !profile) {
+    vscode.window.showInformationMessage(
+      'AutoCompleteHelp: sin IA, el stack sale de los perfiles curados (traen su plan base). Elige uno, o activa una IA para cualquier otro stack.'
+    );
+    return;
+  }
+  const { provider, model, baseUrl } = resolveActiveConfig();
+  const apiKey = sinIA ? undefined : await ensureApiKey(context, provider);
+  if (!sinIA && provider.needsKey && !apiKey) {
+    return;
+  }
+  if (sinIA) {
+    failure = 'modo sin IA';
+  } else await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: preferred
@@ -66,7 +81,7 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
           baseUrl,
           model,
           apiKey,
-          system: buildStackSystemPrompt(preferred, profile),
+          system: buildStackSystemPrompt(preferred, profile, arch.arch),
           user: `Mi proyecto: ${projectPrompt}\n\n${
             preferred ? 'Concreta y planifica mi stack.' : 'Recomiéndame el stack.'
           }`,
@@ -90,7 +105,10 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
   } else if (profile) {
     // Sin conexión con el modelo, un perfil curado igual sirve: su plan base.
     const action = await vscode.window.showWarningMessage(
-      `AutoCompleteHelp: no pude consultar al modelo (${failure}). ¿Guardo ${profile.nombre} con su plan base?`,
+      `AutoCompleteHelp: no pude consultar al modelo (${failure}). ¿Guardo ${profile.nombre} con su plan base?` +
+        (['capas', 'mvc', 'componentes'].includes(arch.arch.id)
+          ? ''
+          : ` Ojo: el plan base sigue la estructura del perfil, no ${arch.arch.nombre}; ajusta las rutas en autocompletehelp.json o reintenta con conexión.`),
       'Usar el plan base'
     );
     if (!action) {
@@ -101,7 +119,8 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
     return;
   }
 
-  const final = mergeWithProfile(proposal, profile);
+  const merged = mergeWithProfile(proposal, profile);
+  const final = merged && { ...merged, arquitectura: toProjectArchitecture(arch) };
   if (!final) {
     vscode.window.showWarningMessage(
       'AutoCompleteHelp: no pude leer el stack estructurado de la respuesta. Vuelve a intentarlo o edita autocompletehelp.json a mano.'
@@ -112,7 +131,7 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
   const summary = final.stack.resumen ?? Object.values(final.stack).join(' + ');
   const steps = final.plan?.length ?? 0;
   const action = await vscode.window.showInformationMessage(
-    `Stack: ${summary}${steps ? ` · plan de ${steps} pasos` : ''}${profile ? ' · perfil curado' : ''}`,
+    `Stack: ${summary} · ${arch.arch.nombre}${steps ? ` · plan de ${steps} pasos` : ''}${profile ? ' · perfil curado' : ''}`,
     `Guardar en ${PROJECT_FILE}`
   );
   if (!action) {
@@ -125,8 +144,9 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
     );
     return;
   }
+  await writeArchitectureDoc(arch);
   const next = await vscode.window.showInformationMessage(
-    'AutoCompleteHelp: stack y plan guardados; el plan aparece en el panel «Plan del proyecto». ¿Creo la estructura de carpetas y archivos?',
+    'AutoCompleteHelp: stack, arquitectura y plan guardados (la decisión de arquitectura está en docs/ARQUITECTURA.md). ¿Creo la estructura de carpetas y archivos?',
     'Crear estructura',
     'Abrir archivo'
   );

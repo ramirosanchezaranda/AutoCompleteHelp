@@ -18,9 +18,9 @@ export interface ConceptStat {
   label: string;
   /** Veces que el concepto entró al código del usuario. */
   seen: number;
-  /** Veces aceptadas con Tab (la IA escribió). */
+  /** Veces completadas sin escribirlas (la IA escribió). */
   accepted: number;
-  /** Veces que el usuario lo escribió por su cuenta (modo pista). */
+  /** Veces que el usuario lo escribió (completamos juntos o repaso). */
   practiced: number;
   firstSeen: string;
   lastSeen: string;
@@ -98,7 +98,7 @@ export function knownConcepts(context: vscode.ExtensionContext, limit = 25): str
     .map((c) => c.label);
 }
 
-/** Registra que los conceptos entraron al código (al aceptar con Tab). */
+/** Registra que los conceptos entraron al código: escritos por la persona o completados sin escribir. */
 export async function recordAccepted(
   context: vscode.ExtensionContext,
   concepts: string[],
@@ -109,9 +109,9 @@ export async function recordAccepted(
   }
   const ledger = readLedger(context);
   const now = new Date().toISOString();
-  // En modo pista la IA no escribió la solución, y en el dictado la tecleó el
-  // usuario: cuenta como práctica, no como código aceptado.
-  const userWroteIt = level === 'pista' || level === 'dictado';
+  // Lo que la persona tecleó al completar juntos cuenta como práctica; lo que
+  // se completó sin escribir, como código aceptado.
+  const userWroteIt = level === 'dictado';
 
   for (const raw of concepts) {
     const { id, label } = normalizeConcept(raw);
@@ -143,7 +143,7 @@ export function progressReport(context: vscode.ExtensionContext): string {
     return [
       '# Tu progreso',
       '',
-      'Todavía no hay conceptos registrados. Acepta algunas sugerencias y vuelve:',
+      'Todavía no hay conceptos registrados. Completa algún paso del plan y vuelve:',
       'AutoCompleteHelp anota cada concepto que entra en tu código y va bajando',
       'las explicaciones a medida que lo repites.'
     ].join('\n');
@@ -169,8 +169,8 @@ export function progressReport(context: vscode.ExtensionContext): string {
   );
   if (ownRate < 25 && totalTouches >= 10) {
     out.push(
-      '> La IA está escribiendo casi todo. Prueba el nivel **pista** un rato:',
-      '> escribir el código tú es lo que fija el aprendizaje.',
+      '> Muchas veces completaste sin escribir. Escribir tú cada línea',
+      '> es lo que fija el aprendizaje.',
       ''
     );
   }

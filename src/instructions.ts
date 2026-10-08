@@ -18,7 +18,7 @@ export async function insertInstruction(preset?: string, stepIndex?: number): Pr
     (await vscode.window.showInputBox({
       title: 'AutoCompleteHelp — ¿Qué quieres construir aquí?',
       prompt:
-        'Ej: "ruta para listar productos con paginación". Se inserta como comentario ach: y la sugerencia sigue tu nivel de aprendizaje.',
+        'Ej: "ruta para listar productos con paginación". Se inserta como comentario ach: y completamos juntos el código, línea por línea.',
       ignoreFocusOut: true
     }));
   if (!text?.trim()) {
@@ -57,12 +57,24 @@ const EXT_LANG: Record<string, string> = {
   rs: 'rust', java: 'java', kt: 'kotlin', cs: 'csharp', php: 'php', swift: 'swift',
   c: 'c', h: 'c', cpp: 'cpp', html: 'html', htm: 'html', css: 'css', scss: 'scss',
   sql: 'sql', sh: 'shellscript', yml: 'yaml', yaml: 'yaml', toml: 'toml',
-  md: 'markdown', vue: 'vue', svelte: 'svelte', lua: 'lua'
+  md: 'markdown', vue: 'vue', svelte: 'svelte', lua: 'lua', tf: 'terraform', bicep: 'bicep',
+  dart: 'dart', hcl: 'terraform', ps1: 'powershell'
 };
 
 /** Identificador de lenguaje del IDE a partir de la extensión del archivo. */
 export function languageForPath(path: string): string | undefined {
-  const ext = path.split('/').pop()?.split('.').pop()?.toLowerCase();
+  const name = path.split('/').pop() ?? '';
+  // Archivos sin extensión que se reconocen por el nombre.
+  if (/^dockerfile(\..+)?$/i.test(name) || /\.dockerfile$/i.test(name)) {
+    return 'dockerfile';
+  }
+  if (/^makefile$/i.test(name)) {
+    return 'makefile';
+  }
+  if (/^\.env(\..+)?$/i.test(name)) {
+    return 'shellscript';
+  }
+  const ext = name.includes('.') ? name.split('.').pop()?.toLowerCase() : undefined;
   return ext ? EXT_LANG[ext] : undefined;
 }
 
