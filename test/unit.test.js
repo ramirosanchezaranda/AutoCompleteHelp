@@ -236,7 +236,7 @@ const pa = parseProjectFile(JSON.stringify({ prompt: 'x', arquitectura: { estilo
 eq('autocompletehelp.json guarda la arquitectura (y descarta basura)', [pa.arquitectura.estilo, pa.arquitectura.reglas], ['hexagonal', ['El dominio no importa nada de afuera.']]);
 eq('sin estilo no hay arquitectura', parseProjectFile('{"prompt":"x","arquitectura":{"nombre":"y"}}').arquitectura, undefined);
 eq('la IA recibe la arquitectura y sus reglas', formatProjectForPrompt(pa).includes('Arquitectura: Hexagonal') && formatProjectForPrompt(pa).includes('El dominio no importa'), true);
-eq('el plan se arma con la arquitectura elegida', buildStackSystemPrompt('Node', undefined, hex).includes('ARQUITECTURA ELEGIDA: Arquitectura hexagonal'), true);
+eq('el plan se arma con la arquitectura elegida', buildStackSystemPrompt('Node', undefined, hex).includes('ARQUITECTURA ELEGIDA: Hexagonal (puertos y adaptadores)'), true);
 eq('el esquema JSON conoce todas las arquitecturas', JSON.stringify(jsonSchema.properties.arquitectura.properties.estilo.enum), JSON.stringify(A.ARCHITECTURES.map((a) => a.id)));
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');

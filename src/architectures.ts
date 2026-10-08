@@ -110,7 +110,7 @@ export const ARCHITECTURES: Architecture[] = [
   },
   {
     id: 'hexagonal',
-    nombre: 'Arquitectura hexagonal (puertos y adaptadores)',
+    nombre: 'Hexagonal (puertos y adaptadores)',
     resumen: 'El negocio en el centro, sin depender de nada externo; la web, la base y los servicios externos se conectan por «puertos».',
     como: 'El dominio define interfaces (puertos) de lo que necesita: «guardar un pedido», «cobrar». Afuera, los adaptadores implementan esos puertos con tecnologías concretas: Express, MongoDB, Stripe. Cambiar la base es cambiar un adaptador.',
     carpetas: ['domain/ (entidades y reglas puras)', 'application/ (casos de uso y puertos)', 'adapters/in/ (HTTP, CLI)', 'adapters/out/ (base de datos, APIs externas)'],
@@ -208,7 +208,7 @@ export const ARCHITECTURES: Architecture[] = [
   },
   {
     id: 'eventos',
-    nombre: 'Arquitectura orientada a eventos',
+    nombre: 'Orientada a eventos',
     resumen: 'Las partes no se llaman entre sí: publican eventos («pedido creado») y quien le interesa reacciona.',
     como: 'Un bus o cola de mensajes reparte los eventos. Quien publica no sabe quién escucha, así que se pueden sumar reacciones nuevas sin tocar el código original.',
     carpetas: ['events/ (definición de eventos)', 'publishers/', 'handlers/ (quién reacciona a qué)', 'infra/ (bus o cola)'],
