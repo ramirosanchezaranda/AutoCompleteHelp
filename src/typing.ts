@@ -135,6 +135,15 @@ export function lineEnd(text: string, pos: number): number {
   return nl < 0 ? text.length : nl;
 }
 
+/**
+ * Hasta dónde se muestra el código: la línea que estás escribiendo, con los
+ * comentarios que la explican arriba, y nada más. La siguiente aparece cuando
+ * terminas esta. Al final se muestra todo (los comentarios que cierran).
+ */
+export function revealEnd(text: string, pos: number): number {
+  return pos >= text.length ? text.length : lineEnd(text, pos);
+}
+
 /** Porcentaje escrito, contando solo lo que se teclea. */
 export function progressOf(mask: boolean[], pos: number): number {
   let total = 0;
@@ -185,19 +194,6 @@ function stripComment(line: string, prefixes: string[]): string {
 // ---------------------------------------------------------------------------
 
 export type Range2 = [number, number];
-
-/**
- * Proporción de huecos según cuánto practicaste los conceptos de este código:
- * lo nuevo se dicta entero; lo que ya escribiste varias veces, se recuerda.
- * Recordar (en vez de copiar) es lo que fija lo aprendido.
- */
-export function gapRatio(stages: { nuevos: number; enPractica: number; conocidos: number }): number {
-  const total = stages.nuevos + stages.enPractica + stages.conocidos;
-  if (!total) {
-    return 0;
-  }
-  return Math.round(((0.2 * stages.enPractica + 0.4 * stages.conocidos) / total) * 100) / 100;
-}
 
 /**
  * Elige qué palabras del código quedan como hueco. Solo identificadores y

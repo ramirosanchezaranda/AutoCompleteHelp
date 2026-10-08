@@ -163,13 +163,11 @@ const py = "# Leemos el archivo con with: lo cierra aunque falle.\nwith open('a.
 const pm = T.autoMask(py, T.commentPrefixes('python'));
 eq('python: # avanza solo', py.slice(T.skipAuto(pm, 0), T.skipAuto(pm, 0) + 4), 'with');
 const { buildDictationSystemPrompt } = require(out + 'prompts.js');
-const dp = buildDictationSystemPrompt('guiado', 'Objetivo: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología', true);
+const dp = buildDictationSystemPrompt('Objetivo: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología', true);
 eq('prompt de dictado: comentarios antes de cada bloque, metodología y objetivo',
   [dp.includes('ANTES de cada bloque'), dp.includes('METODOLOGÍA'), dp.includes('e-commerce completa'), dp.includes('@ach-concepts')], [true, true, true, true]);
 
-console.log('— fase 3: huecos según lo practicado');
-eq('concepto nuevo → sin huecos', T.gapRatio({ nuevos: 2, enPractica: 0, conocidos: 0 }), 0);
-eq('en práctica y dominado → más huecos', [T.gapRatio({ nuevos: 0, enPractica: 1, conocidos: 0 }), T.gapRatio({ nuevos: 0, enPractica: 0, conocidos: 2 })], [0.2, 0.4]);
+console.log('— fase 3: huecos (solo en los repasos)');
 const gaps = T.chooseGaps(dict, mask, 0.4, 7);
 eq('huecos deterministas con la misma semilla', JSON.stringify(gaps) === JSON.stringify(T.chooseGaps(dict, mask, 0.4, 7)), true);
 eq('nunca en comentarios ni en la primera palabra', gaps.every(([s]) => !mask[s]) && gaps[0][0] > dict.indexOf('const'), true);
@@ -202,8 +200,44 @@ const E = require(out + 'errorHelp.js');
 const errPrompt = E.buildErrorUserPrompt('javascript', 'server.js', "Cannot find name 'expres'.", 'ts 2304', 9, ['a();', 'expres();', 'b();'], 10, 10);
 eq('marca la línea del error con su número real', errPrompt.split('\n').filter((l) => l.startsWith('>>')), ['>> 11 | expres();']);
 eq('incluye mensaje y origen', errPrompt.includes("Error (ts 2304): Cannot find name 'expres'."), true);
-eq('sin código corregido salvo en nivel completo',
-  [E.buildErrorSystemPrompt('guiado', '').includes('NO escribas el código corregido'), E.buildErrorSystemPrompt('completo', '').includes('## Solución')], [true, true]);
+eq('nunca da el código corregido', [E.buildErrorSystemPrompt('').includes('NO escribas el código corregido'), E.buildErrorSystemPrompt('').includes('## Solución')], [true, false]);
+
+console.log('— completamos juntos: una línea a la vez');
+const cj = "// Importamos express: el framework.\nconst express = require('express');\n\n// La app.\nconst app = express();\n// ➜ Siguiente paso: rutas";
+const cjm = T.autoMask(cj, js);
+const p0 = T.skipAuto(cjm, 0);
+eq('al empezar se ve el comentario y la primera línea, nada más', cj.slice(0, T.revealEnd(cj, p0)), "// Importamos express: el framework.\nconst express = require('express');");
+const p1 = T.typeKeys(cj, cjm, p0, "const express = require('express');\n").pos;
+eq('tras Enter aparece el comentario y la línea siguiente', cj.slice(T.revealEnd(cj, p0), T.revealEnd(cj, p1)), "\n\n// La app.\nconst app = express();");
+const p2 = T.typeKeys(cj, cjm, p1, 'const app = express();\n').pos;
+eq('al terminar se muestra el comentario final', [p2, T.revealEnd(cj, p2)], [cj.length, cj.length]);
+eq('a mitad de línea, lo visible llega hasta el fin de esa línea', T.revealEnd(cj, p0 + 6), cj.indexOf('\n', p0));
+eq('prompt: una línea a la vez y la arquitectura en el primer comentario', [dp.includes('UNA línea de código a la vez'), dp.includes('ARQUITECTURA')], [true, true]);
+
+console.log('— arquitectura y diseño de sistemas');
+const A = require(out + 'architectures.js');
+eq('catálogo completo: cada arquitectura explica cuándo sí, cuándo no, reglas y diagrama',
+  A.ARCHITECTURES.every((a) => a.cuandoSi.length && a.cuandoNo.length && a.reglas.length && a.carpetas.length && a.diagrama.startsWith('flowchart')), true);
+const rec = (o) => A.recommendArchitecture(Object.assign({ tipo: 'api', equipo: 'solo', areas: 'pocas', objetivo: 'fundamentos' }, o)).recomendada;
+eq('API simple para aprender → monolito en capas', rec({}), 'capas');
+eq('varias áreas → monolito modular', rec({ areas: 'varias' }), 'modular');
+eq('quiere practicar diseño → hexagonal', rec({ objetivo: 'diseno' }), 'hexagonal');
+eq('varios equipos y varias áreas → microservicios', rec({ equipo: 'varios', areas: 'varias' }), 'microservicios');
+eq('web con páginas del servidor → MVC; frontend → componentes', [rec({ tipo: 'web-servidor' }), rec({ tipo: 'frontend' })], ['mvc', 'componentes']);
+eq('microservicios nunca es la recomendación para una persona sola', ['pocas', 'varias'].flatMap((areas) => ['fundamentos', 'diseno'].map((objetivo) => rec({ areas, objetivo }))).includes('microservicios'), false);
+eq('la recomendada siempre aplica al tipo de app', ['api', 'web-servidor', 'frontend', 'otra'].every((tipo) => A.getArchitecture(rec({ tipo })).tipos.includes(tipo)), true);
+eq('tipo de app según el perfil', [A.appKindForProfile('django'), A.appKindForProfile('react-vite'), A.appKindForProfile('node-express'), A.appKindForProfile('x')], ['web-servidor', 'frontend', 'api', undefined]);
+const hex = A.getArchitecture('hexagonal');
+const adr = A.architectureDoc(hex, { prompt: 'e-commerce completa', stack: 'Node.js + Express 5', razones: ['Practicar diseño.'], alternativas: ['capas', 'clean'], fecha: '2026-10-08' });
+eq('registro de decisión con contexto, decisión, alternativas, consecuencias y diagrama',
+  ['## Contexto', '## Decisión', '## Alternativas consideradas', '## Consecuencias', '```mermaid', 'Monolito en capas'].every((x) => adr.includes(x)), true);
+eq('explicación con cuándo no y costo', ['## Cuándo no', '## Lo que se paga', '## Reglas que vas a respetar'].every((x) => A.explainArchitecture(hex).includes(x)), true);
+const pa = parseProjectFile(JSON.stringify({ prompt: 'x', arquitectura: { estilo: 'hexagonal', nombre: 'Hexagonal', reglas: ['El dominio no importa nada de afuera.', 3] } }));
+eq('autocompletehelp.json guarda la arquitectura (y descarta basura)', [pa.arquitectura.estilo, pa.arquitectura.reglas], ['hexagonal', ['El dominio no importa nada de afuera.']]);
+eq('sin estilo no hay arquitectura', parseProjectFile('{"prompt":"x","arquitectura":{"nombre":"y"}}').arquitectura, undefined);
+eq('la IA recibe la arquitectura y sus reglas', formatProjectForPrompt(pa).includes('Arquitectura: Hexagonal') && formatProjectForPrompt(pa).includes('El dominio no importa'), true);
+eq('el plan se arma con la arquitectura elegida', buildStackSystemPrompt('Node', undefined, hex).includes('ARQUITECTURA ELEGIDA: Arquitectura hexagonal'), true);
+eq('el esquema JSON conoce todas las arquitecturas', JSON.stringify(jsonSchema.properties.arquitectura.properties.estilo.enum), JSON.stringify(A.ARCHITECTURES.map((a) => a.id)));
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);

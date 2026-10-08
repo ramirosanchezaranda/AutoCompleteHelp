@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AutoCompleteHelp — proyecto",
-  "description": "Fuente de verdad del proyecto para AutoCompleteHelp: objetivo, stack, convenciones y plan. Se versiona junto al código.",
+  "description": "Fuente de verdad del proyecto para AutoCompleteHelp: objetivo, stack, convenciones, arquitectura y plan. Se versiona junto al código.",
   "type": "object",
   "required": [
     "prompt"
@@ -56,6 +56,52 @@
       "description": "Reglas del proyecto que las sugerencias deben respetar.",
       "items": {
         "type": "string"
+      }
+    },
+    "arquitectura": {
+      "type": "object",
+      "description": "Arquitectura del proyecto. La fija «Elegir arquitectura» (o «Elegir stack»); el plan y el código siguen su estructura y sus reglas. La decisión se explica en docs/ARQUITECTURA.md.",
+      "required": [
+        "estilo"
+      ],
+      "properties": {
+        "estilo": {
+          "type": "string",
+          "enum": [
+            "capas",
+            "mvc",
+            "modular",
+            "hexagonal",
+            "clean",
+            "componentes",
+            "microservicios",
+            "serverless",
+            "eventos"
+          ]
+        },
+        "nombre": {
+          "type": "string"
+        },
+        "razones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "carpetas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Estructura orientativa."
+        },
+        "reglas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reglas que el código respeta, sobre todo de dependencias entre partes."
+        }
       }
     },
     "plan": {

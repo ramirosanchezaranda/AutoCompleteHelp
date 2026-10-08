@@ -18,7 +18,7 @@ export async function insertInstruction(preset?: string, stepIndex?: number): Pr
     (await vscode.window.showInputBox({
       title: 'AutoCompleteHelp — ¿Qué quieres construir aquí?',
       prompt:
-        'Ej: "ruta para listar productos con paginación". Se inserta como comentario ach: y la sugerencia sigue tu nivel de aprendizaje.',
+        'Ej: "ruta para listar productos con paginación". Se inserta como comentario ach: y completamos juntos el código, línea por línea.',
       ignoreFocusOut: true
     }));
   if (!text?.trim()) {

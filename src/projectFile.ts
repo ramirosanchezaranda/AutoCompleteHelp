@@ -28,12 +28,22 @@ export interface PlanStep {
   hecho?: boolean;
 }
 
+/** Arquitectura elegida (src/architectures.ts) y lo que el código debe respetar. */
+export interface ProjectArchitecture {
+  estilo: string;
+  nombre: string;
+  razones?: string[];
+  carpetas?: string[];
+  reglas?: string[];
+}
+
 export interface ProjectFile {
   prompt: string;
   /** Id del perfil de stack curado (src/stackProfiles.ts), si corresponde. */
   perfil?: string;
   stack?: StackInfo;
   convenciones?: string[];
+  arquitectura?: ProjectArchitecture;
   plan?: PlanStep[];
 }
 
@@ -81,6 +91,17 @@ export function parseProjectFile(text: string): ProjectFile | undefined {
   }
   if (Array.isArray(data.convenciones)) {
     project.convenciones = data.convenciones.filter((c: unknown) => typeof c === 'string');
+  }
+  const a = data.arquitectura;
+  if (a && typeof a === 'object' && typeof a.estilo === 'string' && a.estilo.trim()) {
+    const strings = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : undefined);
+    project.arquitectura = {
+      estilo: a.estilo.trim(),
+      nombre: typeof a.nombre === 'string' && a.nombre.trim() ? a.nombre.trim() : a.estilo.trim(),
+      razones: strings(a.razones),
+      carpetas: strings(a.carpetas),
+      reglas: strings(a.reglas)
+    };
   }
   if (Array.isArray(data.plan)) {
     project.plan = data.plan
@@ -197,6 +218,16 @@ export function formatProjectForPrompt(project: ProjectFile | undefined): string
   }
   if (project.convenciones?.length) {
     lines.push(`Convenciones: ${project.convenciones.join('; ')}`);
+  }
+  if (project.arquitectura) {
+    const a = project.arquitectura;
+    lines.push(`Arquitectura: ${a.nombre}`);
+    if (a.carpetas?.length) {
+      lines.push(`  Estructura: ${a.carpetas.join('; ')}`);
+    }
+    if (a.reglas?.length) {
+      lines.push(`  Reglas: ${a.reglas.join(' ')}`);
+    }
   }
   if (project.plan?.length) {
     const done = project.plan.filter((s) => s.hecho).length;

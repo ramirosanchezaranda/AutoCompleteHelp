@@ -2,6 +2,43 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.7.0] — 2026-10-08
+
+### Cambiado
+
+- **Un solo modo: «Completamos juntos».** Se quitaron los niveles de
+  aprendizaje (`edúcame`, `pista`, `guiado`, `completo`) y el autocompletado
+  con Tab. La IA prepara el código del paso y se muestra en gris **una línea a
+  la vez**, con los comentarios que la explican justo arriba; al terminarla
+  (Enter) aparece la siguiente. El código entra al archivo a medida que
+  avanzas: nunca queda escrito por adelantado lo que no tecleaste.
+- Los comentarios combinan lo mejor de los niveles anteriores: definen cada
+  concepto la primera vez y explican qué, en vez de qué y cuándo no.
+- **Los huecos quedan solo en los repasos**: al construir el proyecto, todo el
+  código se muestra en gris.
+- «Entender este error» nunca da el código corregido.
+- Las instrucciones `// ach: …` + Enter se detectan sin depender del
+  autocompletado del editor.
+
+### Añadido
+
+- **Arquitectura y diseño de sistemas**: comando **«Elegir arquitectura»**,
+  también dentro de «Elegir stack», antes de armar el plan. Catálogo de nueve
+  estilos (monolito en capas, MVC, monolito modular, hexagonal, Clean
+  Architecture, frontend por componentes, microservicios, serverless y
+  orientada a eventos), cada uno con su organización, reglas, recorrido de una
+  petición, cuándo sí, cuándo no y costo. Tres preguntas dan una
+  recomendación calculada con reglas, sin IA.
+- La arquitectura se guarda en `autocompletehelp.json`; el plan sigue su
+  estructura y el código explica en qué parte de ella vive cada archivo.
+- **`docs/ARQUITECTURA.md`**: registro de la decisión con contexto,
+  alternativas, consecuencias y diagrama Mermaid.
+
+### Eliminado
+
+- Settings `learningLevel`, `interactionMode`, `dictation.gaps` y
+  `debounceMs`; comandos «Elegir nivel de aprendizaje» y «Elegir modo».
+
 ## [0.6.0] — 2026-10-01
 
 ### Añadido

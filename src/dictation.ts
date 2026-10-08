@@ -3,16 +3,15 @@ import { resolveActiveConfig } from './providers/catalog';
 import { complete, streamComplete } from './providers/client';
 import { getApiKey } from './secrets';
 import {
-  LearningLevel,
   buildDictationSystemPrompt,
   buildUserPrompt,
   extractConcepts,
   getProjectBlock,
   sanitizeCompletion
 } from './prompts';
-import { knownConcepts, recordAccepted, stagesFor } from './conceptLedger';
+import { knownConcepts, recordAccepted } from './conceptLedger';
 import { REVIEW_DAYS, recordReview } from './review';
-import { ProjectContext } from './projectContext';
+import { ProjectContext, detectInstruction } from './projectContext';
 import { markStep } from './projectFile';
 import {
   autoMask,
@@ -21,28 +20,28 @@ import {
   chooseGaps,
   clipRanges,
   commentPrefixes,
-  gapRatio,
   inGap,
   explanationAt,
   lineEnd,
   nextWordEnd,
   progressOf,
+  revealEnd,
   skipAuto,
   subtractRanges,
   typeKeys
 } from './typing';
 
 /**
- * MODO DICTADO: la IA no autocompleta, dicta. El código del paso aparece en
- * gris y lo escribes encima, carácter a carácter. Los comentarios (que dicen
- * qué escribir y por qué esa metodología) y la indentación avanzan solos;
- * cada carácter de código y cada Enter los tecleas tú.
+ * «COMPLETAMOS JUNTOS»: el único modo. La IA no autocompleta, dicta. Se ve en
+ * gris UNA línea de código a la vez, con los comentarios que la explican
+ * justo arriba, y la escribes encima, carácter a carácter. Al terminarla
+ * (Enter) aparece la siguiente. Los comentarios y la indentación avanzan
+ * solos; cada carácter de código y cada Enter los tecleas tú.
  *
- * Para escribir «encima» del gris se toma el comando `type` del editor
- * mientras dura el dictado (como hacen las extensiones de Vim) y se devuelve
- * al terminar. Un acierto no edita el archivo: solo avanza el punto que separa
- * lo escrito del gris. Si terminas antes, se borra lo que falta: en el archivo
- * queda solo lo que escribiste.
+ * El código se inserta en el archivo a medida que avanzas: nunca hay en el
+ * archivo más que lo que escribiste y la línea en curso. Para escribir
+ * «encima» del gris se toma el comando `type` del editor mientras dura la
+ * sesión (como hacen las extensiones de Vim) y se devuelve al terminar.
  */
 
 const CONTEXT_KEY = 'autocompletehelp.dictating';
@@ -50,44 +49,26 @@ const TIP_KEY = 'autocompletehelp.dictationTipShown';
 const MAX_PREFIX_CHARS = 6000;
 const MAX_SUFFIX_CHARS = 2000;
 
-export type InteractionMode = 'dictado' | 'autocompletar';
-
-/** ¿Se construye dictando? En nivel «pista» no: ahí la IA no da código. */
-export function usesDictation(cfg = vscode.workspace.getConfiguration('autocompletehelp')): boolean {
-  return (
-    cfg.get<InteractionMode>('interactionMode', 'dictado') === 'dictado' &&
-    cfg.get<LearningLevel>('learningLevel', 'guiado') !== 'pista'
-  );
-}
-
 let manager: DictationManager | undefined;
 
-/**
- * Construye la instrucción `ach:` que está sobre el cursor: la dicta o pide la
- * sugerencia inline, según el modo. Lo usan el plan y «Construir aquí».
- */
+/** Construye la instrucción `ach:` que está sobre el cursor. Lo usan el plan y «Construir aquí». */
 export async function buildHere(
   editor: vscode.TextEditor,
   instruction: string,
   stepIndex?: number
 ): Promise<void> {
-  if (manager && usesDictation()) {
-    await manager.start(editor, instruction, stepIndex);
-    return;
-  }
-  await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+  await manager?.start(editor, instruction, stepIndex);
 }
 
 interface Generated {
   text: string;
   concepts: string[];
-  level: LearningLevel;
 }
 
 export interface DictationOptions {
   /** Repaso espaciado: id del concepto que se repasa. */
   reviewConcept?: string;
-  /** Proporción de huecos fija (si no, se calcula por lo practicado). */
+  /** Proporción de huecos. Solo los repasos tienen huecos. */
   gapRatio?: number;
 }
 
@@ -98,7 +79,9 @@ interface Session {
   prefixes: string[];
   /** Índice en `text` hasta donde escribiste. */
   pos: number;
-  /** Offsets en el documento: inicio del gris y fin del bloque dictado. */
+  /** Índice en `text` hasta donde el código ya está en el archivo. */
+  shown: number;
+  /** Offsets en el documento: inicio del gris y fin de lo insertado. */
   pendingStart: number;
   end: number;
   errors: number;
@@ -106,10 +89,9 @@ interface Session {
   lastExpected?: string;
   helped: number;
   concepts: string[];
-  level: LearningLevel;
   instruction: string;
   stepIndex?: number;
-  /** Palabras que no se dictan (índices en `text`): se escriben de memoria. */
+  /** Palabras que no se muestran (índices en `text`): se escriben de memoria. */
   gaps: Range2[];
   options: DictationOptions;
   typeReg: vscode.Disposable;
@@ -119,6 +101,10 @@ export class DictationManager implements vscode.Disposable {
   private session?: Session;
   private preparing?: string;
   private readonly started = new Set<string>();
+  /** Teclas en orden: cada una puede insertar la línea siguiente (asíncrono). */
+  private queue: Promise<unknown> = Promise.resolve();
+  /** Inserción propia en curso: el listener de cambios no la toma como ajena. */
+  private selfEdit = false;
   private errorTimer?: ReturnType<typeof setTimeout>;
   private readonly status: vscode.StatusBarItem;
   private readonly pendingDeco = vscode.window.createTextEditorDecorationType({
@@ -139,14 +125,14 @@ export class DictationManager implements vscode.Disposable {
     borderWidth: '0 0 1px 0',
     borderColor: new vscode.ThemeColor('editorGhostText.foreground')
   });
-  /** Se llama tras cada dictado terminado (el registro de conceptos cambió). */
-  afterFinish?: () => void;
   private readonly errorDeco = vscode.window.createTextEditorDecorationType({
     backgroundColor: new vscode.ThemeColor('inputValidation.errorBackground'),
     borderStyle: 'solid',
     borderWidth: '1px',
     borderColor: new vscode.ThemeColor('inputValidation.errorBorder')
   });
+  /** Se llama tras cada sesión terminada (el registro de conceptos cambió). */
+  afterFinish?: () => void;
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(
@@ -172,25 +158,17 @@ export class DictationManager implements vscode.Disposable {
       }),
       vscode.window.onDidChangeActiveTextEditor(() => this.render(false)),
       vscode.window.onDidChangeVisibleTextEditors(() => this.render(false)),
-      vscode.commands.registerCommand('autocompletehelp.dictation.back', () => this.back()),
-      vscode.commands.registerCommand('autocompletehelp.dictation.tab', () => this.tab()),
-      vscode.commands.registerCommand('autocompletehelp.dictation.enter', () => this.enter()),
+      vscode.commands.registerCommand('autocompletehelp.dictation.back', () => this.enqueue(() => this.back())),
+      vscode.commands.registerCommand('autocompletehelp.dictation.tab', () => this.enqueue(() => this.tab())),
+      vscode.commands.registerCommand('autocompletehelp.dictation.enter', () => this.enqueue(() => this.enter())),
       vscode.commands.registerCommand('autocompletehelp.dictation.menu', () => this.menu())
     );
   }
 
-  /** ¿Este documento está en dictado o preparándolo? El autocompletado se aparta. */
-  owns(doc: vscode.TextDocument): boolean {
-    return this.preparing === doc.uri.toString() || this.session?.doc === doc;
-  }
-
-  /** Desde el autocompletado: «ach: …» + Enter. Una vez por instrucción. */
-  autoStart(document: vscode.TextDocument, position: vscode.Position, instruction: string): void {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document !== document || this.started.has(keyOf(document, position, instruction))) {
-      return;
-    }
-    void this.start(editor, instruction);
+  private enqueue(fn: () => unknown): Promise<unknown> {
+    const run = this.queue.then(fn);
+    this.queue = run.catch((err) => this.output.appendLine(`[${new Date().toISOString()}] ${err?.message ?? err}`));
+    return run;
   }
 
   async start(
@@ -201,7 +179,7 @@ export class DictationManager implements vscode.Disposable {
   ): Promise<void> {
     if (this.session || this.preparing) {
       vscode.window.showInformationMessage(
-        'AutoCompleteHelp: ya hay un dictado en curso. Termínalo, o pulsa Esc en el editor para ver las opciones.'
+        'AutoCompleteHelp: ya estamos completando algo juntos. Termínalo, o pulsa Esc en el editor para ver las opciones.'
       );
       return;
     }
@@ -217,7 +195,7 @@ export class DictationManager implements vscode.Disposable {
       }
       if (document.version !== version) {
         vscode.window.showWarningMessage(
-          'AutoCompleteHelp: el archivo cambió mientras preparaba el dictado. Vuelve a abrir el paso para empezar.'
+          'AutoCompleteHelp: el archivo cambió mientras preparaba el código. Vuelve a abrir el paso para empezar.'
         );
         return;
       }
@@ -240,7 +218,7 @@ export class DictationManager implements vscode.Disposable {
     const apiKey = await getApiKey(this.context, provider);
     if (provider.needsKey && !apiKey) {
       const action = await vscode.window.showWarningMessage(
-        `AutoCompleteHelp: falta la API key de ${provider.label} para preparar el dictado.`,
+        `AutoCompleteHelp: falta la API key de ${provider.label} para preparar el código.`,
         'Configurar'
       );
       if (action) {
@@ -249,7 +227,6 @@ export class DictationManager implements vscode.Disposable {
       return undefined;
     }
 
-    const level = cfg.get<LearningLevel>('learningLevel', 'guiado');
     const prefix = document
       .getText(new vscode.Range(new vscode.Position(0, 0), position))
       .slice(-MAX_PREFIX_CHARS);
@@ -260,7 +237,6 @@ export class DictationManager implements vscode.Disposable {
       ? await Promise.all([this.project.snapshot(), this.project.relatedFiles(document)])
       : ['', ''];
     const system = buildDictationSystemPrompt(
-      level,
       getProjectBlock(),
       cfg.get<boolean>('projectGuidance', true),
       cfg.get<boolean>('fadingScaffolding', true) ? knownConcepts(this.context) : [],
@@ -278,7 +254,7 @@ export class DictationManager implements vscode.Disposable {
     return vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `AutoCompleteHelp: preparando el dictado de «${instruction}»`,
+        title: `AutoCompleteHelp: preparando «${instruction}»`,
         cancellable: true
       },
       async (progress, token) => {
@@ -289,7 +265,7 @@ export class DictationManager implements vscode.Disposable {
           apiKey,
           system,
           user,
-          maxTokens: Math.max(cfg.get<number>('maxTokens', 400), 2400),
+          maxTokens: Math.max(cfg.get<number>('maxTokens', 2400), 1200),
           token
         };
         try {
@@ -305,16 +281,16 @@ export class DictationManager implements vscode.Disposable {
           const text = sanitizeCompletion(body, prefix).replace(/\s+$/, '');
           if (!text.trim()) {
             vscode.window.showWarningMessage(
-              'AutoCompleteHelp: la IA no devolvió código para dictar. Prueba de nuevo o reformula la instrucción.'
+              'AutoCompleteHelp: la IA no devolvió código. Prueba de nuevo o reformula la instrucción.'
             );
             return undefined;
           }
-          return { text, concepts, level };
+          return { text, concepts };
         } catch (err: any) {
           if (err?.name !== 'AbortError') {
-            this.output.appendLine(`[${new Date().toISOString()}] Dictado, error de ${provider.label}: ${err?.message ?? err}`);
+            this.output.appendLine(`[${new Date().toISOString()}] Error de ${provider.label}: ${err?.message ?? err}`);
             vscode.window.showErrorMessage(
-              `AutoCompleteHelp: no se pudo preparar el dictado con ${provider.label}. Detalle en el panel Salida › AutoCompleteHelp.`
+              `AutoCompleteHelp: no se pudo preparar el código con ${provider.label}. Detalle en el panel Salida › AutoCompleteHelp.`
             );
           }
           return undefined;
@@ -334,51 +310,54 @@ export class DictationManager implements vscode.Disposable {
     const doc = editor.document;
     let typeReg: vscode.Disposable;
     try {
-      typeReg = vscode.commands.registerCommand('type', (args: { text: string }) => this.onType(args));
+      typeReg = vscode.commands.registerCommand('type', (args: { text: string }) =>
+        this.enqueue(() => this.onType(args))
+      );
     } catch {
       vscode.window.showWarningMessage(
-        'AutoCompleteHelp: otra extensión (por ejemplo, Vim) controla el teclado y el dictado no puede escribir encima del código. Cambia el modo a «autocompletar» con el comando «Elegir modo».'
+        'AutoCompleteHelp: otra extensión (por ejemplo, Vim) controla el teclado y no puedes escribir encima del código. Desactívala mientras completamos juntos.'
       );
       return;
     }
 
+    const cfg = vscode.workspace.getConfiguration('autocompletehelp');
+    const text = generated.text;
+    const prefixes = commentPrefixes(doc.languageId);
+    const mask = autoMask(text, prefixes, cfg.get<boolean>('dictation.typeComments', false));
+    const pos = skipAuto(mask, 0);
+    const shown = revealEnd(text, pos);
+
     // Si el cursor está en una línea vacía (quizá con espacios), el bloque
-    // reemplaza esos espacios: el modelo ya indenta según el contexto.
+    // reemplaza esos espacios: el modelo ya indenta según el contexto. Si hay
+    // texto después del cursor, queda en su propia línea, debajo.
     const line = doc.lineAt(position.line);
-    const before = line.text.slice(0, position.character);
-    const insertAt = before.trim() === '' ? line.range.start : position;
-    let text = generated.text;
-    if (line.text.slice(position.character).trim() !== '') {
-      text += '\n';
-    }
-    const ok = await editor.edit((e) => e.replace(new vscode.Range(insertAt, position), text));
+    const insertAt = line.text.slice(0, position.character).trim() === '' ? line.range.start : position;
+    const tail = line.text.slice(position.character).trim() !== '' ? '\n' : '';
+    this.selfEdit = true;
+    const ok = await editor.edit((e) => e.replace(new vscode.Range(insertAt, position), text.slice(0, shown) + tail));
+    this.selfEdit = false;
     if (!ok) {
       typeReg.dispose();
       return;
     }
 
-    const cfg = vscode.workspace.getConfiguration('autocompletehelp');
-    const prefixes = commentPrefixes(doc.languageId);
-    const mask = autoMask(text, prefixes, cfg.get<boolean>('dictation.typeComments', false));
     const start = doc.offsetAt(insertAt);
-    const pos = skipAuto(mask, 0);
-    const gaps = chooseGaps(text, mask, this.gapRatioFor(generated.concepts, options), start + 1);
     this.session = {
       doc,
       text,
       mask,
       prefixes,
       pos,
+      shown,
       pendingStart: start + pos,
-      end: start + text.length,
+      end: start + shown,
       errors: 0,
       misses: 0,
       helped: 0,
       concepts: generated.concepts,
-      level: generated.level,
       instruction,
       stepIndex,
-      gaps,
+      gaps: chooseGaps(text, mask, options.gapRatio ?? 0, start + 1),
       options,
       typeReg
     };
@@ -387,46 +366,47 @@ export class DictationManager implements vscode.Disposable {
       await this.finish('escrito');
       return;
     }
-    if (gaps.length) {
-      vscode.window.setStatusBarMessage(
-        `AutoCompleteHelp: ${gaps.length} ${gaps.length === 1 ? 'palabra queda' : 'palabras quedan'} como hueco: ya las practicaste, escríbelas de memoria (Tab las revela).`,
-        8000
-      );
-    }
     if (!this.context.globalState.get<boolean>(TIP_KEY)) {
       void this.context.globalState.update(TIP_KEY, true);
       vscode.window.showInformationMessage(
-        'Dictado: escribe encima del código gris. Lee cada comentario antes de su bloque: dice qué escribir y por qué. Tab: te dicto una palabra · Retroceso: volver · Esc: opciones.'
+        'Completamos juntos: escribe encima de la línea en gris. Lee el comentario de arriba: dice qué escribir y por qué. Al terminar la línea pulsa Enter y aparece la siguiente. Tab: te dicto una palabra · Retroceso: volver · Esc: opciones.'
       );
     }
   }
 
   /**
-   * Huecos según lo practicado: en un concepto nuevo se dicta todo; en lo que
-   * ya escribiste varias veces, algunas palabras se completan de memoria.
+   * Inserta en el archivo lo que corresponde mostrar ahora: los comentarios y
+   * la línea siguiente cuando terminas una, o todo lo que queda al final.
    */
-  private gapRatioFor(concepts: string[], options: DictationOptions): number {
-    if (options.gapRatio !== undefined) {
-      return options.gapRatio;
+  private async reveal(): Promise<void> {
+    const s = this.session;
+    if (!s) {
+      return;
     }
-    const mode = vscode.workspace.getConfiguration('autocompletehelp').get<string>('dictation.gaps', 'auto');
-    if (mode === 'off') {
-      return 0;
+    const target = revealEnd(s.text, s.pos);
+    if (target <= s.shown) {
+      return;
     }
-    const st = stagesFor(this.context, concepts);
-    const ratio = gapRatio({
-      nuevos: st.nuevos.length,
-      enPractica: st.enPractica.length,
-      conocidos: st.conocidos.length
-    });
-    return mode === 'always' ? Math.max(ratio, 0.3) : ratio;
+    const chunk = s.text.slice(s.shown, target);
+    const edit = new vscode.WorkspaceEdit();
+    edit.insert(s.doc.uri, s.doc.positionAt(s.end), chunk);
+    this.selfEdit = true;
+    try {
+      await vscode.workspace.applyEdit(edit);
+    } finally {
+      this.selfEdit = false;
+    }
+    if (this.session === s) {
+      s.shown = target;
+      s.end += chunk.length;
+    }
   }
 
   // ---------------------------------------------------------------------------
   // Teclado
   // ---------------------------------------------------------------------------
 
-  /** El editor activo está en el punto de escritura del dictado. */
+  /** El editor activo está en el punto de escritura. */
   private writingEditor(): vscode.TextEditor | undefined {
     const s = this.session;
     const editor = vscode.window.activeTextEditor;
@@ -438,15 +418,15 @@ export class DictationManager implements vscode.Disposable {
     return at >= s.pendingStart && at <= s.end ? editor : undefined;
   }
 
-  private onType(args: { text: string }): Thenable<unknown> | void {
+  private async onType(args: { text: string }): Promise<unknown> {
     const s = this.session;
     if (!s || !this.writingEditor()) {
       return vscode.commands.executeCommand('default:type', args);
     }
-    this.advance(typeKeys(s.text, s.mask, s.pos, args.text));
+    await this.advance(typeKeys(s.text, s.mask, s.pos, args.text));
   }
 
-  private advance(result: { ok: boolean; pos: number; expected?: string }, helped = false): void {
+  private async advance(result: { ok: boolean; pos: number; expected?: string }, helped = false): Promise<void> {
     const s = this.session;
     if (!s) {
       return;
@@ -465,9 +445,10 @@ export class DictationManager implements vscode.Disposable {
       s.lastExpected = result.expected;
       this.flashError();
     }
+    await this.reveal();
     this.render(true);
     if (s.pos >= s.text.length) {
-      void this.finish('escrito');
+      await this.finish('escrito');
     }
   }
 
@@ -484,7 +465,7 @@ export class DictationManager implements vscode.Disposable {
     this.render(true);
   }
 
-  private tab(): Thenable<unknown> | void {
+  private async tab(): Promise<unknown> {
     const s = this.session;
     if (!s || !this.writingEditor()) {
       return vscode.commands.executeCommand('tab');
@@ -494,14 +475,14 @@ export class DictationManager implements vscode.Disposable {
       vscode.window.setStatusBarMessage('AutoCompleteHelp: fin de línea, pulsa Enter.', 2500);
       return;
     }
-    this.advance({ ok: true, pos: skipAuto(s.mask, pos) }, true);
+    await this.advance({ ok: true, pos: skipAuto(s.mask, pos) }, true);
   }
 
-  private enter(): Thenable<unknown> | void {
+  private async enter(): Promise<unknown> {
     if (!this.session || !this.writingEditor()) {
       return vscode.commands.executeCommand('default:type', { text: '\n' });
     }
-    this.onType({ text: '\n' });
+    return this.onType({ text: '\n' });
   }
 
   private async menu(): Promise<void> {
@@ -520,18 +501,23 @@ export class DictationManager implements vscode.Disposable {
         },
         { label: '$(trash) Terminar y borrar lo que falta', description: 'queda solo lo que escribiste', id: 'borrar' }
       ],
-      { title: `Dictado: ${s.instruction} — ${progressOf(s.mask, s.pos)}%` }
+      { title: `${s.options.reviewConcept ? 'Repaso' : 'Completamos juntos'}: ${s.instruction} — ${progressOf(s.mask, s.pos)}%` }
     );
     if (!pick || this.session !== s) {
       return;
     }
     if (pick.id === 'linea') {
       const end = Math.min(s.text.length, lineEnd(s.text, s.pos) + 1);
-      this.advance({ ok: true, pos: skipAuto(s.mask, end) }, true);
+      await this.enqueue(() => this.advance({ ok: true, pos: skipAuto(s.mask, end) }, true));
     } else if (pick.id === 'completar') {
-      await this.finish('completado');
+      await this.enqueue(async () => {
+        s.pendingStart += s.text.length - s.pos;
+        s.pos = s.text.length;
+        await this.reveal();
+        await this.finish('completado');
+      });
     } else if (pick.id === 'borrar') {
-      await this.stopAndDelete();
+      await this.enqueue(() => this.stopAndDelete());
     } else {
       this.render(true);
     }
@@ -543,7 +529,11 @@ export class DictationManager implements vscode.Disposable {
 
   private onDocumentChange(e: vscode.TextDocumentChangeEvent): void {
     const s = this.session;
-    if (!s || e.document !== s.doc) {
+    if (!s) {
+      this.watchInstruction(e);
+      return;
+    }
+    if (e.document !== s.doc || this.selfEdit) {
       return;
     }
     for (const c of e.contentChanges) {
@@ -561,8 +551,35 @@ export class DictationManager implements vscode.Disposable {
     }
   }
 
+  /**
+   * «// ach: …» + Enter en cualquier archivo arranca una sesión con esa
+   * instrucción. Una vez por instrucción: si la terminas o la borras, no se
+   * vuelve a disparar sola.
+   */
+  private watchInstruction(e: vscode.TextDocumentChangeEvent): void {
+    if (this.preparing || this.selfEdit || !e.contentChanges.some((c) => c.text.includes('\n'))) {
+      return;
+    }
+    if (!vscode.workspace.getConfiguration('autocompletehelp').get<boolean>('enabled', true)) {
+      return;
+    }
+    // El cursor se actualiza después del cambio: se mira en el próximo ciclo.
+    setTimeout(() => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document !== e.document || this.session || this.preparing) {
+        return;
+      }
+      const position = editor.selection.active;
+      const prefix = e.document.getText(new vscode.Range(new vscode.Position(0, 0), position)).slice(-MAX_PREFIX_CHARS);
+      const instruction = detectInstruction(prefix);
+      if (instruction && !this.started.has(keyOf(e.document, position, instruction))) {
+        void this.start(editor, instruction);
+      }
+    }, 0);
+  }
+
   // ---------------------------------------------------------------------------
-  // Fin del dictado
+  // Fin de la sesión
   // ---------------------------------------------------------------------------
 
   /** Cierra la sesión: devuelve el teclado, quita el gris de la vista. */
@@ -596,7 +613,7 @@ export class DictationManager implements vscode.Disposable {
       return;
     }
     if (vscode.workspace.getConfiguration('autocompletehelp').get<boolean>('fadingScaffolding', true)) {
-      await recordAccepted(this.context, s.concepts, how === 'escrito' ? 'dictado' : s.level);
+      await recordAccepted(this.context, s.concepts, how === 'escrito' ? 'dictado' : 'aceptado');
     }
     this.afterFinish?.();
     const typed = s.mask.filter((auto) => !auto).length;
@@ -604,7 +621,7 @@ export class DictationManager implements vscode.Disposable {
       how === 'escrito'
         ? `✓ Lo escribiste tú: ${typed} caracteres, ${s.errors} ${s.errors === 1 ? 'error' : 'errores'}` +
           (s.helped ? `, ${s.helped} ${s.helped === 1 ? 'ayuda' : 'ayudas'}.` : '.')
-        : 'Dictado completado sin escribirlo. Repasa los comentarios: explican cada decisión.';
+        : 'Completado sin escribirlo. Repasa los comentarios: explican cada decisión.';
     const actions = s.stepIndex !== undefined ? ['Marcar el paso como hecho'] : [];
     const action = await vscode.window.showInformationMessage(message, ...actions);
     if (action && s.stepIndex !== undefined) {
@@ -635,11 +652,10 @@ export class DictationManager implements vscode.Disposable {
     }
     const range = new vscode.Range(s.doc.positionAt(s.pendingStart), s.doc.positionAt(s.end));
     this.end();
-    const editor = vscode.window.visibleTextEditors.find((e) => e.document === s.doc);
-    if (editor) {
-      await editor.edit((e) => e.delete(range));
-    }
-    vscode.window.showInformationMessage('Dictado terminado: en el archivo quedó solo lo que escribiste.');
+    const edit = new vscode.WorkspaceEdit();
+    edit.delete(s.doc.uri, range);
+    await vscode.workspace.applyEdit(edit);
+    vscode.window.showInformationMessage('Terminado: en el archivo quedó solo lo que escribiste.');
   }
 
   private abort(): void {
@@ -647,7 +663,7 @@ export class DictationManager implements vscode.Disposable {
       return;
     }
     vscode.window.showWarningMessage(
-      'AutoCompleteHelp: el dictado se detuvo porque cambió el código en gris (al pegar, deshacer o editar ahí). Lo que quede de él es ahora texto normal: revísalo o bórralo.'
+      'AutoCompleteHelp: la sesión se detuvo porque cambió el código en gris (al pegar, deshacer o editar ahí). Lo que quede de esa línea es ahora texto normal: revísalo o bórralo.'
     );
   }
 
@@ -685,8 +701,8 @@ export class DictationManager implements vscode.Disposable {
     // Offset del inicio del bloque en el documento (se desplaza con ediciones previas).
     const base = s.pendingStart - s.pos;
     const toRange = ([a, b]: Range2) => new vscode.Range(s.doc.positionAt(base + a), s.doc.positionAt(base + b));
-    const pending = subtractRanges(s.pos, s.text.length, s.gaps).map(toRange);
-    const gaps = clipRanges(s.pos, s.text.length, s.gaps).map(toRange);
+    const pending = subtractRanges(s.pos, s.shown, s.gaps).map(toRange);
+    const gaps = clipRanges(s.pos, s.shown, s.gaps).map(toRange);
     const expectsEnter = s.text[s.pos] === '\n';
     const next = new vscode.Range(at, s.doc.positionAt(s.pendingStart + 1));
     for (const editor of vscode.window.visibleTextEditors) {
@@ -711,14 +727,15 @@ export class DictationManager implements vscode.Disposable {
         : inGap(s.gaps, s.pos)
           ? ' · hueco: recuérdalo (Tab lo revela)'
           : ` · esperaba ${showChar(s.lastExpected)}`;
-    this.status.text = `$(pencil) Dictado ${pct}% · ${s.errors} ${s.errors === 1 ? 'error' : 'errores'}${hint}`;
+    const label = s.options.reviewConcept ? 'Repaso' : 'Completamos juntos';
+    this.status.text = `$(pencil) ${label} ${pct}% · ${s.errors} ${s.errors === 1 ? 'error' : 'errores'}${hint}`;
     const explanation = explanationAt(s.text, s.pos, s.prefixes);
     this.status.tooltip = new vscode.MarkdownString(
       [
-        `**${s.options.reviewConcept ? 'Repaso' : 'Dictado'}:** ${s.instruction}`,
+        `**${label}:** ${s.instruction}`,
         s.gaps.length ? `Huecos: ${s.gaps.length} palabras para escribir de memoria.` : '',
         explanation ? `> ${explanation}` : '',
-        'Escribe encima del gris. **Tab**: te dicto una palabra · **Retroceso**: volver · **Esc** o clic aquí: opciones.'
+        'Escribe encima de la línea en gris; Enter muestra la siguiente. **Tab**: te dicto una palabra · **Retroceso**: volver · **Esc** o clic aquí: opciones.'
       ]
         .filter(Boolean)
         .join('\n\n')

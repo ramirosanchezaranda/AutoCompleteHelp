@@ -1,8 +1,8 @@
 {
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
-  "description": "Construye tu proyecto desde el IDE con prompts: la IA dicta el código en gris y tú lo escribes encima, con comentarios que explican qué y por qué. Multi-LLM.",
-  "version": "0.6.0",
+  "description": "Construye tu proyecto desde el IDE con prompts: elige stack y arquitectura, y completamos juntos — la IA dicta cada línea en gris y tú la escribes, con comentarios que explican qué y por qué. Multi-LLM.",
+  "version": "0.7.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -19,12 +19,12 @@
     "Other"
   ],
   "keywords": [
-    "autocomplete",
     "ai",
     "llm",
-    "copilot",
     "aprendizaje",
-    "inline completion"
+    "educacion",
+    "arquitectura",
+    "programar"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -54,14 +54,6 @@
         "title": "AutoCompleteHelp: Configurar API key"
       },
       {
-        "command": "autocompletehelp.selectLearningLevel",
-        "title": "AutoCompleteHelp: Elegir nivel de aprendizaje"
-      },
-      {
-        "command": "autocompletehelp.selectMode",
-        "title": "AutoCompleteHelp: Elegir modo (dictado o autocompletar)"
-      },
-      {
         "command": "autocompletehelp.showProgress",
         "title": "AutoCompleteHelp: Ver mi progreso"
       },
@@ -83,6 +75,11 @@
         "icon": "$(layers)"
       },
       {
+        "command": "autocompletehelp.chooseArchitecture",
+        "title": "AutoCompleteHelp: Elegir arquitectura",
+        "icon": "$(type-hierarchy)"
+      },
+      {
         "command": "autocompletehelp.createStructure",
         "title": "AutoCompleteHelp: Crear estructura del proyecto",
         "icon": "$(new-folder)"
@@ -97,11 +94,11 @@
       },
       {
         "command": "autocompletehelp.toggle",
-        "title": "AutoCompleteHelp: Activar / desactivar autocompletado"
+        "title": "AutoCompleteHelp: Activar / desactivar instrucciones ach:"
       },
       {
         "command": "autocompletehelp.dictation.menu",
-        "title": "AutoCompleteHelp: Opciones del dictado"
+        "title": "AutoCompleteHelp: Opciones de «Completamos juntos»"
       },
       {
         "command": "autocompletehelp.dictation.back",
@@ -146,9 +143,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "autocompletehelp.openProjectFile",
+          "command": "autocompletehelp.chooseArchitecture",
           "when": "view == autocompletehelp.plan",
           "group": "navigation@3"
+        },
+        {
+          "command": "autocompletehelp.openProjectFile",
+          "when": "view == autocompletehelp.plan",
+          "group": "navigation@4"
         }
       ],
       "commandPalette": [
@@ -186,40 +188,12 @@
         "autocompletehelp.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Activa o desactiva el autocompletado inline."
-        },
-        "autocompletehelp.interactionMode": {
-          "type": "string",
-          "default": "dictado",
-          "enum": [
-            "dictado",
-            "autocompletar"
-          ],
-          "enumDescriptions": [
-            "Dictado: el código del paso aparece en gris y lo escribes encima, guiado por comentarios que dicen qué escribir y por qué. Nada entra al archivo sin que lo teclees.",
-            "Autocompletar: sugerencias en gris que aceptas con Tab."
-          ],
-          "markdownDescription": "Cómo se construye el código. En **dictado** no hay autocompletado mientras escribes: una instrucción `ach:` (o un paso del plan) prepara el código y lo tecleas encima del gris. En nivel `pista` se dan solo pistas en ambos modos."
+          "description": "Detecta las instrucciones «// ach: …» + Enter y prepara el código para completarlo juntos."
         },
         "autocompletehelp.dictation.typeComments": {
           "type": "boolean",
           "default": false,
           "description": "En el dictado, escribir también los comentarios. Por defecto avanzan solos: son la explicación, se leen."
-        },
-        "autocompletehelp.dictation.gaps": {
-          "type": "string",
-          "default": "auto",
-          "enum": [
-            "auto",
-            "always",
-            "off"
-          ],
-          "enumDescriptions": [
-            "Según lo practicado: lo nuevo se dicta entero; en los conceptos que ya escribiste varias veces, algunas palabras quedan como hueco.",
-            "Siempre deja huecos (al menos 30% de las palabras).",
-            "Dicta todo, sin huecos."
-          ],
-          "description": "Huecos en el dictado: palabras que no se muestran y escribes de memoria. Recordar en vez de copiar es lo que fija lo aprendido."
         },
         "autocompletehelp.provider": {
           "type": "string",
@@ -260,37 +234,20 @@
           "default": "",
           "description": "ID del modelo. Vacío = modelo por defecto del proveedor. Usa el comando 'Elegir proveedor y modelo' para ver opciones."
         },
-        "autocompletehelp.learningLevel": {
-          "type": "string",
-          "default": "guiado",
-          "enum": [
-            "completo",
-            "guiado",
-            "pista",
-            "educame"
-          ],
-          "enumDescriptions": [
-            "Completo: sugiere el código directamente (máxima velocidad, mínimo aprendizaje).",
-            "Guiado: sugiere el código con comentarios breves que explican el porqué de cada parte.",
-            "Pista: no escribe la solución; sugiere solo comentarios con pasos y pistas para que TÚ escribas el código.",
-            "Edúcame: para empezar desde cero — cada línea explicada con conceptos básicos, una idea nueva por sugerencia."
-          ],
-          "description": "Cuánto te ayuda la IA. 'guiado' y 'pista' para aprender sin depender de la IA; 'educame' para arrancar desde cero con un lenguaje."
-        },
         "autocompletehelp.fadingScaffolding": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Andamiaje decreciente: AutoCompleteHelp recuerda qué conceptos ya usaste y deja de explicártelos cuando los repetiste varias veces. Desactívalo para recibir siempre la explicación completa. Usa **Ver mi progreso** para consultarlo."
+          "markdownDescription": "Las explicaciones se acortan en los conceptos que ya escribiste varias veces. Desactívalo para recibir siempre la explicación completa. Usa **Ver mi progreso** para consultarlo."
         },
         "autocompletehelp.streaming": {
           "type": "boolean",
           "default": true,
-          "description": "Recibe las sugerencias en streaming (SSE) con corte temprano: menor latencia percibida."
+          "description": "Recibe la respuesta de la IA en streaming (SSE) y muestra el avance mientras se prepara el código."
         },
         "autocompletehelp.projectGuidance": {
           "type": "boolean",
           "default": true,
-          "description": "Guía del proyecto: cada sugerencia termina con un comentario '➜ Siguiente paso:' indicando la próxima pieza que falta según tu prompt."
+          "description": "El código preparado termina con un comentario '➜ Siguiente paso:' con la próxima pieza del plan."
         },
         "autocompletehelp.projectContext": {
           "type": "boolean",
@@ -299,13 +256,8 @@
         },
         "autocompletehelp.maxTokens": {
           "type": "number",
-          "default": 400,
-          "description": "Máximo de tokens por sugerencia."
-        },
-        "autocompletehelp.debounceMs": {
-          "type": "number",
-          "default": 350,
-          "description": "Milisegundos de espera tras dejar de escribir antes de pedir una sugerencia."
+          "default": 2400,
+          "description": "Máximo de tokens que puede usar la IA al preparar el código de un paso."
         },
         "autocompletehelp.ollamaUrl": {
           "type": "string",
@@ -330,7 +282,7 @@
     "viewsWelcome": [
       {
         "view": "autocompletehelp.plan",
-        "contents": "Todavía no hay plan. Elige el stack y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo con una instrucción ach: y te dicta el código para que lo escribas tú."
+        "contents": "Todavía no hay plan. Elige el stack y la arquitectura, y te armo un plan paso a paso, guardado en autocompletehelp.json.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\nCada paso abre su archivo y completamos juntos el código, línea por línea."
       }
     ],
     "keybindings": [

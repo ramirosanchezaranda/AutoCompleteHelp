@@ -2,62 +2,54 @@
 
 Extensión para **VS Code, Cursor, Windsurf, VSCodium** y cualquier IDE basado en VS Code.
 
-Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué estás construyendo y cómo quieres que te expliquen, y la IA te **dicta** el código en gris para que **lo escribas tú encima**, con comentarios que explican qué hace cada parte y por qué se eligió esa forma. El objetivo no es que la IA programe por ti: es **que aprendas y entiendas cada parte de tu proyecto**.
+Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué estás construyendo y cómo quieres que te expliquen, eliges el stack y la arquitectura, y **completamos juntos** el código: la IA te muestra en gris una línea a la vez, con comentarios que explican qué hace y por qué se eligió esa forma, y **tú la escribes encima**. No hay autocompletado: nada entra a tu proyecto sin que lo teclees. El objetivo no es que la IA programe por ti: es **que aprendas y entiendas cada parte de tu proyecto**.
 
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 
 1. **Describe el proyecto** (*Definir prompt del proyecto*) en una frase: **qué construyes + cómo quieres que te expliquen**. Por ejemplo:
    > e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología
 
-   La segunda mitad no es decorativa: la IA la cumple en cada comentario que te dicta.
-2. **Elige el stack** (*Elegir stack del proyecto*): uno de los perfiles curados para aprender (HTML + CSS + JS, Node + Express, Python + FastAPI, React + Vite, Django), el que tú quieras, o una recomendación. Queda en `autocompletehelp.json` con convenciones y un plan paso a paso.
-3. **Crea la estructura** (*Crear estructura del proyecto*): manifiesto, `.gitignore` y los archivos del plan, **vacíos salvo su instrucción `ach:`**. Nunca sobrescribe. El comando de instalación se escribe en la terminal con su explicación, y lo ejecutas tú.
-4. **Sigue el plan** desde el panel **Plan del proyecto** del explorador: un clic abre (o crea) el archivo del paso, por ejemplo `server.js`, y empieza el **dictado**; la casilla marca el paso como hecho.
-5. **Escribe encima del código gris** (modo dictado, el predeterminado):
-   - El código del paso aparece en gris. Lo que tecleas bien se vuelve código normal; un error marca el carácter en rojo y no avanza.
-   - Antes de cada bloque hay comentarios que **dictan** qué escribir y por qué: el primero te dice cómo empezar. Los comentarios y la indentación avanzan solos (se leen, no se copian); el código y cada Enter los escribes tú.
-   - **Tab** te dicta una palabra si te trabas, **Retroceso** vuelve atrás, **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta (en el archivo queda solo lo que escribiste).
-   - Cada sugerencia conoce tu stack, los archivos que existen, tus dependencias y lo que exportan los archivos que importas: no inventa rutas ni campos.
-6. **Pide lo que quieras con un comentario**:
+   La segunda mitad no es decorativa: la IA la cumple en cada comentario.
+2. **Elige el stack** (*Elegir stack del proyecto*): uno de los perfiles curados para aprender (HTML + CSS + JS, Node + Express, Python + FastAPI, React + Vite, Django), el que tú quieras, o una recomendación.
+3. **Elige la arquitectura**: monolito en capas, MVC, monolito modular, hexagonal, Clean Architecture, frontend por componentes, microservicios, serverless u orientada a eventos.
+   - Tres preguntas (quiénes trabajan, cuántas áreas tiene el negocio, qué quieres aprender) dan una **recomendación**, calculada con reglas, sin IA.
+   - Cada opción se explica: cómo se organiza, sus reglas, el recorrido de una petición, cuándo sí, cuándo no y lo que se paga.
+   - La decisión queda en `docs/ARQUITECTURA.md` como registro de decisión (contexto, alternativas, consecuencias y diagrama), y el plan se arma con esa estructura.
+4. **Crea la estructura** (*Crear estructura del proyecto*): manifiesto, `.gitignore` y los archivos del plan, **vacíos salvo su instrucción `ach:`**. Nunca sobrescribe. El comando de instalación se escribe en la terminal con su explicación, y lo ejecutas tú.
+5. **Sigue el plan** desde el panel **Plan del proyecto** del explorador: un clic abre (o crea) el archivo del paso, por ejemplo `server.js`, y **completamos juntos**; la casilla marca el paso como hecho.
+6. **Completamos juntos, línea por línea**:
+   - Se ve en gris **solo la línea que vas a escribir**, con los comentarios que la explican justo arriba. El primero te dice cómo empezar y en qué parte de la arquitectura vive el archivo.
+   - Lo que tecleas bien se vuelve código; un error marca el carácter en rojo y no avanza. Al terminar la línea pulsas Enter y aparece la siguiente.
+   - Los comentarios y la indentación avanzan solos (se leen, no se copian); el código y cada Enter los escribes tú.
+   - **Tab** te dicta una palabra si te trabas, **Retroceso** vuelve atrás, **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta.
+   - El código conoce tu stack, tu arquitectura, los archivos que existen, tus dependencias y lo que exportan los archivos que importas: no inventa rutas ni campos.
+7. **Pide lo que quieras con un comentario**:
    ```js
    // ach: ruta para listar productos con paginación
    ```
-   Pulsa Enter y se prepara el dictado de esa instrucción, en tu stack y en tu nivel de aprendizaje (en `pista` recibes los pasos, no el código).
-
-7. **Lo que ya practicaste, de memoria**: en los conceptos que ya escribiste varias veces, el dictado deja **huecos**: palabras que no se muestran (solo un subrayado punteado) y escribes de memoria. Lo nuevo se dicta entero. Tab revela la palabra si no sale.
-8. **Repasa cuando toca**: cada concepto que escribiste vuelve a los 1, 3, 7, 14 y 30 días (repaso espaciado). La barra de estado avisa «N para repasar»; **Repasar conceptos** abre un ejercicio corto, dictado con huecos. Si sale bien, el intervalo se alarga; si cuesta, vuelve a empezar.
-9. **Entiende los errores**: sobre un error del editor, la bombita ofrece **Entender este error**: qué dice, por qué pasa en esa línea y cómo encontrar la solución. No te da el código corregido (salvo en nivel `completo`): leer errores se aprende resolviéndolos.
-
-¿Prefieres el autocompletado clásico (sugerencia en gris que aceptas con Tab)? Comando **Elegir modo** → `autocompletar`.
+   Pulsa Enter y completamos juntos esa instrucción.
+8. **Repasa cuando toca**: cada concepto que escribiste vuelve a los 1, 3, 7, 14 y 30 días (repaso espaciado). La barra de estado avisa «N para repasar»; **Repasar conceptos** abre un ejercicio corto con **huecos**: palabras que no se muestran y escribes de memoria. Si sale bien, el intervalo se alarga; si cuesta, vuelve a empezar.
+9. **Entiende los errores**: sobre un error del editor, la bombita ofrece **Entender este error**: qué dice, por qué pasa en esa línea y cómo encontrar la solución. Nunca te da el código corregido: leer errores se aprende resolviéndolos.
 
 `autocompletehelp.json` vive en la raíz del proyecto y se versiona con tu código:
 
 ```json
 {
-  "prompt": "API REST para una tienda; explícame cada middleware",
+  "prompt": "e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología",
   "stack": { "resumen": "Node.js + Express 5 + MongoDB", "framework": "Express 5", "datos": "MongoDB con Mongoose 8" },
   "convenciones": ["CommonJS", "rutas en routes/"],
+  "arquitectura": { "estilo": "capas", "nombre": "Monolito en capas", "reglas": ["Las rutas no hablan con la base de datos: llaman a un servicio."] },
   "plan": [{ "paso": "Modelo de producto", "archivo": "models/producto.js", "concepto": "esquemas" }]
 }
 ```
 
 ## ✨ Características
 
-- **Modo dictado** (predeterminado): el código aparece en gris y lo escribes encima; nada entra al archivo sin que lo teclees. Modo **autocompletar** opcional (texto fantasma que aceptas con `Tab`), en cualquier lenguaje.
-- **Prompt del proyecto**: define qué estás construyendo y cómo quieres que te ayude; cada sugerencia usa ese contexto.
-- **4 niveles de aprendizaje** (el corazón de la extensión):
-  | Nivel | Qué hace | Para qué |
-  |---|---|---|
-  | `educame` | Cada línea explicada desde cero, una idea nueva por sugerencia | Empezar sin saber programar |
-  | `pista` | Solo comentarios con pasos y pistas — **tú escribes el código** | Máximo aprendizaje |
-  | `guiado` *(por defecto)* | Código + comentarios que explican el **porqué** | Aprender mientras avanzas |
-  | `completo` | Código directo | Máxima velocidad |
-- **La ayuda baja a medida que aprendes**: AutoCompleteHelp anota cada concepto que entra en tu código y, cuando lo repetiste varias veces, deja de explicártelo. Consulta el comando **Ver mi progreso** para ver qué dominas y qué proporción escribiste tú.
+- **Completamos juntos**: el único modo. Una línea en gris a la vez, que escribes encima; sin autocompletado.
+- **Arquitectura y diseño de sistemas**: elección guiada, explicación de cada estilo y registro de decisión en `docs/ARQUITECTURA.md`.
 - **Comentarios que dan criterio, no descripciones**: cada explicación dice qué hace, **en vez de qué** alternativa, y **cuándo no** convendría — que es lo que separa entender de memorizar.
-- **Guía del proyecto**: los archivos vacíos reciben su esqueleto según tu prompt, y cada sugerencia termina con «➜ Siguiente paso», la próxima pieza que falta del proyecto.
-- **Streaming (SSE)** con corte temprano: sugerencias más rápidas y menos tokens.
-- **Recomendar stack**: ¿no sabes con qué tecnologías hacer tu proyecto? El comando analiza tu prompt y propone el mejor stack para aprender, con alternativas, estructura inicial y ruta de aprendizaje — y lo fija en tu prompt si lo aceptas.
-- **Explicar código seleccionado**: clic derecho → obtén una explicación pedagógica en español con una pregunta de comprensión.
+- **La explicación se acorta a medida que aprendes**: AutoCompleteHelp anota cada concepto que escribes y, cuando lo repetiste varias veces, deja de explicártelo en detalle. **Ver mi progreso** muestra qué dominas y qué proporción escribiste tú.
+- **Repaso espaciado** con huecos y **Entender este error**.
 - **Multi-LLM**: elige empresa y modelo desde la barra de estado:
   - Anthropic (Claude Opus 4.8, Sonnet 5, Sonnet 4.6, Haiku 4.5)
   - OpenAI (GPT-5.1, GPT-5, GPT-4.1…)
@@ -75,33 +67,45 @@ Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué est
 2. Abre la carpeta en VS Code y pulsa `F5` (Run Extension) — o empaqueta con `npx vsce package` e instala el `.vsix` en Cursor/VS Code (`Extensions → Install from VSIX`).
 3. Paleta de comandos (`Ctrl/Cmd+Shift+P`):
    - **AutoCompleteHelp: Elegir proveedor y modelo** → elige LLM y guarda tu API key.
-   - **AutoCompleteHelp: Definir prompt del proyecto** → ej. *"API REST en Express con MongoDB para una tienda; explícame cada middleware"*.
-   - **AutoCompleteHelp: Elegir nivel de aprendizaje** → `pista`, `guiado` o `completo`.
-4. Escribe código: las sugerencias aparecen como texto gris; `Tab` para aceptar.
+   - **AutoCompleteHelp: Definir prompt del proyecto** → ej. *"e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología"*.
+   - **AutoCompleteHelp: Elegir stack del proyecto** → stack, arquitectura y plan.
+4. Abre un paso desde el panel **Plan del proyecto** y escribe encima de la línea en gris.
 
 ## 🧱 Stack técnico
 
 | Capa | Elección | Por qué |
 |---|---|---|
 | Lenguaje | **TypeScript** | Lenguaje oficial de la API de extensiones de VS Code |
-| Integración IDE | **VS Code Extension API** (`InlineCompletionItemProvider`) | Una sola base de código funciona en VS Code, Cursor, Windsurf y VSCodium (todos son forks de VS Code) |
+| Integración IDE | **VS Code Extension API** (decoraciones, comando `type`, TreeView) | Una sola base de código funciona en VS Code, Cursor, Windsurf y VSCodium (todos son forks de VS Code) |
 | Build | `tsc` (sin bundler) | Cero dependencias de runtime; empaquetado con `vsce` |
 | LLMs | `fetch` nativo (Node 18+ del extension host) | Un cliente ligero neutral entre proveedores: Messages API (Anthropic), Chat Completions (OpenAI y compatibles), generateContent (Gemini) |
 | Secretos | `context.secrets` (SecretStorage) | Claves cifradas por el sistema operativo |
-| Estado | `workspaceState` | El prompt del proyecto se guarda por workspace |
+| Proyecto | `autocompletehelp.json` en la raíz | Prompt, stack, arquitectura y plan versionados con el código |
 
-### Arquitectura
+### Estructura del código
 
 ```
 src/
-├── extension.ts            # activación, comandos, barra de estado
-├── inlineProvider.ts       # InlineCompletionItemProvider (debounce, caché, cancelación)
-├── prompts.ts              # prompts de sistema por nivel de aprendizaje + sanitizado
-├── explain.ts              # panel "Explicar código seleccionado"
-├── secrets.ts              # API keys en SecretStorage
+├── extension.ts       # activación, comandos, barra de estado
+├── dictation.ts       # «Completamos juntos»: sesión, teclado, línea por línea
+├── typing.ts          # motor de tipeo puro (avance, errores, huecos, qué se muestra)
+├── architectures.ts   # catálogo de arquitecturas, recomendación y registro de decisión
+├── archPicker.ts      # preguntas y elección de arquitectura en el IDE
+├── stackAdvisor.ts    # elegir stack + arquitectura → plan
+├── stackProfiles.ts   # perfiles de stack curados
+├── planView.ts        # panel «Plan del proyecto»
+├── scaffold.ts        # crear estructura
+├── review.ts          # repaso espaciado
+├── errorHelp.ts       # «Entender este error»
+├── conceptLedger.ts   # registro de conceptos y progreso
+├── projectFile.ts     # autocompletehelp.json
+├── projectContext.ts  # árbol de archivos, dependencias, imports
+├── prompts.ts         # prompts de sistema
+├── explain.ts         # panel «Explicar código seleccionado»
+├── secrets.ts         # API keys en SecretStorage
 └── providers/
-    ├── catalog.ts          # catálogo de empresas/modelos y resolución de config
-    └── client.ts           # cliente HTTP: anthropic | openai-compatible | gemini
+    ├── catalog.ts     # catálogo de empresas/modelos y resolución de config
+    └── client.ts      # cliente HTTP: anthropic | openai-compatible | gemini
 ```
 
 ## ⚙️ Configuración
@@ -110,22 +114,19 @@ src/
 |---|---|---|
 | `autocompletehelp.provider` | `anthropic` | Proveedor de LLM |
 | `autocompletehelp.model` | *(default del proveedor)* | ID del modelo |
-| `autocompletehelp.interactionMode` | `dictado` | `dictado` (escribes encima del gris) / `autocompletar` (Tab acepta) |
-| `autocompletehelp.dictation.typeComments` | `false` | En el dictado, escribir también los comentarios |
-| `autocompletehelp.dictation.gaps` | `auto` | Huecos en el dictado: `auto` (según lo practicado), `always`, `off` |
-| `autocompletehelp.learningLevel` | `guiado` | `educame` / `pista` / `guiado` / `completo` |
-| `autocompletehelp.maxTokens` | `400` | Tokens máximos por sugerencia |
-| `autocompletehelp.debounceMs` | `350` | Espera tras dejar de teclear |
+| `autocompletehelp.enabled` | `true` | Detectar las instrucciones `// ach: …` + Enter |
+| `autocompletehelp.dictation.typeComments` | `false` | Escribir también los comentarios |
+| `autocompletehelp.maxTokens` | `2400` | Tokens máximos al preparar el código de un paso |
 | `autocompletehelp.ollamaUrl` | `http://localhost:11434/v1` | URL de Ollama local |
 | `autocompletehelp.customBaseUrl` | — | Endpoint OpenAI-compatible propio |
 
 ## 🗺️ Roadmap
 
-- [ ] Streaming de sugerencias (mostrar el texto fantasma a medida que llega)
-- [ ] FIM (fill-in-the-middle) nativo para Codestral/StarCoder
-- [ ] Métricas de aprendizaje: cuántas sugerencias aceptas vs. escribes tras una pista
-- [ ] Quiz automático al final de una sesión de código
-- [ ] Publicación en VS Code Marketplace y Open VSX
+- [ ] Paquetes de stack en JSON (cualquier tecnología, creados con ayuda de la IA)
+- [ ] Capa sin IA: conceptos con tree-sitter, Bayesian Knowledge Tracing, FSRS, catálogo de errores
+- [ ] Desarrollo guiado por especificaciones (spec → tareas → tests de aceptación)
+- [ ] Agentes con permisos y autonomía según lo que ya dominas
+- [ ] IDE descargable (.exe) y publicación en VS Code Marketplace y Open VSX
 
 ## Licencia
 
