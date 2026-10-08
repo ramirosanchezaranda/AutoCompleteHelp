@@ -399,6 +399,16 @@ eq('el prompt de dictado pide el resumen ↑ al cerrar cada bloque', P2.buildDic
 const pkgCfg = JSON.parse(require('fs').readFileSync(__dirname + '/../package.json', 'utf8')).contributes.configuration.properties;
 eq('ajuste de línea al completar juntos: activado por defecto', pkgCfg['autocompletehelp.dictation.wordWrap'].default, true);
 eq('el prompt pide comentarios que entren en la pantalla', P2.buildDictationSystemPrompt('', false).includes('80 caracteres'), true);
+// Diseño, animación y shaders
+eq('catálogo: 52 temas, con el área de diseño, animación y creative coding', [L.LEARN_TOPICS.length, L.TOPIC_KINDS.some((k) => k.tipo === 'creativo')], [52, true]);
+eq('temas creativos por lo que escribe la persona', ['quiero aprender gsap', 'shaders', 'arte generativo con p5', 'teoría del color', 'webgpu', 'framer motion'].map((t) => L.matchTopic(t)?.id), ['gsap', 'shaders-glsl', 'creative-coding', 'composicion-diseno', 'webgpu', 'motion-react']);
+eq('lecciones sin IA de GSAP y de shaders', [LS.lessonsForTopic('gsap').map((l) => l.id), LS.lessonsForTopic('shaders-glsl').map((l) => l.id)], [['gsap-tarjetas'], ['shader-atardecer']]);
+const I2 = require(out + 'instructions.js');
+eq('los shaders se reconocen como GLSL y WGSL', ['a.frag', 'b.vert', 'c.glsl', 'd.wgsl'].map(I2.languageForPath), ['glsl', 'glsl', 'glsl', 'wgsl']);
+const shLesson = LS.getLesson('shader-atardecer');
+eq('los shaders de la lección no traen #version (la agrega webgl.ts al compilar)', [Object.entries(shLesson.archivos).filter(([f]) => /\.(frag|vert)$/.test(f)).some(([, l]) => l.some((x) => /^\s*#version/.test(x))), shLesson.archivos['src/webgl.ts'].join('\n').includes('#version 300 es')], [false, true]);
+eq('el prompt de aprender pide estudiar diseño escribiendo', L.buildLearnSystemPrompt({ tema: 'GSAP', nivel: 'cero', tamano: 'corto' }).includes('DISEÑO, ANIMACIÓN Y SHADERS'), true);
+eq('el prompt de dictado sabe que #version no va en el archivo', P2.buildDictationSystemPrompt('', false).includes('NO escribas #version'), true);
 eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
 
 function finish() {

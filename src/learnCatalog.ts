@@ -8,7 +8,7 @@ import type { ArchId } from './architectures';
  * también funciona.
  */
 
-export type TopicKind = 'lenguaje' | 'web' | 'arquitectura' | 'nube' | 'ia' | 'automatizacion' | 'movil' | 'practicas';
+export type TopicKind = 'lenguaje' | 'web' | 'creativo' | 'arquitectura' | 'nube' | 'ia' | 'automatizacion' | 'movil' | 'practicas';
 
 export interface LearnTopic {
   id: string;
@@ -28,6 +28,7 @@ export interface LearnTopic {
 export const TOPIC_KINDS: { tipo: TopicKind; titulo: string }[] = [
   { tipo: 'lenguaje', titulo: 'Lenguajes' },
   { tipo: 'web', titulo: 'Web y backend' },
+  { tipo: 'creativo', titulo: 'Diseño, animación y creative coding' },
   { tipo: 'arquitectura', titulo: 'Arquitectura y patrones' },
   { tipo: 'nube', titulo: 'Nube y DevOps' },
   { tipo: 'ia', titulo: 'Inteligencia artificial y datos' },
@@ -35,6 +36,13 @@ export const TOPIC_KINDS: { tipo: TopicKind; titulo: string }[] = [
   { tipo: 'movil', titulo: 'Móvil y videojuegos' },
   { tipo: 'practicas', titulo: 'Buenas prácticas y herramientas' }
 ];
+
+/**
+ * Cómo se estudia diseño y animación, para todos los temas creativos: cada
+ * idea de diseño se aprende escribiéndola, mirando el resultado y variándola.
+ */
+const CREATIVO =
+  'Cómo estudiar: observar una referencia, reproducirla escribiendo, variar un parámetro por vez y después crear una pieza propia. Teoría escrita (apuntes) antes de cada principio: timing y easing, composición, color. La matemática y la configuración van en funciones puras con tests; lo visual se comprueba en el navegador con Vite. Animar transform y opacity, respetar prefers-reduced-motion, y semilla fija en lo generativo para poder repetir un resultado.';
 
 /** Advertencias comunes de los temas de nube: costos y credenciales. */
 const NUBE =
@@ -127,6 +135,84 @@ export const LEARN_TOPICS: LearnTopic[] = [
     stack: 'Three.js + Vite + TypeScript + Vitest', arquitectura: 'componentes',
     ideas: ['sistema solar animado', 'galería 3D que se recorre con el mouse', 'mini juego de esquivar obstáculos'],
     notas: 'Separar la lógica (testeable sin navegador) del render; Vite sirve los módulos.'
+  },
+  // Diseño, animación y creative coding
+  {
+    id: 'gsap', nombre: 'Animaciones con GSAP', tipo: 'creativo',
+    palabras: ['gsap', 'greensock', 'scrolltrigger', 'timeline', 'animaciones web', 'animar una web'],
+    stack: 'GSAP 3 + Vite + TypeScript + Vitest', arquitectura: 'componentes',
+    ideas: ['tarjetas que entran en escena con una timeline', 'landing que se anima al hacer scroll (ScrollTrigger)', 'menú con transiciones encadenadas'],
+    notas: CREATIVO + ' GSAP: tweens, timelines, easing, stagger y ScrollTrigger; la configuración de cada animación (duraciones, retrasos, curvas) en un módulo puro y testeable.'
+  },
+  {
+    id: 'animacion-web', nombre: 'Animación web con CSS y Web Animations API', tipo: 'creativo',
+    palabras: ['animacion css', 'animaciones css', 'keyframes', 'transiciones', 'web animations api', 'waapi'],
+    stack: 'HTML + CSS + TypeScript + Vite + Vitest', arquitectura: 'componentes',
+    ideas: ['botones y tarjetas con microinteracciones', 'loader animado solo con CSS', 'galería con transiciones de vista (View Transitions)'],
+    notas: CREATIVO + ' Primero transiciones y keyframes en CSS, después la Web Animations API para controlarlas desde código.'
+  },
+  {
+    id: 'motion-design', nombre: 'Principios de animación y motion design', tipo: 'creativo',
+    palabras: ['motion design', 'principios de animacion', '12 principios', 'easing', 'timing', 'animacion'],
+    stack: 'GSAP 3 + Vite + TypeScript', arquitectura: 'componentes',
+    ideas: ['los 12 principios de la animación, uno por escena', 'pelota que rebota con squash and stretch', 'biblioteca de curvas de easing comparadas'],
+    notas: CREATIVO + ' Cada principio (timing, anticipación, seguimiento, arcos, exageración…) tiene su apunte y su escena para variar.'
+  },
+  {
+    id: 'composicion-diseno', nombre: 'Composición y diseño con JavaScript', tipo: 'creativo',
+    palabras: ['composicion', 'diseno', 'diseno grafico', 'grilla', 'retícula', 'reticula', 'tipografia', 'teoria del color', 'paletas', 'layout'],
+    stack: 'Canvas 2D + TypeScript + Vite + Vitest', arquitectura: 'componentes',
+    ideas: ['generador de pósters con grilla modular', 'paletas de color armónicas (HSL y OKLCH)', 'tipografía cinética en canvas'],
+    notas: CREATIVO + ' Jerarquía, contraste, ritmo, proporción y regla de tercios como funciones puras (dónde va cada elemento) que se testean; el canvas solo dibuja lo que calculan.'
+  },
+  {
+    id: 'creative-coding', nombre: 'Creative coding y arte generativo (p5.js)', tipo: 'creativo',
+    palabras: ['creative coding', 'arte generativo', 'generativo', 'p5', 'p5.js', 'processing', 'ruido perlin', 'particulas'],
+    stack: 'p5.js + Vite + TypeScript + Vitest', arquitectura: 'componentes',
+    ideas: ['flow field con ruido de Perlin', 'sistema de partículas que reacciona al mouse', 'patrones de Truchet exportables como imagen'],
+    notas: CREATIVO + ' Semilla fija (randomSeed y noiseSeed) para reproducir cada obra; reglas del sistema separadas del dibujo.'
+  },
+  {
+    id: 'shaders-glsl', nombre: 'Shaders con GLSL (WebGL)', tipo: 'creativo',
+    palabras: ['shader', 'shaders', 'glsl', 'fragment shader', 'vertex shader', 'webgl2', 'sdf', 'shadertoy'],
+    stack: 'WebGL2 + GLSL ES 3.0 + TypeScript + Vite + Vitest', arquitectura: 'componentes',
+    ideas: ['tu primer shader: un atardecer animado', 'formas con funciones de distancia (SDF)', 'patrones con ruido que se mueven en el tiempo'],
+    notas: CREATIVO + ' Un shader corre una vez por píxel: coordenadas normalizadas, mix, smoothstep, fract, uniforms (tiempo, resolución, mouse). Los .frag y .vert van en archivos propios, comentados como cualquier código; para depurar, mostrar el valor como color. La matemática se replica en TypeScript y se testea.'
+  },
+  {
+    id: 'shaders-threejs', nombre: 'Shaders en Three.js (ShaderMaterial)', tipo: 'creativo',
+    palabras: ['shadermaterial', 'shaders three', 'shaders en three', 'vertex displacement', 'materiales personalizados'],
+    stack: 'Three.js + GLSL + Vite + TypeScript + Vitest', arquitectura: 'componentes',
+    ideas: ['esfera que ondula con un vertex shader', 'material holográfico con fresnel', 'transición entre dos imágenes con ruido'],
+    notas: CREATIVO + ' Primero la escena de Three.js, después el ShaderMaterial: qué calcula el vertex shader y qué el fragment shader, y cómo pasan los uniforms y varyings.'
+  },
+  {
+    id: 'r3f', nombre: 'React Three Fiber', tipo: 'creativo',
+    palabras: ['react three fiber', 'r3f', 'drei', 'three con react'],
+    stack: 'React 19 + @react-three/fiber + @react-three/drei + Vite + TypeScript', arquitectura: 'componentes',
+    ideas: ['portfolio 3D con cámara que sigue el scroll', 'configurador de producto con materiales', 'escena interactiva con física'],
+    notas: CREATIVO + ' La escena como componentes de React; useFrame para animar sin re-renderizar React en cada cuadro.'
+  },
+  {
+    id: 'webgpu', nombre: 'WebGPU y WGSL', tipo: 'creativo',
+    palabras: ['webgpu', 'wgsl', 'compute shader', 'compute shaders'],
+    stack: 'WebGPU + WGSL + TypeScript + Vite', arquitectura: 'componentes',
+    ideas: ['triángulo y degradado con WebGPU', 'simulación de partículas con compute shaders', 'juego de la vida en la GPU'],
+    notas: CREATIVO + ' Comprobar soporte (navigator.gpu) y explicar qué navegadores lo tienen; adaptador, dispositivo, pipeline y buffers, cada uno en su paso.'
+  },
+  {
+    id: 'svg-animacion', nombre: 'SVG e ilustración animada', tipo: 'creativo',
+    palabras: ['svg', 'animar svg', 'ilustracion animada', 'path', 'morphing', 'trazos'],
+    stack: 'SVG + GSAP 3 + Vite + TypeScript', arquitectura: 'componentes',
+    ideas: ['logo que se dibuja trazo a trazo', 'ícono que cambia de forma (morphing)', 'ilustración con capas en parallax'],
+    notas: CREATIVO + ' Leer un SVG como código: viewBox, path y sus comandos; animar stroke-dasharray y atributos con GSAP.'
+  },
+  {
+    id: 'motion-react', nombre: 'Animaciones en React con Motion', tipo: 'creativo',
+    palabras: ['framer motion', 'motion react', 'animaciones react', 'animatepresence'],
+    stack: 'React 19 + Motion + Vite + TypeScript + Vitest', arquitectura: 'componentes',
+    ideas: ['lista que reordena con animación de layout', 'modal con entrada y salida (AnimatePresence)', 'gestos de arrastrar con resorte'],
+    notas: CREATIVO + ' Animaciones declarativas: estados initial, animate y exit; resortes (spring) en vez de duraciones fijas.'
   },
   // Arquitectura y patrones
   {

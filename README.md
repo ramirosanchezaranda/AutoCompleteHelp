@@ -32,7 +32,7 @@ En los tres casos **todo se completa escribiendo**: el código, la configuració
 
 ## 🎓 Quiero aprender
 
-41 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **arquitectura y patrones** (patrones de API —REST, paginación, versionado, idempotencia, rate limiting, webhooks, OpenAPI—, patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
+52 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **diseño, animación y creative coding** (GSAP, animación con CSS y Web Animations API, principios de animación y motion design, composición y diseño con JavaScript, arte generativo con p5.js, shaders con GLSL, shaders en Three.js, React Three Fiber, WebGPU, SVG animado, Motion para React), **arquitectura y patrones** (patrones de API —REST, paginación, versionado, idempotencia, rate limiting, webhooks, OpenAPI—, patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
 
 El flujo es un **asistente paso a paso**: cada paso aparece sobre el anterior, con «Paso n de N» y ← Atrás para volver sin perder lo elegido.
 
@@ -56,6 +56,14 @@ Reglas que siguen todos los proyectos de aprendizaje:
 - **Entrenar IA**: datos chicos que entrenan en CPU en minutos, entrenamiento y prueba separados, semilla fija, métricas explicadas y tests del preprocesamiento y de la predicción.
 - **Apps con LLMs**: el modelo va detrás de una interfaz y los tests usan uno falso, sin gastar tokens.
 - **Seguridad**: solo contra el propio proyecto, en local.
+
+### 🎨 Diseño, animación y shaders
+
+Se estudia como se estudia diseño, y siempre escribiendo: **observar** una referencia, **reproducirla** escribiéndola, **variar** un valor por vez y **crear** una pieza propia. Cada principio (timing, easing, stagger, composición, color, coordenadas de un shader) tiene antes su apunte de teoría, que también se escribe. La matemática y los números de cada animación van en funciones puras con tests; lo visual se comprueba en el navegador con Vite. Los shaders van en archivos `.frag`/`.vert`/`.wgsl` propios, comentados como cualquier código.
+
+Dos lecciones sin IA para empezar, probadas en el navegador:
+- **Tarjetas que entran en escena** (GSAP): timing, easing, stagger, timelines y movimiento reducido.
+- **Tu primer shader: un atardecer animado** (GLSL + WebGL2): coordenadas, `mix`, `smoothstep`, `distance`, uniforms y el bucle de dibujo.
 
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 

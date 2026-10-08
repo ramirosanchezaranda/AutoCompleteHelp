@@ -1,6 +1,7 @@
 import type { ArchId } from './architectures';
 import { getArchitecture } from './architectures';
 import type { PlanStep, ProjectEnvironment, ProjectFile, StackInfo } from './projectFile';
+import { LESSONS_CREATIVAS } from './lessonsCreative';
 
 /**
  * Lecciones sin IA: proyectos completos con el código y las explicaciones ya
@@ -564,7 +565,8 @@ export const LESSONS: Lesson[] = [
       'ordenar/ejecutar.py': ['shutil'],
       'ordenar/__main__.py': ['argparse']
     }
-  }
+  },
+  ...LESSONS_CREATIVAS
 ];
 
 export function getLesson(id: string | undefined): Lesson | undefined {

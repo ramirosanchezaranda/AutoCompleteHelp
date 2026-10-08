@@ -2,6 +2,27 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.12.0] — 2026-10-09
+
+### Añadido
+
+- **Diseño, animación y creative coding** en «Quiero aprender» (52 temas):
+  GSAP, animación con CSS y Web Animations API, principios de animación y
+  motion design, composición y diseño con JavaScript, arte generativo con
+  p5.js, shaders con GLSL, shaders en Three.js, React Three Fiber, WebGPU,
+  SVG animado y Motion para React. Cada tema trae cómo estudiarlo:
+  observar, reproducir escribiendo, variar y crear.
+- La IA diseña estos proyectos con apuntes de teoría antes de cada principio,
+  la matemática en funciones puras con tests y un paso para verlo en el
+  navegador. En GLSL no escribe `#version` (WebGL la exige en la primera
+  línea y el archivo empieza con comentarios): la agrega quien compila.
+- **Dos lecciones sin IA nuevas**, verificadas con tsc, Vitest, vite build y
+  en el navegador: *Tarjetas que entran en escena* (GSAP) y *Tu primer
+  shader: un atardecer animado* (GLSL + WebGL2).
+- Archivos `.frag`, `.vert`, `.glsl` y `.wgsl` reconocidos en el dictado.
+- `docs/PRD-webapp.md`: el documento de producto para recrear AutoCompleteHelp
+  como web app (móvil y escritorio).
+
 ## [0.11.1] — 2026-10-09
 
 ### Corregido

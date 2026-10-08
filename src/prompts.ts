@@ -133,7 +133,8 @@ export function buildDictationSystemPrompt(
     '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).',
     '- Si el archivo es JSON u otro formato que no admite comentarios, no escribas comentarios ni la línea @ach-concepts como comentario: escribe "@ach-concepts: …" sola en la primera línea y después el contenido válido.',
     '- Si el paso es un TEST, explica qué comportamiento comprueba cada test y por qué ese caso importa (el caso normal, el borde, el error).',
-    TEORIA_RULE
+    TEORIA_RULE,
+    '- Si el archivo es un shader GLSL (.frag, .vert, .glsl): NO escribas #version. WebGL la exige en la primera línea y el archivo empieza con comentarios; el código que compila el shader la antepone. Comenta cada uniform, varying y función como cualquier otro código.'
   ];
 
   if (projectBlock) {

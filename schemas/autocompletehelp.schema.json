@@ -16,7 +16,9 @@
       "description": "Lección sin IA de AutoCompleteHelp: el código de cada paso ya está escrito y no necesita modelo.",
       "enum": [
         "typescript-gastos",
-        "python-descargas"
+        "python-descargas",
+        "gsap-tarjetas",
+        "shader-atardecer"
       ]
     },
     "perfil": {
