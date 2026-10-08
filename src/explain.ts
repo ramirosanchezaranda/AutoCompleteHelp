@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { noAI, resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
-import { ensureApiKey } from './secrets';
+import { ensureApiKey, prepareAI } from './secrets';
 import { buildExplainSystemPrompt, getProjectBlock } from './prompts';
 
 /**
@@ -14,7 +14,7 @@ export async function explainSelection(context: vscode.ExtensionContext): Promis
     vscode.window.showInformationMessage('Selecciona el código que quieres que te explique.');
     return;
   }
-  if (await needsAI('explicar código')) {
+  if (!(await prepareAI()) || await needsAI('explicar código')) {
     return;
   }
   const code = editor.document.getText(editor.selection);

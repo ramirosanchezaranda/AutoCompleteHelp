@@ -76,8 +76,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('autocompletehelp.setProjectPrompt', (preset?: string) =>
       setProjectPrompt(context, preset)
     ),
-    vscode.commands.registerCommand('autocompletehelp.setApiKey', () =>
-      setApiKeyCommand(context)
+    vscode.commands.registerCommand('autocompletehelp.setApiKey', (providerId?: string) =>
+      setApiKeyCommand(context, typeof providerId === 'string' ? providerId : undefined)
     ),
     vscode.commands.registerCommand('autocompletehelp.explainSelection', () =>
       explainSelection(context)

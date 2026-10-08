@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ProviderInfo, ProviderKind, allProviders, getProvider, resolveActiveConfig } from './providers/catalog';
 import { listModels } from './providers/client';
-import { ensureApiKey, getApiKey } from './secrets';
+import { getApiKey, setApiKeyCommand } from './secrets';
 import { BACK, Item, inputStep, pickStep, runSteps } from './wizard';
 
 /**
@@ -118,8 +118,8 @@ export async function selectModel(context: vscode.ExtensionContext): Promise<voi
   }
   await cfg.update('provider', provider.id, vscode.ConfigurationTarget.Global);
   await cfg.update('model', model, vscode.ConfigurationTarget.Global);
-  if (provider.needsKey) {
-    await ensureApiKey(context, provider);
+  if (provider.needsKey && !(await getApiKey(context, provider))) {
+    await setApiKeyCommand(context, provider.id);
   }
   vscode.window.showInformationMessage(
     `AutoCompleteHelp: usando ${provider.label} → ${model}${provider.kind === 'local' ? ' (local, gratis, en tu PC)' : ''}`

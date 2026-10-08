@@ -2,6 +2,23 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.11.1] — 2026-10-09
+
+### Corregido
+
+- **La IA se elige, no se impone**: antes de la primera tarea con IA se abre
+  «Elegir la IA» (cualquier proveedor con su API key, una IA local o sin IA),
+  en vez de pedir directamente la API key de Claude. Si falta la clave del
+  proveedor activo, se puede escribirla o elegir otra IA.
+- «Configurar API key» lista solo los proveedores que usan clave.
+
+### Cambiado
+
+- **Empezar más compacto**: la IA activa y el botón «Cambiar IA» quedan
+  arriba, siempre a la vista; los tres caminos son pestañas (Proyecto,
+  Aprender, Ideas) con una sola caja para escribir. «Elegir la IA» también
+  está en la barra de título de la sección.
+
 ## [0.11.0] — 2026-10-09
 
 ### Añadido

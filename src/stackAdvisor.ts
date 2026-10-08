@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { noAI, resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
-import { ensureApiKey } from './secrets';
+import { ensureApiKey, prepareAI } from './secrets';
 import { buildStackSystemPrompt, getProjectPrompt, saveProjectPrompt } from './prompts';
 import { showMarkdownPanel } from './explain';
 import { PROFILES, StackProfile, getProfile, matchProfile } from './stackProfiles';
@@ -23,6 +23,10 @@ import {
  * ahí guía todo el autocompletado.
  */
 export async function recommendStack(context: vscode.ExtensionContext): Promise<void> {
+  // La primera vez se elige cómo usar la IA (cualquier proveedor, local o sin IA).
+  if (!(await prepareAI())) {
+    return;
+  }
   let projectPrompt = getProjectPrompt(context);
   if (!projectPrompt) {
     const value = await vscode.window.showInputBox({

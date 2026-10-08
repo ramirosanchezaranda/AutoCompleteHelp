@@ -4,7 +4,7 @@ import { LESSONS, Lesson, getLesson, lessonProjectFile, lessonsForTopic } from '
 import { BACK, Item, inputStep, pickStep, runSteps } from './wizard';
 import { StartViewProvider } from './startView';
 import { complete } from './providers/client';
-import { ensureApiKey } from './secrets';
+import { ensureApiKey, prepareAI } from './secrets';
 import { showMarkdownPanel } from './explain';
 import { architectureDoc, getArchitecture } from './architectures';
 import { ProjectFile, projectRoot, writeProjectFileAt } from './projectFile';
@@ -76,6 +76,10 @@ export async function learn(
     st.topic = matchTopic(st.tema);
   }
 
+  // La primera vez se elige cómo usar la IA (cualquier proveedor, local o sin IA).
+  if (!(await prepareAI())) {
+    return;
+  }
   const sinIA = noAI();
   let llm: Llm | undefined;
   if (!sinIA) {

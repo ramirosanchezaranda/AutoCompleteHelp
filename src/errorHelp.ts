@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
-import { ensureApiKey } from './secrets';
+import { ensureApiKey, prepareAI } from './secrets';
 import { getProjectBlock } from './prompts';
 import { needsAI, showMarkdownPanel } from './explain';
 
@@ -85,7 +85,7 @@ export async function explainError(
     lines.push(document.lineAt(i).text);
   }
 
-  if (await needsAI('explicar el error')) {
+  if (!(await prepareAI()) || await needsAI('explicar el error')) {
     return;
   }
   const { provider, model, baseUrl } = resolveActiveConfig();

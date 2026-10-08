@@ -380,6 +380,7 @@ eq('el prompt de dictado explica cómo escribir apuntes de teoría', P2.buildDic
 eq('el prompt de «Quiero aprender» pide pasos de teoría', L.buildLearnSystemPrompt({ tema: 'Rust', nivel: 'cero', tamano: 'corto' }).includes('"teoria'), true);
 const SV = require(out + 'startView.js');
 const sh = SV.startHtml('abc');
+eq('«Empezar»: la IA arriba con botón para cambiarla, y los caminos en pestañas', [sh.indexOf('id="aiBtn"') < sh.indexOf('role="tablist"'), (sh.match(/role="tab"/g) || []).length], [true, 3]);
 eq('«Empezar»: una caja para escribir en cada camino', [SV.START_BOXES.map((b) => b.kind), (sh.match(/<textarea/g) || []).length, sh.includes("nonce-abc")], [['project', 'learn', 'recommend'], 3, true]);
 // Resumen al cerrar cada bloque (↑)
 const tsCode = LS.lessonCode('typescript-gastos', 'src/gastos.ts').text;

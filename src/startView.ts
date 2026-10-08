@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { resolveActiveConfig } from './providers/catalog';
+import { aiChosen } from './secrets';
 import { StartKind, startWith } from './learn';
 
 /**
@@ -42,7 +43,11 @@ export class StartViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const { provider, model } = resolveActiveConfig();
-    const label = provider.kind === 'ninguna' ? 'Sin IA' : `${provider.label} · ${model}${provider.kind === 'local' ? ' (local)' : ''}`;
+    const label = !aiChosen()
+      ? 'sin elegir todavía'
+      : provider.kind === 'ninguna'
+        ? 'Sin IA'
+        : `${provider.label} · ${model}${provider.kind === 'local' ? ' (local)' : ''}`;
     void this.view.webview.postMessage({ cmd: 'ai', label });
   }
 }
@@ -57,9 +62,10 @@ function nonce(): string {
 }
 
 /** Las tres cajas: qué se escribe en cada una y ejemplos para tocar. */
-export const START_BOXES: { kind: StartKind; titulo: string; ayuda: string; placeholder: string; boton: string; ejemplos: string[] }[] = [
+export const START_BOXES: { kind: StartKind; tab: string; titulo: string; ayuda: string; placeholder: string; boton: string; ejemplos: string[] }[] = [
   {
     kind: 'project',
+    tab: '🚀 Proyecto',
     titulo: '🚀 Tengo un proyecto',
     ayuda: 'Qué construyes + cómo quieres que te expliquen.',
     placeholder: 'Ej: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología',
@@ -68,6 +74,7 @@ export const START_BOXES: { kind: StartKind; titulo: string; ayuda: string; plac
   },
   {
     kind: 'learn',
+    tab: '🎓 Aprender',
     titulo: '🎓 Quiero aprender',
     ayuda: 'Un lenguaje, una librería, la nube, patrones, IA… lo que sea.',
     placeholder: 'Ej: TypeScript, three.js, patrones de API, configurar AWS',
@@ -76,8 +83,9 @@ export const START_BOXES: { kind: StartKind; titulo: string; ayuda: string; plac
   },
   {
     kind: 'recommend',
+    tab: '💡 Ideas',
     titulo: '💡 Recomiéndame un proyecto',
-    ayuda: 'Qué te interesa o para qué quieres aprender.',
+    ayuda: 'Recomiéndame un proyecto: qué te interesa o para qué quieres aprender.',
     placeholder: 'Ej: quiero trabajar de backend, me gustan los videojuegos',
     boton: 'Recomiéndame →',
     ejemplos: ['quiero trabajar en la nube', 'automatizar mi trabajo con Excel']
@@ -89,11 +97,13 @@ function esc(s: string): string {
 }
 
 export function startHtml(n: string): string {
-  const boxes = START_BOXES.map(
-    (b) => `<section class="box" data-kind="${b.kind}">
-  <h3>${esc(b.titulo)}</h3>
+  const tabs = START_BOXES.map(
+    (b, i) => `<button role="tab" class="tab${i === 0 ? ' on' : ''}" data-tab="${b.kind}" aria-selected="${i === 0}" title="${esc(b.titulo)}">${esc(b.tab)}</button>`
+  ).join('');
+  const panes = START_BOXES.map(
+    (b, i) => `<section class="pane" data-kind="${b.kind}"${i === 0 ? '' : ' hidden'} role="tabpanel">
   <p>${esc(b.ayuda)}</p>
-  <textarea rows="2" placeholder="${esc(b.placeholder)}" aria-label="${esc(b.titulo)}"></textarea>
+  <textarea rows="3" placeholder="${esc(b.placeholder)}" aria-label="${esc(b.titulo)}"></textarea>
   <div class="ex">${b.ejemplos.map((e) => `<button class="chip" data-ex="${esc(e)}">${esc(e)}</button>`).join('')}</div>
   <button class="go">${esc(b.boton)}</button>
 </section>`
@@ -102,28 +112,39 @@ export function startHtml(n: string): string {
 <html lang="es"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${n}'; script-src 'nonce-${n}';">
 <style nonce="${n}">
-  body { padding: 4px 8px 12px; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); }
-  .box { border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 6px; padding: 8px 10px 10px; margin: 0 0 10px; }
-  .box:focus-within { border-color: var(--vscode-focusBorder); }
-  h3 { margin: 0 0 2px; font-size: 1em; }
-  p { margin: 0 0 6px; opacity: .8; }
+  body { padding: 6px 10px 10px; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); }
+  .ai { display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin-bottom: 8px; border-radius: 4px; background: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background)); }
+  .ai .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai .lbl b { font-weight: 600; }
+  .small { font: inherit; cursor: pointer; border: none; border-radius: 3px; padding: 3px 8px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); white-space: nowrap; }
+  .small:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border)); margin-bottom: 6px; }
+  .tab { flex: 1; font: inherit; cursor: pointer; background: none; border: none; border-bottom: 2px solid transparent; color: var(--vscode-descriptionForeground); padding: 4px 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tab.on { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); font-weight: 600; }
+  p { margin: 0 0 6px; opacity: .85; }
   textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, transparent); border-radius: 3px; padding: 4px 6px; }
   textarea:focus { outline: 1px solid var(--vscode-focusBorder); }
   .ex { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
   .chip { font: inherit; font-size: .9em; cursor: pointer; border: none; border-radius: 10px; padding: 1px 8px; color: var(--vscode-badge-foreground); background: var(--vscode-badge-background); }
   .go { width: 100%; font: inherit; cursor: pointer; border: none; border-radius: 3px; padding: 5px 8px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
   .go:hover { background: var(--vscode-button-hoverBackground); }
-  .foot { opacity: .85; line-height: 1.5; }
-  .link { font: inherit; background: none; border: none; padding: 0; cursor: pointer; color: var(--vscode-textLink-foreground); text-decoration: underline; }
+  .foot { margin-top: 8px; opacity: .75; font-size: .92em; }
 </style></head>
 <body>
-${boxes}
-<p class="foot">En los tres casos completamos juntos: el código y los apuntes aparecen en gris, una línea a la vez, con su explicación, y los escribes tú.<br>
-IA: <strong id="ai">…</strong> · <button class="link" id="aiBtn">cambiar (API key, local o sin IA)</button></p>
+<div class="ai"><span class="lbl">IA: <b id="ai">…</b></span><button class="small" id="aiBtn" title="Cualquier proveedor con su API key, una IA local o sin IA">Cambiar IA</button></div>
+<div class="tabs" role="tablist">${tabs}</div>
+${panes}
+<p class="foot">En los tres, todo se completa escribiendo: el código y la teoría aparecen en gris, una línea a la vez, con su explicación.</p>
 <script nonce="${n}">
   const vscode = acquireVsCodeApi();
   const state = vscode.getState() || {};
-  document.querySelectorAll('.box').forEach((box) => {
+  const show = (kind) => {
+    document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === kind; t.classList.toggle('on', on); t.setAttribute('aria-selected', on); });
+    document.querySelectorAll('.pane').forEach((p) => { p.hidden = p.dataset.kind !== kind; });
+    state.tab = kind; vscode.setState(state);
+  };
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => { show(t.dataset.tab); document.querySelector('.pane:not([hidden]) textarea').focus(); }));
+  document.querySelectorAll('.pane').forEach((box) => {
     const kind = box.dataset.kind, ta = box.querySelector('textarea');
     ta.value = state[kind] || '';
     const save = () => { state[kind] = ta.value; vscode.setState(state); };
@@ -134,6 +155,7 @@ IA: <strong id="ai">…</strong> · <button class="link" id="aiBtn">cambiar (API
     box.querySelector('.go').addEventListener('click', go);
     box.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => { ta.value = b.dataset.ex; save(); ta.focus(); }));
   });
+  if (state.tab) show(state.tab);
   document.getElementById('aiBtn').addEventListener('click', () => vscode.postMessage({ cmd: 'ai' }));
   window.addEventListener('message', (e) => { if (e.data && e.data.cmd === 'ai') document.getElementById('ai').textContent = e.data.label; });
   vscode.postMessage({ cmd: 'ready' });

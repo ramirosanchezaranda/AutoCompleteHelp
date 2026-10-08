@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { noAI, resolveActiveConfig } from './providers/catalog';
 import { lessonCode } from './lessons';
 import { complete, streamComplete } from './providers/client';
-import { getApiKey } from './secrets';
+import { getApiKey, prepareAI } from './secrets';
 import {
   buildDictationSystemPrompt,
   buildUserPrompt,
@@ -222,6 +222,9 @@ export class DictationManager implements vscode.Disposable {
     if (lesson) {
       return { text: lesson.text, concepts: lesson.concepts };
     }
+    if (!(await prepareAI())) {
+      return undefined;
+    }
     if (noAI()) {
       const action = await vscode.window.showInformationMessage(
         'AutoCompleteHelp está en modo sin IA y este paso no es de una lección escrita. Puedes escribirlo tú (el plan y la guía siguen), elegir una lección sin IA en «Quiero aprender», o activar una IA con API key o local.',
@@ -238,10 +241,13 @@ export class DictationManager implements vscode.Disposable {
     if (provider.needsKey && !apiKey) {
       const action = await vscode.window.showWarningMessage(
         `AutoCompleteHelp: falta la API key de ${provider.label} para preparar el código.`,
-        'Configurar'
+        'Escribir la API key',
+        'Elegir otra IA'
       );
-      if (action) {
-        vscode.commands.executeCommand('autocompletehelp.setApiKey');
+      if (action === 'Escribir la API key') {
+        vscode.commands.executeCommand('autocompletehelp.setApiKey', provider.id);
+      } else if (action) {
+        vscode.commands.executeCommand('autocompletehelp.selectModel');
       }
       return undefined;
     }
