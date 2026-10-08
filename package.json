@@ -1,8 +1,8 @@
 {
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
-  "description": "Construye proyectos desde el IDE con prompts, o aprende cualquier tema con un proyecto hecho para eso: la IA dicta cada línea en gris y tú la escribes, con explicaciones, arquitectura, tests y Docker. Multi-LLM.",
-  "version": "0.8.0",
+  "description": "Construye tus proyectos o aprende cualquier tema —lenguajes, nube, patrones, IA— con proyectos que la IA te recomienda: dicta cada línea en gris y tú la escribes, con explicaciones, arquitectura, tests y Docker. Multi-LLM.",
+  "version": "0.9.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -33,9 +33,19 @@
   "contributes": {
     "commands": [
       {
+        "command": "autocompletehelp.start",
+        "title": "AutoCompleteHelp: Empezar",
+        "icon": "$(home)"
+      },
+      {
         "command": "autocompletehelp.learn",
         "title": "AutoCompleteHelp: Quiero aprender…",
         "icon": "$(mortar-board)"
+      },
+      {
+        "command": "autocompletehelp.recommendProject",
+        "title": "AutoCompleteHelp: Recomiéndame un proyecto",
+        "icon": "$(lightbulb)"
       },
       {
         "command": "autocompletehelp.setProjectPrompt",
@@ -171,6 +181,11 @@
           "command": "autocompletehelp.learn",
           "when": "view == autocompletehelp.learn",
           "group": "navigation@1"
+        },
+        {
+          "command": "autocompletehelp.recommendProject",
+          "when": "view == autocompletehelp.learn",
+          "group": "navigation@2"
         }
       ],
       "commandPalette": [
@@ -292,18 +307,26 @@
       }
     },
     "views": {
-      "explorer": [
+      "autocompletehelp": [
         {
-          "id": "autocompletehelp.plan",
-          "name": "Plan del proyecto"
+          "id": "autocompletehelp.start",
+          "name": "Empezar"
         },
         {
           "id": "autocompletehelp.learn",
           "name": "Quiero aprender"
+        },
+        {
+          "id": "autocompletehelp.plan",
+          "name": "Plan del proyecto"
         }
       ]
     },
     "viewsWelcome": [
+      {
+        "view": "autocompletehelp.start",
+        "contents": "¿Qué quieres hacer hoy?\n[$(rocket) Tengo un proyecto](command:autocompletehelp.setProjectPrompt)\n[$(mortar-board) Quiero aprender algo](command:autocompletehelp.learn)\n[$(lightbulb) Recomiéndame un proyecto](command:autocompletehelp.recommendProject)\nEn todos los casos completamos juntos el código: una línea en gris a la vez, con su explicación.\n[$(sparkle) Elegir la IA (proveedor y modelo)](command:autocompletehelp.selectModel)"
+      },
       {
         "view": "autocompletehelp.plan",
         "contents": "Todavía no hay plan. Elige el stack y la arquitectura de tu proyecto, o aprende un tema nuevo con un proyecto pensado para eso.\n[Elegir stack del proyecto](command:autocompletehelp.recommendStack)\n[Quiero aprender…](command:autocompletehelp.learn)\nCada paso abre su archivo y completamos juntos el código, línea por línea."
@@ -330,7 +353,16 @@
         "key": "escape",
         "when": "editorTextFocus && autocompletehelp.dictating && !suggestWidgetVisible && !inlineSuggestionVisible"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "autocompletehelp",
+          "title": "AutoCompleteHelp",
+          "icon": "media/ach.svg"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

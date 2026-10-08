@@ -244,7 +244,7 @@ const L = require(out + 'learnTopics.js');
 eq('temas curados por palabra clave', ['quiero aprender typescript', 'Three.js', 'arquitectura hexagonal', 'automatizaciones con Python', 'Docker y compose'].map((x) => L.matchTopic(x)?.id),
   ['typescript', 'threejs', 'hexagonal', 'automatizacion-python', 'docker']);
 eq('palabra completa: «ts» no coincide dentro de «tests»; gana la clave más larga', [L.matchTopic('tests unitarios')?.id, L.matchTopic('clean architecture con node')?.id], ['testing', 'clean']);
-eq('tema desconocido → sin semilla (lo diseña la IA)', L.matchTopic('Rust embebido'), undefined);
+eq('tema desconocido → sin semilla (lo diseña la IA)', L.matchTopic('COBOL en mainframes'), undefined);
 eq('cada tema curado usa una arquitectura del catálogo', L.LEARN_TOPICS.every((t) => !!A.getArchitecture(t.arquitectura)), true);
 const lp = L.buildLearnSystemPrompt({ tema: 'Three.js', nivel: 'cero', tamano: 'corto', topic: L.matchTopic('three.js') });
 eq('prompt: tests obligatorios, Docker solo si hace falta, arquitecturas del catálogo y semilla',
@@ -292,6 +292,33 @@ eq('Dockerfile y compose se reconocen', [lfp('Dockerfile'), lfp('docker/api.Dock
 const scaffold = require(out + 'scaffold.js').scaffoldEntries(lpf, undefined, 'aprender-typescript');
 eq('crear estructura: archivos del plan, sin los pasos de comando', scaffold.map((e) => e.archivo), ['tsconfig.json', 'src/tipos.ts', 'src/gastos.test.ts', 'x.ts']);
 eq('el esquema JSON conoce los tipos de paso', JSON.stringify(jsonSchema.properties.plan.items.properties.tipo.enum), JSON.stringify(require(out + 'projectFile.js').STEP_KINDS));
+
+console.log('— quiero aprender: catálogo ampliado y proyectos recomendados');
+eq('catálogo amplio: cada grupo tiene temas', [L.LEARN_TOPICS.length >= 40, L.TOPIC_KINDS.every((k) => L.LEARN_TOPICS.some((t) => t.tipo === k.tipo))], [true, true]);
+const allWords = L.LEARN_TOPICS.flatMap((t) => t.palabras);
+eq('ninguna palabra clave apunta a dos temas', allWords.filter((w, i) => allWords.indexOf(w) !== i), []);
+eq('ids únicos', new Set(L.LEARN_TOPICS.map((t) => t.id)).size, L.LEARN_TOPICS.length);
+eq('nube, patrones, IA y más', ['configuración de AWS', 'configuración de azure', 'patrones de diseño', 'cómo entrenar ia', 'redes neuronales con pytorch', 'una app con RAG', 'kubernetes', 'CI/CD con github actions', 'git y github', 'clean code', 'videojuegos', 'C# y .NET'].map((x) => L.matchTopic(x)?.id),
+  ['aws', 'azure', 'patrones-diseno', 'ml-entrenar', 'deep-learning', 'llm-apps', 'kubernetes', 'cicd', 'git', 'solid', 'unity', 'csharp']);
+eq('«java» no se confunde con «javascript»', [L.matchTopic('java')?.id, L.matchTopic('javascript')?.id], ['java', 'javascript']);
+const lpAws = L.buildLearnSystemPrompt({ tema: 'AWS', nivel: 'otro-lenguaje', tamano: 'corto', topic: L.matchTopic('aws') });
+eq('nube: presupuesto, credenciales fuera del código y destruir al final', [lpAws.includes('alerta de presupuesto'), lpAws.includes('NUNCA en el código'), lpAws.includes('destruye todo')], [true, true, true]);
+eq('entrenar IA: datos chicos, semilla y tests', [lpAws.includes('CPU en minutos'), lpAws.includes('semilla fija')], [true, true]);
+const curated = L.curatedIdeas(L.matchTopic('aws'));
+eq('ideas curadas (sin IA) marcan nube', [curated.length, curated[0].nube, curated[0].titulo.startsWith('Sitio web')], [3, true, true]);
+eq('Docker local no se marca como nube', L.curatedIdeas(L.matchTopic('docker'))[0].nube, false);
+const ideasAnswer = '```ach-ideas\n' + JSON.stringify([
+  { titulo: 'Clasificador de reseñas', descripcion: 'Entrena un modelo que distingue reseñas positivas.', aprendes: ['features', 'métricas'], dificultad: 'baja', duracion: '2 horas', docker: false, nube: false, tema: 'machine learning' },
+  { titulo: 'Sin descripción' },
+  { titulo: 'Detector de spam', descripcion: 'Filtra mails.', dificultad: 'imposible' }
+]) + '\n```';
+const ideas = L.parseIdeas(ideasAnswer);
+eq('lee las ideas y descarta las incompletas', ideas.map((i) => [i.titulo, i.dificultad]), [['Clasificador de reseñas', 'baja'], ['Detector de spam', 'media']]);
+eq('ideas sin bloque o rotas → ninguna', [L.parseIdeas('nada').length, L.parseIdeas('```ach-ideas\n{roto\n```').length], [0, 0]);
+const ip = L.buildIdeasSystemPrompt({ nivel: 'cero', interes: 'quiero trabajar en backend' });
+eq('recomendar sin tema: según lo que le interesa, con su tema', [ip.includes('quiero trabajar en backend'), ip.includes('qué tema enseña'), ip.includes('ach-ideas')], [true, true, true]);
+eq('el proyecto elegido llega al diseño', L.buildLearnSystemPrompt({ tema: 'ML', nivel: 'cero', tamano: 'corto', idea: ideas[0] }).includes('PROYECTO ELEGIDO (diseña exactamente este): «Clasificador de reseñas»'), true);
+eq('Terraform, Bicep y Dart se reconocen', [lfp('infra/main.tf'), lfp('infra/main.bicep'), lfp('lib/main.dart')], ['terraform', 'bicep', 'dart']);
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);

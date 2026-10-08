@@ -21,160 +21,9 @@ import {
  * un tema abierto.
  */
 
-export type TopicKind = 'lenguaje' | 'libreria' | 'arquitectura' | 'automatizacion' | 'herramienta';
-
-export interface LearnTopic {
-  id: string;
-  nombre: string;
-  tipo: TopicKind;
-  /** Palabras que lo identifican en lo que escribe la persona. */
-  palabras: string[];
-  /** Stack con el que se aprende mejor. */
-  stack: string;
-  arquitectura: ArchId;
-  /** Ideas de proyecto que ejercitan el tema. */
-  ideas: string[];
-  /** Advertencias o requisitos propios del tema. */
-  notas?: string;
-}
-
-export const TOPIC_KINDS: { tipo: TopicKind; titulo: string }[] = [
-  { tipo: 'lenguaje', titulo: 'Lenguajes' },
-  { tipo: 'libreria', titulo: 'Librerías y frameworks' },
-  { tipo: 'arquitectura', titulo: 'Arquitectura y diseño' },
-  { tipo: 'automatizacion', titulo: 'Automatización y datos' },
-  { tipo: 'herramienta', titulo: 'Herramientas' }
-];
-
-export const LEARN_TOPICS: LearnTopic[] = [
-  {
-    id: 'typescript',
-    nombre: 'TypeScript',
-    tipo: 'lenguaje',
-    palabras: ['typescript', 'ts', 'tipos', 'tipado'],
-    stack: 'TypeScript 5 + Node.js 22 LTS + Vitest',
-    arquitectura: 'capas',
-    ideas: ['gestor de gastos en la terminal', 'API de tareas con validación de tipos', 'conversor de unidades con tests'],
-    notas: 'Compilar con tsc y mostrar cómo los tipos atrapan errores antes de ejecutar.'
-  },
-  {
-    id: 'javascript',
-    nombre: 'JavaScript desde cero',
-    tipo: 'lenguaje',
-    palabras: ['javascript', 'js', 'programar desde cero', 'empezar a programar'],
-    stack: 'HTML + CSS + JavaScript (ES modules) + Vitest',
-    arquitectura: 'componentes',
-    ideas: ['lista de compras en el navegador', 'juego de adivinar el número', 'calculadora de propinas'],
-    notas: 'Empezar sin frameworks; servir con un servidor local porque los ES modules no cargan con doble clic.'
-  },
-  {
-    id: 'python',
-    nombre: 'Python',
-    tipo: 'lenguaje',
-    palabras: ['python', 'py'],
-    stack: 'Python 3.13 + pytest',
-    arquitectura: 'capas',
-    ideas: ['agenda de contactos en la terminal', 'analizador de gastos desde un CSV', 'juego de preguntas'],
-    notas: 'Usar entorno virtual (venv) desde el primer paso y explicar por qué.'
-  },
-  {
-    id: 'threejs',
-    nombre: 'Three.js (3D en el navegador)',
-    tipo: 'libreria',
-    palabras: ['three', 'threejs', 'three.js', '3d', 'webgl'],
-    stack: 'Three.js + Vite + TypeScript + Vitest',
-    arquitectura: 'componentes',
-    ideas: ['sistema solar animado', 'galería 3D que se recorre con el mouse', 'mini juego de esquivar obstáculos'],
-    notas: 'Separar la lógica (testeable sin navegador) del render; Vite sirve los módulos.'
-  },
-  {
-    id: 'react',
-    nombre: 'React',
-    tipo: 'libreria',
-    palabras: ['react', 'jsx', 'hooks'],
-    stack: 'React 19 + Vite + TypeScript + Vitest + Testing Library',
-    arquitectura: 'componentes',
-    ideas: ['tablero de tareas con filtros', 'buscador de películas con una API pública', 'carrito de compras'],
-  },
-  {
-    id: 'node-api',
-    nombre: 'APIs con Node.js',
-    tipo: 'libreria',
-    palabras: ['node', 'nodejs', 'express', 'api rest', 'backend'],
-    stack: 'Node.js 22 + Express 5 + TypeScript + PostgreSQL + Vitest + Supertest',
-    arquitectura: 'capas',
-    ideas: ['API de reservas', 'API de una biblioteca con préstamos', 'acortador de URLs'],
-    notas: 'La base de datos corre en Docker para no instalar PostgreSQL a mano.'
-  },
-  {
-    id: 'hexagonal',
-    nombre: 'Arquitectura hexagonal',
-    tipo: 'arquitectura',
-    palabras: ['hexagonal', 'puertos y adaptadores', 'ports and adapters'],
-    stack: 'TypeScript + Node.js 22 + Express 5 + Vitest',
-    arquitectura: 'hexagonal',
-    ideas: ['sistema de pedidos con pagos simulados', 'reservas de turnos médicos', 'billetera con transferencias'],
-    notas: 'Demostrar el valor cambiando un adaptador (de memoria a base de datos) sin tocar el dominio, con los tests como prueba.'
-  },
-  {
-    id: 'clean',
-    nombre: 'Clean Architecture',
-    tipo: 'arquitectura',
-    palabras: ['clean architecture', 'arquitectura limpia', 'clean'],
-    stack: 'TypeScript + Node.js 22 + Vitest',
-    arquitectura: 'clean',
-    ideas: ['gestor de suscripciones', 'sistema de inscripciones a cursos'],
-  },
-  {
-    id: 'microservicios',
-    nombre: 'Microservicios',
-    tipo: 'arquitectura',
-    palabras: ['microservicios', 'microservices'],
-    stack: 'Node.js 22 + Express 5 + Docker Compose + RabbitMQ',
-    arquitectura: 'microservicios',
-    ideas: ['tienda con servicios de catálogo y pedidos', 'notificaciones que reaccionan a eventos'],
-    notas: 'Empezar mostrando el monolito y por qué se separa; Docker Compose levanta los servicios.'
-  },
-  {
-    id: 'automatizacion-python',
-    nombre: 'Automatizaciones con Python',
-    tipo: 'automatizacion',
-    palabras: ['automatizar', 'automatizaciones', 'automatizacion', 'scripts', 'bot'],
-    stack: 'Python 3.13 + pytest + requests + openpyxl',
-    arquitectura: 'capas',
-    ideas: ['ordenar archivos de la carpeta Descargas por tipo', 'reporte diario en Excel desde una API', 'renombrador masivo de fotos'],
-    notas: 'Modo «simulación» antes de tocar archivos reales; programar la tarea con el programador del sistema.'
-  },
-  {
-    id: 'sql',
-    nombre: 'SQL y bases de datos',
-    tipo: 'automatizacion',
-    palabras: ['sql', 'postgres', 'postgresql', 'base de datos', 'bases de datos', 'mysql'],
-    stack: 'PostgreSQL 17 + Python 3.13 + pytest',
-    arquitectura: 'capas',
-    ideas: ['base de datos de una biblioteca con consultas reales', 'reportes de ventas'],
-    notas: 'PostgreSQL corre en Docker; cada consulta se comprueba con un test.'
-  },
-  {
-    id: 'docker',
-    nombre: 'Docker',
-    tipo: 'herramienta',
-    palabras: ['docker', 'contenedores', 'compose', 'dockerfile'],
-    stack: 'Docker + Docker Compose + Node.js 22 + PostgreSQL',
-    arquitectura: 'capas',
-    ideas: ['dockerizar una API con su base de datos', 'entorno de desarrollo reproducible'],
-  },
-  {
-    id: 'testing',
-    nombre: 'Testing y TDD',
-    tipo: 'herramienta',
-    palabras: ['tests', 'testing', 'tdd', 'pruebas', 'unit test'],
-    stack: 'TypeScript + Vitest',
-    arquitectura: 'capas',
-    ideas: ['carrito de compras con descuentos, escrito test primero', 'validador de contraseñas'],
-    notas: 'Cada paso de código va precedido de su test (rojo → verde → refactor).'
-  }
-];
+import { LEARN_TOPICS, LearnTopic, TOPIC_KINDS, TopicKind } from './learnCatalog';
+export { LEARN_TOPICS, TOPIC_KINDS };
+export type { LearnTopic, TopicKind };
 
 function norm(text: string): string {
   return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -219,6 +68,92 @@ export interface LearnRequest {
   nivel: LearnLevel;
   tamano: LearnSize;
   topic?: LearnTopic;
+  /** Proyecto elegido entre los recomendados (o escrito por la persona). */
+  idea?: ProjectIdea;
+}
+
+// ---------------------------------------------------------------------------
+// Recomendación de proyectos
+// ---------------------------------------------------------------------------
+
+export interface ProjectIdea {
+  titulo: string;
+  descripcion: string;
+  /** Qué se aprende construyéndolo. */
+  aprendes: string[];
+  dificultad: 'baja' | 'media' | 'alta';
+  /** Ej: «2 horas», «un fin de semana». */
+  duracion: string;
+  docker: boolean;
+  nube: boolean;
+  /** Tema al que pertenece (en «Recomiéndame un proyecto», cada idea trae el suyo). */
+  tema?: string;
+}
+
+/** Ideas del catálogo, sin IA: la recomendación cuando no hay conexión. */
+export function curatedIdeas(topic: LearnTopic): ProjectIdea[] {
+  return topic.ideas.map((idea) => ({
+    titulo: idea.charAt(0).toUpperCase() + idea.slice(1),
+    descripcion: `Proyecto curado para aprender ${topic.nombre} con ${topic.stack}.`,
+    aprendes: [],
+    dificultad: 'media',
+    duracion: '',
+    docker: /docker|postgres|rabbitmq|kubernetes/i.test(topic.stack),
+    nube: topic.tipo === 'nube' && topic.id !== 'docker' && topic.id !== 'terraform' && topic.id !== 'kubernetes',
+    tema: topic.nombre
+  }));
+}
+
+/**
+ * Prompt para que la IA RECOMIENDE proyectos: para un tema, o (sin tema) a
+ * partir de lo que le interesa a la persona.
+ */
+export function buildIdeasSystemPrompt(req: { tema?: string; nivel: LearnLevel; interes?: string; topic?: LearnTopic }): string {
+  return [
+    'Eres un mentor que recomienda PROYECTOS PARA APRENDER: proyectos concretos, motivadores y realistas, que la persona va a construir escribiendo cada línea.',
+    req.tema
+      ? `Tema a aprender: «${req.tema}».`
+      : 'La persona todavía no eligió tema: recomienda proyectos de temas distintos según lo que le interesa, y di en cada uno qué tema enseña.',
+    req.interes ? `Lo que le interesa o para qué quiere aprender: «${req.interes}».` : '',
+    `Punto de partida: ${LEVEL_TEXT[req.nivel]}.`,
+    req.topic ? `Ideas del catálogo para inspirarte (puedes mejorarlas): ${req.topic.ideas.join('; ')}. Stack recomendado: ${req.topic.stack}.` : '',
+    '',
+    'Recomienda 3 proyectos distintos entre sí (uno sencillo, uno intermedio y uno más ambicioso), adecuados a su punto de partida.',
+    'Responde SOLO con un bloque de código con la etiqueta ach-ideas que contenga un array JSON válido:',
+    '```ach-ideas',
+    '[ { "titulo": "nombre corto", "descripcion": "qué se construye, en 1-2 frases", "aprendes": ["3 a 5 conceptos"], "dificultad": "baja|media|alta", "duracion": "ej: 2 horas", "docker": false, "nube": false, "tema": "tema que enseña" } ]',
+    '```'
+  ]
+    .filter((line, i, all) => line !== '' || all[i - 1] !== '')
+    .join('\n');
+}
+
+/** Lee las ideas recomendadas; descarta las incompletas. Máximo 4. */
+export function parseIdeas(answer: string): ProjectIdea[] {
+  const block = answer.match(/```ach-ideas\s*\n([\s\S]*?)```/);
+  let data: unknown;
+  try {
+    data = JSON.parse(block ? block[1] : answer);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  return data
+    .filter((x: any) => x && str(x.titulo) && str(x.descripcion))
+    .slice(0, 4)
+    .map((x: any) => ({
+      titulo: str(x.titulo),
+      descripcion: str(x.descripcion),
+      aprendes: Array.isArray(x.aprendes) ? x.aprendes.filter((a: unknown): a is string => typeof a === 'string').slice(0, 6) : [],
+      dificultad: ['baja', 'media', 'alta'].includes(x.dificultad) ? x.dificultad : 'media',
+      duracion: str(x.duracion),
+      docker: x.docker === true,
+      nube: x.nube === true,
+      tema: str(x.tema) || undefined
+    }));
 }
 
 /** Prompt de sistema para diseñar el proyecto de aprendizaje. */
@@ -232,6 +167,13 @@ export function buildLearnSystemPrompt(req: LearnRequest): string {
         `  arquitectura: ${req.topic.arquitectura}`,
         `  ideas de proyecto: ${req.topic.ideas.join('; ')}`,
         req.topic.notas ? `  notas: ${req.topic.notas}` : ''
+      ]
+    : [];
+  const idea = req.idea
+    ? [
+        '',
+        `PROYECTO ELEGIDO (diseña exactamente este): «${req.idea.titulo}» — ${req.idea.descripcion}` +
+          (req.idea.aprendes.length ? ` Debe enseñar: ${req.idea.aprendes.join(', ')}.` : '')
       ]
     : [];
   return [
@@ -255,6 +197,11 @@ export function buildLearnSystemPrompt(req: LearnRequest): string {
     '- Los pasos tipo "comando" no tienen archivo: llevan "comando" y "explicacion". Nunca pidas ejecutar comandos destructivos.',
     '- Cada paso de archivo crea o completa UN archivo, con una pieza que se escribe en 5 a 40 líneas.',
     '- Rutas de archivo relativas, siguiendo la arquitectura elegida y las convenciones del stack.',
+    '- Todo lo que se escribe es un archivo que la persona completa línea por línea con explicaciones: también la configuración, la infraestructura como código (Terraform, Bicep, manifiestos YAML) y los notebooks se reemplazan por archivos .py o de configuración comentados.',
+    '- NUBE (AWS, Azure, Google Cloud): explica la capa gratuita y crea una alerta de presupuesto en los primeros pasos; las credenciales se configuran con el CLI (perfil o SSO) o variables de entorno, NUNCA en el código ni en el repositorio; la infraestructura se escribe como código; el ÚLTIMO paso es un comando que destruye todo lo creado para no generar costos.',
+    '- ENTRENAR IA: datos chicos que entrenen en CPU en minutos, datos de entrenamiento y de prueba separados, semilla fija para resultados reproducibles, métricas explicadas en palabras, y tests del preprocesamiento y de la predicción.',
+    '- LLMs: el modelo va detrás de una interfaz; los tests usan un modelo falso y no gastan tokens; las API keys van en variables de entorno.',
+    '- SEGURIDAD: solo contra el propio proyecto, en local; nunca contra sistemas ajenos.',
     '',
     'Después del Markdown, cierra SIEMPRE con un bloque de código con la etiqueta ach-learn que contenga JSON válido con esta forma exacta:',
     '```ach-learn',
@@ -274,7 +221,8 @@ export function buildLearnSystemPrompt(req: LearnRequest): string {
     '}',
     '```',
     'Usa versiones estables actuales. El plan del JSON debe coincidir con «## Paso a paso».',
-    ...seed
+    ...seed,
+    ...idea
   ]
     .filter((line, i, all) => line !== '' || all[i - 1] !== '')
     .join('\n');

@@ -11,14 +11,21 @@ import {
   LearnRequest,
   LearnSize,
   LearnTopic,
+  ProjectIdea,
   TOPIC_KINDS,
+  buildIdeasSystemPrompt,
   buildLearnSystemPrompt,
+  curatedIdeas,
   folderNameFor,
   learnGuideDoc,
   learnProjectFile,
   matchTopic,
+  parseIdeas,
   parseLearnAnswer
 } from './learnTopics';
+
+/** Valor especial de la lista de temas: pedir recomendaciones. */
+const RECOMMEND = '__recommend__';
 
 /** Proyecto creado en otra carpeta: al abrirla, se ofrece seguir. */
 const PENDING_KEY = 'autocompletehelp.pendingLearnFolder';
@@ -26,19 +33,45 @@ const PENDING_KEY = 'autocompletehelp.pendingLearnFolder';
 type Pick<T> = vscode.QuickPickItem & { value: T };
 
 /**
- * «Quiero aprender…»: tema → nivel y tamaño → la IA diseña un proyecto
- * completo para aprenderlo (guía, stack, arquitectura, plan con tests y, si
- * hace falta, Docker) → se crea la carpeta → se construye completando juntos.
+ * «Quiero aprender…»: tema → desde dónde arrancas → la IA RECOMIENDA tres
+ * proyectos y eliges uno → tamaño y carpeta → la IA diseña el proyecto
+ * completo (guía, stack, arquitectura, plan con tests y, si hace falta,
+ * Docker) → se crea la carpeta → se construye completando juntos.
+ *
+ * Con `recommend`, se parte de lo que le interesa a la persona y la IA
+ * recomienda proyectos de cualquier tema.
  */
-export async function learn(context: vscode.ExtensionContext, topicId?: string): Promise<void> {
-  const topic = topicId ? LEARN_TOPICS.find((t) => t.id === topicId) : undefined;
-  const tema = topic?.nombre ?? (await askTopic());
-  if (!tema) {
-    return;
+export async function learn(
+  context: vscode.ExtensionContext,
+  topicId?: string,
+  opts: { recommend?: boolean } = {}
+): Promise<void> {
+  let interes: string | undefined;
+  let tema: string | undefined;
+  let topic = topicId ? LEARN_TOPICS.find((t) => t.id === topicId) : undefined;
+  if (opts.recommend) {
+    interes = (
+      await vscode.window.showInputBox({
+        title: 'Recomiéndame un proyecto',
+        prompt: '¿Qué te interesa o para qué quieres aprender? Ej: "quiero trabajar de backend", "me gustan los videojuegos", "automatizar mi trabajo con Excel", "entender la IA".',
+        ignoreFocusOut: true
+      })
+    )?.trim();
+    if (!interes) {
+      return;
+    }
+  } else {
+    tema = topic?.nombre ?? (await askTopic());
+    if (!tema) {
+      return;
+    }
+    if (tema === RECOMMEND) {
+      return learn(context, undefined, { recommend: true });
+    }
+    topic ??= matchTopic(tema);
   }
-  const seed = topic ?? matchTopic(tema);
 
-  const nivel = await ask<LearnLevel>(`Aprender ${tema} — ¿Desde dónde arrancas?`, [
+  const nivel = await ask<LearnLevel>(`${tema ? `Aprender ${tema}` : 'Recomiéndame un proyecto'} — ¿Desde dónde arrancas?`, [
     { label: 'Desde cero', description: 'nunca programé', value: 'cero' },
     { label: 'Ya programo en otra cosa', description: 'otro lenguaje o herramienta', value: 'otro-lenguaje' },
     { label: 'Lo usé un poco', description: 'quiero entenderlo de verdad', value: 'algo' }
@@ -46,7 +79,28 @@ export async function learn(context: vscode.ExtensionContext, topicId?: string):
   if (!nivel) {
     return;
   }
-  const tamano = await ask<LearnSize>(`Aprender ${tema} — ¿Qué tamaño de proyecto?`, [
+
+  const { provider, model, baseUrl } = resolveActiveConfig();
+  const apiKey = await ensureApiKey(context, provider);
+  if (provider.needsKey && !apiKey) {
+    return;
+  }
+  const llm = (system: string, user: string, maxTokens: number, title: string) =>
+    vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: true }, (_p, token) =>
+      complete({ provider, baseUrl, model, apiKey, system, user, maxTokens, token })
+    );
+
+  // La IA recomienda proyectos; sin respuesta, quedan las ideas del catálogo.
+  const idea = await chooseIdea(llm, { tema, nivel, interes, topic });
+  if (!idea) {
+    return;
+  }
+  if (!tema) {
+    tema = idea.tema || idea.titulo;
+    topic = matchTopic(`${idea.tema ?? ''} ${idea.titulo}`);
+  }
+
+  const tamano = await ask<LearnSize>(`«${idea.titulo}» — ¿Qué tamaño de proyecto?`, [
     { label: 'Corto', description: '6 a 8 pasos · una o dos horas', value: 'corto' },
     { label: 'Mediano', description: '10 a 12 pasos · un fin de semana', value: 'mediano' },
     { label: 'Completo', description: '14 a 18 pasos · un proyecto entero', value: 'completo' }
@@ -59,32 +113,10 @@ export async function learn(context: vscode.ExtensionContext, topicId?: string):
     return;
   }
 
-  const { provider, model, baseUrl } = resolveActiveConfig();
-  const apiKey = await ensureApiKey(context, provider);
-  if (provider.needsKey && !apiKey) {
-    return;
-  }
-  const req: LearnRequest = { tema, nivel, tamano, topic: seed };
+  const req: LearnRequest = { tema, nivel, tamano, topic, idea };
   let answer = '';
   try {
-    answer = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: `AutoCompleteHelp: diseñando tu proyecto para aprender ${tema}…`,
-        cancellable: true
-      },
-      (_p, token) =>
-        complete({
-          provider,
-          baseUrl,
-          model,
-          apiKey,
-          system: buildLearnSystemPrompt(req),
-          user: `Quiero aprender: ${tema}`,
-          maxTokens: 6000,
-          token
-        })
-    );
+    answer = await llm(buildLearnSystemPrompt(req), `Quiero aprender: ${tema}. Proyecto: ${idea.titulo}`, 6000, `AutoCompleteHelp: diseñando «${idea.titulo}»…`);
   } catch (err: any) {
     if (err?.name !== 'AbortError') {
       vscode.window.showErrorMessage(`AutoCompleteHelp: no se pudo diseñar el proyecto (${err?.message ?? err}).`);
@@ -93,7 +125,7 @@ export async function learn(context: vscode.ExtensionContext, topicId?: string):
   }
 
   const { markdown, proposal } = parseLearnAnswer(answer);
-  showMarkdownPanel(`AutoCompleteHelp — Aprender ${tema}`, markdown || answer);
+  showMarkdownPanel(`AutoCompleteHelp — ${idea.titulo}`, markdown || answer);
   if (!proposal) {
     vscode.window.showWarningMessage(
       'AutoCompleteHelp: la respuesta no trajo un plan válido. Vuelve a intentarlo; la guía quedó en el panel.'
@@ -103,7 +135,7 @@ export async function learn(context: vscode.ExtensionContext, topicId?: string):
   const tests = proposal.plan.filter((s) => s.tipo === 'test').length;
   const docker = proposal.entorno?.docker ? ' · con Docker' : '';
   const ok = await vscode.window.showInformationMessage(
-    `Proyecto para aprender ${tema}: ${proposal.stack.resumen ?? ''} · ${proposal.plan.length} pasos (${tests} de tests)${docker}. La guía está en el panel. ¿Lo creo en ${folder.label}?`,
+    `«${idea.titulo}» para aprender ${tema}: ${proposal.stack.resumen ?? ''} · ${proposal.plan.length} pasos (${tests} de tests)${docker}. La guía está en el panel. ¿Lo creo en ${folder.label}?`,
     'Crear el proyecto'
   );
   if (!ok) {
@@ -121,6 +153,85 @@ export async function learn(context: vscode.ExtensionContext, topicId?: string):
   await vscode.commands.executeCommand('vscode.openFolder', folder.uri, { forceNewWindow: false });
 }
 
+type Llm = (system: string, user: string, maxTokens: number, title: string) => Thenable<string>;
+
+/**
+ * Proyectos recomendados por la IA para el tema (o para lo que le interesa a
+ * la persona). «Otras recomendaciones» vuelve a pedir; «mi propia idea» deja
+ * escribirla. Si la IA no responde, se ofrecen las ideas del catálogo.
+ */
+async function chooseIdea(
+  llm: Llm,
+  req: { tema?: string; nivel: LearnLevel; interes?: string; topic?: LearnTopic }
+): Promise<ProjectIdea | undefined> {
+  const OWN = '__own__';
+  const MORE = '__more__';
+  let previous: string[] = [];
+  for (;;) {
+    let ideas: ProjectIdea[] = [];
+    let offline = false;
+    try {
+      const answer = await llm(
+        buildIdeasSystemPrompt(req),
+        previous.length ? `Recomiéndame otros, distintos de: ${previous.join('; ')}` : 'Recomiéndame proyectos.',
+        1500,
+        'AutoCompleteHelp: buscando proyectos para recomendarte…'
+      );
+      ideas = parseIdeas(answer);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return undefined;
+      }
+    }
+    if (!ideas.length && req.topic) {
+      ideas = curatedIdeas(req.topic);
+      offline = true;
+    }
+    if (!ideas.length && !req.tema) {
+      vscode.window.showWarningMessage('AutoCompleteHelp: no pude obtener recomendaciones. Prueba eligiendo un tema en «Quiero aprender».');
+      return undefined;
+    }
+    previous = previous.concat(ideas.map((i) => i.titulo));
+    const icon = { baja: '$(circle-large-outline)', media: '$(circle-large-filled)', alta: '$(flame)' };
+    const items: (Pick<ProjectIdea | string> | vscode.QuickPickItem)[] = [
+      ...ideas.map((i) => ({
+        label: `${icon[i.dificultad]} ${i.titulo}`,
+        description: [i.tema && !req.tema ? i.tema : '', i.duracion, i.docker ? 'Docker' : '', i.nube ? 'nube' : ''].filter(Boolean).join(' · '),
+        detail: i.descripcion + (i.aprendes.length ? ` Aprendes: ${i.aprendes.join(', ')}.` : ''),
+        value: i
+      })),
+      { label: '', kind: vscode.QuickPickItemKind.Separator },
+      ...(offline ? [] : [{ label: '$(refresh) Otras recomendaciones', value: MORE }]),
+      ...(req.tema ? [{ label: '$(edit) Tengo mi propia idea de proyecto…', value: OWN }] : [])
+    ];
+    const pick = (await vscode.window.showQuickPick(items, {
+      title: offline
+        ? `Proyectos para aprender ${req.tema} (ideas del catálogo: la IA no respondió)`
+        : `Proyectos recomendados${req.tema ? ` para aprender ${req.tema}` : ''}`,
+      matchOnDetail: true,
+      ignoreFocusOut: true
+    })) as Pick<ProjectIdea | string> | undefined;
+    if (!pick) {
+      return undefined;
+    }
+    if (pick.value === MORE) {
+      continue;
+    }
+    if (pick.value === OWN) {
+      const text = await vscode.window.showInputBox({
+        title: `Tu proyecto para aprender ${req.tema}`,
+        prompt: 'Describe qué quieres construir. Ej: "un bot de Telegram que me recuerde tomar agua".',
+        ignoreFocusOut: true
+      });
+      if (!text?.trim()) {
+        continue;
+      }
+      return { titulo: text.trim(), descripcion: text.trim(), aprendes: [], dificultad: 'media', duracion: '', docker: false, nube: false, tema: req.tema };
+    }
+    return pick.value as ProjectIdea;
+  }
+}
+
 async function ask<T>(title: string, items: Pick<T>[]): Promise<T | undefined> {
   return (await vscode.window.showQuickPick(items, { title, ignoreFocusOut: true }))?.value;
 }
@@ -128,7 +239,9 @@ async function ask<T>(title: string, items: Pick<T>[]): Promise<T | undefined> {
 /** Temas curados agrupados, u otro escrito a mano. */
 async function askTopic(): Promise<string | undefined> {
   const OTHER = '__other__';
-  const items: (Pick<string> | vscode.QuickPickItem)[] = [];
+  const items: (Pick<string> | vscode.QuickPickItem)[] = [
+    { label: '$(lightbulb) Recomiéndame un proyecto', description: 'según lo que te interesa', value: RECOMMEND }
+  ];
   for (const kind of TOPIC_KINDS) {
     items.push({ label: kind.titulo, kind: vscode.QuickPickItemKind.Separator });
     for (const t of LEARN_TOPICS.filter((x) => x.tipo === kind.tipo)) {
@@ -148,6 +261,7 @@ async function askTopic(): Promise<string | undefined> {
   if (pick.value !== OTHER) {
     return pick.value;
   }
+  // (RECOMMEND también vuelve tal cual: learn() lo reconoce.)
   const text = await vscode.window.showInputBox({
     title: '¿Qué quieres aprender?',
     prompt: 'Ej: "Rust", "GraphQL", "Unity con C#", "scraping con Python", "patrones de diseño", "Kubernetes".',
@@ -271,13 +385,24 @@ export async function resumePendingLearn(context: vscode.ExtensionContext, tema:
 // Sección «Quiero aprender» en el explorador
 // ---------------------------------------------------------------------------
 
-type LearnNode = { kind: 'group'; titulo: string; tipo: LearnTopic['tipo'] } | { kind: 'topic'; topic: LearnTopic } | { kind: 'other' };
+type LearnNode =
+  | { kind: 'group'; titulo: string; tipo: LearnTopic['tipo'] }
+  | { kind: 'topic'; topic: LearnTopic }
+  | { kind: 'other' }
+  | { kind: 'recommend' };
 
 class LearnViewProvider implements vscode.TreeDataProvider<LearnNode> {
   getTreeItem(node: LearnNode): vscode.TreeItem {
     if (node.kind === 'group') {
-      const item = new vscode.TreeItem(node.titulo, vscode.TreeItemCollapsibleState.Expanded);
+      const item = new vscode.TreeItem(node.titulo, vscode.TreeItemCollapsibleState.Collapsed);
       item.contextValue = 'group';
+      return item;
+    }
+    if (node.kind === 'recommend') {
+      const item = new vscode.TreeItem('Recomiéndame un proyecto', vscode.TreeItemCollapsibleState.None);
+      item.iconPath = new vscode.ThemeIcon('lightbulb');
+      item.description = 'según lo que te interesa';
+      item.command = { command: 'autocompletehelp.recommendProject', title: 'Recomiéndame un proyecto' };
       return item;
     }
     if (node.kind === 'other') {
@@ -301,6 +426,7 @@ class LearnViewProvider implements vscode.TreeDataProvider<LearnNode> {
   getChildren(node?: LearnNode): LearnNode[] {
     if (!node) {
       return [
+        { kind: 'recommend' as const },
         ...TOPIC_KINDS.map((k) => ({ kind: 'group' as const, titulo: k.titulo, tipo: k.tipo })),
         { kind: 'other' as const }
       ];
@@ -317,7 +443,30 @@ export function registerLearnView(context: vscode.ExtensionContext): void {
     vscode.window.createTreeView('autocompletehelp.learn', { treeDataProvider: new LearnViewProvider() }),
     vscode.commands.registerCommand('autocompletehelp.learn', (topicId?: string) =>
       learn(context, typeof topicId === 'string' ? topicId : undefined)
-    )
+    ),
+    vscode.commands.registerCommand('autocompletehelp.recommendProject', () => learn(context, undefined, { recommend: true })),
+    vscode.commands.registerCommand('autocompletehelp.start', () => start(context)),
+    // La sección «Empezar» solo muestra su bienvenida con los botones.
+    vscode.window.createTreeView('autocompletehelp.start', { treeDataProvider: { getTreeItem: (x: never) => x, getChildren: () => [] } })
   );
+}
+
+/**
+ * «Empezar»: la puerta de entrada. Siempre se puede elegir entre construir
+ * un proyecto propio, aprender un tema o pedir una recomendación.
+ */
+export async function start(context: vscode.ExtensionContext): Promise<void> {
+  const pick = await ask<string>('AutoCompleteHelp — ¿Qué quieres hacer?', [
+    { label: '$(rocket) Tengo un proyecto', description: 'lo describo y elijo stack y arquitectura', value: 'project' },
+    { label: '$(mortar-board) Quiero aprender algo', description: 'un lenguaje, una librería, la nube, patrones, IA…', value: 'learn' },
+    { label: '$(lightbulb) Recomiéndame un proyecto', description: 'según lo que me interesa', value: 'recommend' }
+  ]);
+  if (pick === 'project') {
+    await vscode.commands.executeCommand('autocompletehelp.setProjectPrompt');
+  } else if (pick === 'learn') {
+    await learn(context);
+  } else if (pick === 'recommend') {
+    await learn(context, undefined, { recommend: true });
+  }
 }
 

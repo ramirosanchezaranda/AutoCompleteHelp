@@ -57,7 +57,8 @@ const EXT_LANG: Record<string, string> = {
   rs: 'rust', java: 'java', kt: 'kotlin', cs: 'csharp', php: 'php', swift: 'swift',
   c: 'c', h: 'c', cpp: 'cpp', html: 'html', htm: 'html', css: 'css', scss: 'scss',
   sql: 'sql', sh: 'shellscript', yml: 'yaml', yaml: 'yaml', toml: 'toml',
-  md: 'markdown', vue: 'vue', svelte: 'svelte', lua: 'lua'
+  md: 'markdown', vue: 'vue', svelte: 'svelte', lua: 'lua', tf: 'terraform', bicep: 'bicep',
+  dart: 'dart', hcl: 'terraform', ps1: 'powershell'
 };
 
 /** Identificador de lenguaje del IDE a partir de la extensión del archivo. */

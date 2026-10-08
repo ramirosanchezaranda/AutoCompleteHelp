@@ -4,20 +4,40 @@ Extensión para **VS Code, Cursor, Windsurf, VSCodium** y cualquier IDE basado e
 
 Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué estás construyendo y cómo quieres que te expliquen, eliges el stack y la arquitectura, y **completamos juntos** el código: la IA te muestra en gris una línea a la vez, con comentarios que explican qué hace y por qué se eligió esa forma, y **tú la escribes encima**. No hay autocompletado: nada entra a tu proyecto sin que lo teclees. El objetivo no es que la IA programe por ti: es **que aprendas y entiendas cada parte de tu proyecto**.
 
+## 🧭 Empezar
+
+AutoCompleteHelp tiene su propio ícono en la barra lateral, con tres secciones: **Empezar**, **Quiero aprender** y **Plan del proyecto**. En **Empezar** (o con el comando *Empezar*) eliges siempre qué hacer:
+
+- **Tengo un proyecto**: lo describes y eliges stack y arquitectura.
+- **Quiero aprender algo**: un tema, y la IA te recomienda proyectos para aprenderlo.
+- **Recomiéndame un proyecto**: cuentas qué te interesa («quiero trabajar de backend», «me gustan los videojuegos», «entender la IA») y la IA te recomienda proyectos de cualquier tema.
+
+En los tres casos se construye igual: **completamos juntos** cada archivo, una línea en gris a la vez, con su explicación.
+
 ## 🎓 Quiero aprender
 
-¿Quieres aprender un tema y no un proyecto en particular? La sección **Quiero aprender** del explorador (o el comando *Quiero aprender…*) parte de lo que quieras: *«TypeScript»*, *«Three.js»*, *«arquitectura hexagonal»*, *«automatizaciones con Python»*, *«Docker»*, *«SQL»* o cualquier otro tema escrito a mano.
+Más de 40 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **arquitectura y patrones** (patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
 
-1. Eliges el tema, desde dónde arrancas (desde cero, ya programo en otra cosa, lo usé un poco) y el tamaño (corto, mediano o completo).
-2. La IA diseña **un proyecto concreto para aprenderlo, explicado de principio a fin**:
+1. Eliges el tema y desde dónde arrancas (desde cero, ya programo en otra cosa, lo usé un poco).
+2. **La IA te recomienda tres proyectos** —uno sencillo, uno intermedio y uno más ambicioso— con lo que aprendes en cada uno, la duración y si usan Docker o la nube. Puedes pedir otras recomendaciones o escribir tu propia idea. Sin conexión, se ofrecen las ideas del catálogo.
+3. Eliges el tamaño (corto, mediano o completo) y la carpeta.
+4. La IA diseña **ese proyecto, explicado de principio a fin**:
    - **guía** en `docs/APRENDER.md`: qué vas a construir, qué vas a aprender, qué instalar, cómo está organizado, el paso a paso, los tests, Docker y cómo seguir;
    - **stack** y **arquitectura** del catálogo (con `docs/ARQUITECTURA.md`);
    - **plan con pasos tipados**: código, **tests** (obligatorios: cada pieza de lógica tiene el suyo; en temas de testing, el test va primero), configuración, **Docker** solo cuando aporta (una base de datos, varios servicios, o el tema es Docker) y comandos;
    - **entorno**: cómo instalar, ejecutar, correr los tests y levantar Docker, cada comando con su explicación.
-3. Se crea en una carpeta nueva (o en la abierta, si está vacía) y la abre. Desde ahí es el flujo de siempre: crear estructura, plan y completamos juntos.
-4. Al terminar un paso que tiene verificación, AutoCompleteHelp ofrece **correr sus tests**; **Preparar el entorno** lista los comandos de instalar, Docker, ejecutar y tests. Todos se escriben en la terminal **sin ejecutarse**: los lanzas tú.
+5. Se crea en una carpeta nueva (o en la abierta, si está vacía) y la abre. Desde ahí es el flujo de siempre: crear estructura, plan y completamos juntos.
+6. Al terminar un paso que tiene verificación, AutoCompleteHelp ofrece **correr sus tests**; **Preparar el entorno** lista los comandos de instalar, Docker, ejecutar y tests. Todos se escriben en la terminal **sin ejecutarse**: los lanzas tú.
 
 Los temas curados traen una semilla probada (stack, arquitectura e ideas de proyecto) para que el resultado sea consistente; cualquier otro tema lo diseña la IA desde cero.
+
+Reglas que siguen todos los proyectos de aprendizaje:
+
+- **Todo se escribe**: también la configuración y la infraestructura como código (Terraform, Bicep, manifiestos de Kubernetes), archivo por archivo y comentada.
+- **Nube** (AWS, Azure, Google Cloud): capa gratuita y alerta de presupuesto al empezar, credenciales con el CLI (nunca en el código) y un **último paso que destruye todo** lo creado para no generar costos.
+- **Entrenar IA**: datos chicos que entrenan en CPU en minutos, entrenamiento y prueba separados, semilla fija, métricas explicadas y tests del preprocesamiento y de la predicción.
+- **Apps con LLMs**: el modelo va detrás de una interfaz y los tests usan uno falso, sin gastar tokens.
+- **Seguridad**: solo contra el propio proyecto, en local.
 
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 
@@ -107,7 +127,8 @@ src/
 ├── typing.ts          # motor de tipeo puro (avance, errores, huecos, qué se muestra)
 ├── architectures.ts   # catálogo de arquitecturas, recomendación y registro de decisión
 ├── archPicker.ts      # preguntas y elección de arquitectura en el IDE
-├── learnTopics.ts     # «Quiero aprender»: temas curados, prompt, lectura del proyecto
+├── learnCatalog.ts    # «Quiero aprender»: catálogo de temas curados
+├── learnTopics.ts     # «Quiero aprender»: recomendaciones, prompt, lectura del proyecto
 ├── learn.ts           # «Quiero aprender»: comando y sección del explorador
 ├── terminal.ts        # comandos escritos en la terminal (sin ejecutarse) y «Preparar el entorno»
 ├── stackAdvisor.ts    # elegir stack + arquitectura → plan

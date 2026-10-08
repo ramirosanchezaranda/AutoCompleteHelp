@@ -2,6 +2,31 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.9.0] — 2026-10-08
+
+### Añadido
+
+- **AutoCompleteHelp en su propia barra lateral**, con las secciones
+  **Empezar**, **Quiero aprender** y **Plan del proyecto** (antes estaban en el
+  explorador). **Empezar** —y el comando del mismo nombre— deja elegir siempre
+  entre «Tengo un proyecto», «Quiero aprender algo» y «Recomiéndame un
+  proyecto».
+- **La IA recomienda proyectos**: elegido el tema, propone tres (sencillo,
+  intermedio, ambicioso) con lo que se aprende, la duración y si usan Docker o
+  la nube; se pueden pedir otros o escribir una idea propia. Sin conexión, se
+  ofrecen las ideas del catálogo. **«Recomiéndame un proyecto»** parte de lo
+  que le interesa a la persona y recomienda proyectos de cualquier tema.
+- **Catálogo ampliado a más de 40 temas**: Go, Rust, Java con Spring Boot,
+  C# y .NET, Next.js, FastAPI, GraphQL, patrones de diseño, SOLID y código
+  limpio, DDD, arquitectura orientada a eventos, AWS, Azure, Google Cloud,
+  Terraform, Kubernetes, CI/CD con GitHub Actions, entrenar un modelo de IA,
+  redes neuronales, apps con LLMs (RAG y agentes), análisis de datos, web
+  scraping, Flutter, Unity, Git y GitHub, seguridad web y algoritmos.
+- Reglas propias en el diseño del proyecto: nube con presupuesto, credenciales
+  fuera del código y un último paso que destruye todo; entrenamiento de IA
+  reproducible y testeado; LLMs detrás de una interfaz con tests sin tokens.
+- Se reconocen archivos de Terraform, Bicep, Dart y PowerShell.
+
 ## [0.8.0] — 2026-10-08
 
 ### Añadido
