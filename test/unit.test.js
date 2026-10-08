@@ -395,6 +395,9 @@ for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos))
 }
 eq('lecciones: cada bloque de varias líneas que se cierra tiene su resumen ↑', unsummarized, []);
 eq('el prompt de dictado pide el resumen ↑ al cerrar cada bloque', P2.buildDictationSystemPrompt('', false).includes('AL CERRAR UN BLOQUE'), true);
+const pkgCfg = JSON.parse(require('fs').readFileSync(__dirname + '/../package.json', 'utf8')).contributes.configuration.properties;
+eq('ajuste de línea al completar juntos: activado por defecto', pkgCfg['autocompletehelp.dictation.wordWrap'].default, true);
+eq('el prompt pide comentarios que entren en la pantalla', P2.buildDictationSystemPrompt('', false).includes('80 caracteres'), true);
 eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
 
 function finish() {

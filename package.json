@@ -233,6 +233,11 @@
           "default": true,
           "description": "Detecta las instrucciones «// ach: …» + Enter y prepara el código para completarlo juntos."
         },
+        "autocompletehelp.dictation.wordWrap": {
+          "type": "boolean",
+          "default": true,
+          "description": "Al completar juntos, ajustar las líneas largas al ancho de la pantalla: siguen en la línea de abajo en vez de cortarse a la derecha. Se activa solo durante el dictado y vuelve a como estaba al terminar."
+        },
         "autocompletehelp.dictation.typeComments": {
           "type": "boolean",
           "default": false,

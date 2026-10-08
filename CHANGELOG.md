@@ -11,6 +11,11 @@ Todos los cambios notables de AutoCompleteHelp se documentan aquí.
   Python) aparece un comentario `↑` que resume qué hace ese bloque. La IA lo
   escribe siempre; las lecciones sin IA lo traen; la barra de estado lo
   muestra mientras empiezas lo siguiente.
+- **Ajuste de línea al completar juntos**: las líneas largas (comentarios
+  incluidos) siguen en la línea de abajo en vez de cortarse a la derecha. Se
+  activa solo durante el dictado y se devuelve al terminar
+  (`autocompletehelp.dictation.wordWrap`, activado por defecto). La IA escribe
+  comentarios de hasta unos 80 caracteres por línea.
 - **Tab ya no completa**: durante «Completamos juntos» cada palabra la
   escribes tú (Tab queda tomado para que tampoco inserte tabulaciones).
 - **Empezar para escribir**: la sección Empezar tiene una caja de texto en

@@ -122,6 +122,7 @@ export function buildDictationSystemPrompt(
     'CÓMO SE DICTA:',
     '- Divide el código en BLOQUES pequeños (1 a 4 líneas) en el orden en que se escriben.',
     '- ANTES de cada bloque van comentarios de línea completa que dicen qué se escribe y POR QUÉ. Nunca comentarios al final de una línea de código: el alumno los tendría que escribir.',
+    '- Cada línea de comentario tiene como máximo unos 80 caracteres: si la explicación es más larga, sigue en otra línea de comentario. Así se lee entera sin salirse de la pantalla.',
     '- El PRIMER comentario dice cómo empezar: qué se escribe primero en este archivo y por qué se empieza por ahí.',
     '- Si hay una ARQUITECTURA en el proyecto, el primer comentario también dice en qué parte de ella vive este archivo y qué regla respeta (ej: «esta es la capa de servicios: no conoce req ni res»).',
     '- Explica la METODOLOGÍA y el diseño, no solo la sintaxis: por qué esta forma de organizar o resolver y no otra.',

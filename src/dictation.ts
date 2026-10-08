@@ -97,6 +97,8 @@ interface Session {
   gaps: Range2[];
   options: DictationOptions;
   typeReg: vscode.Disposable;
+  /** Se activó el ajuste de línea para esta sesión: se devuelve al terminar. */
+  wrapped: boolean;
 }
 
 export class DictationManager implements vscode.Disposable {
@@ -376,9 +378,17 @@ export class DictationManager implements vscode.Disposable {
       stepIndex,
       gaps: chooseGaps(text, mask, options.gapRatio ?? 0, start + 1),
       options,
-      typeReg
+      typeReg,
+      wrapped: false
     };
     this.render(true);
+    // Después de crear la sesión: si se cambia de editor, el teclado ya está tomado por ella.
+    const session = this.session;
+    session.wrapped = await this.wrapOn(editor, cfg);
+    // Si la sesión terminó mientras tanto, se devuelve el ajuste enseguida.
+    if (this.session !== session && session.wrapped) {
+      await this.wrapOff(doc);
+    }
     if (pos >= text.length) {
       await this.finish('escrito');
       return;
@@ -596,6 +606,26 @@ export class DictationManager implements vscode.Disposable {
   // Fin de la sesión
   // ---------------------------------------------------------------------------
 
+  /**
+   * Ajuste de línea: lo que no entra en el ancho de la pantalla sigue en la
+   * línea de abajo, sin barra horizontal. Así se lee completo el comentario y
+   * la línea en gris que vas escribiendo. Solo se cambia en este editor y se
+   * devuelve como estaba al terminar.
+   */
+  private async wrapOn(editor: vscode.TextEditor, cfg: vscode.WorkspaceConfiguration): Promise<boolean> {
+    if (!cfg.get<boolean>('dictation.wordWrap', true)) {
+      return false;
+    }
+    if (vscode.workspace.getConfiguration('editor', editor.document).get<string>('wordWrap', 'off') !== 'off') {
+      return false;
+    }
+    if (vscode.window.activeTextEditor !== editor) {
+      await vscode.window.showTextDocument(editor.document, editor.viewColumn);
+    }
+    await vscode.commands.executeCommand('editor.action.toggleWordWrap');
+    return true;
+  }
+
   /** Cierra la sesión: devuelve el teclado, quita el gris de la vista. */
   private end(): Session | undefined {
     const s = this.session;
@@ -604,6 +634,9 @@ export class DictationManager implements vscode.Disposable {
     }
     this.session = undefined;
     s.typeReg.dispose();
+    if (s.wrapped) {
+      void this.wrapOff(s.doc);
+    }
     clearTimeout(this.errorTimer);
     void vscode.commands.executeCommand('setContext', CONTEXT_KEY, false);
     for (const editor of vscode.window.visibleTextEditors) {
@@ -615,6 +648,18 @@ export class DictationManager implements vscode.Disposable {
     }
     this.status.hide();
     return s;
+  }
+
+  /** Devuelve el ajuste de línea como estaba (toggleWordWrap actúa sobre el editor activo). */
+  private async wrapOff(doc: vscode.TextDocument): Promise<void> {
+    const editor = vscode.window.visibleTextEditors.find((e) => e.document === doc);
+    if (!editor) {
+      return;
+    }
+    if (vscode.window.activeTextEditor !== editor) {
+      await vscode.window.showTextDocument(doc, editor.viewColumn);
+    }
+    await vscode.commands.executeCommand('editor.action.toggleWordWrap');
   }
 
   private async finish(how: 'escrito' | 'completado'): Promise<void> {

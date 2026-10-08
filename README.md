@@ -75,6 +75,7 @@ Reglas que siguen todos los proyectos de aprendizaje:
    - Lo que tecleas bien se vuelve código; un error marca el carácter en rojo y no avanza. Al terminar la línea pulsas Enter y aparece la siguiente.
    - Los comentarios y la indentación avanzan solos (se leen, no se copian); el código y cada Enter los escribes tú.
    - **Tab no completa nada**: cada palabra la escribes tú. **Retroceso** vuelve atrás y **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta.
+   - **Ajuste de línea**: mientras completas, lo que no entra en el ancho de la pantalla sigue en la línea de abajo, sin barra horizontal; al terminar, el editor vuelve a como estaba (setting `autocompletehelp.dictation.wordWrap`).
    - **Al cerrar cada bloque** (la `}` de una función, un `if`, una clase; en Python, al terminar su cuerpo) aparece un comentario `↑` que resume qué hace lo que acabas de escribir. La barra de estado lo muestra mientras empiezas lo siguiente.
    - El código conoce tu stack, tu arquitectura, los archivos que existen, tus dependencias y lo que exportan los archivos que importas: no inventa rutas ni campos.
 7. **Pide lo que quieras con un comentario**:
