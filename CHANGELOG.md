@@ -2,6 +2,30 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.10.0] — 2026-10-09
+
+### Añadido
+
+- **Con API key, local o sin IA.** «Elegir la IA» es un asistente de tres
+  pasos (cómo → proveedor → modelo, con ← Atrás). IAs locales listas para
+  usar: Ollama, LM Studio, llama.cpp y Jan, con **detección de los modelos
+  instalados** y ayuda para ponerlas en marcha si no responden. «Agregar IA»
+  acepta endpoints en la nube con API key o locales sin clave. La barra de
+  estado muestra cómo se está usando la IA.
+- **Modo sin IA**: funcionan las lecciones sin IA, los perfiles curados con su
+  plan base, la arquitectura, la estructura, el entorno y el repaso; lo que
+  necesita un modelo lo avisa y ofrece elegir uno.
+- **Lecciones sin IA**: proyectos completos con el código y las explicaciones
+  ya escritos, que se completan juntos línea por línea sin modelo. Dos para
+  empezar: *Gestor de gastos en la terminal* (TypeScript) y *Ordenar la
+  carpeta Descargas* (Python), con sus tests verificados (3/3 y 5/5).
+  Aparecen en «Quiero aprender» y entre los proyectos recomendados del tema.
+- **Patrones de API** como tema propio: REST, paginación por cursor,
+  versionado, idempotencia, rate limiting, errores estándar (Problem Details),
+  webhooks firmados, OpenAPI y BFF.
+- **Asistentes paso a paso**: «Quiero aprender» y la elección de arquitectura
+  muestran «Paso n de N» y ← Atrás, conservando lo ya elegido.
+
 ## [0.9.0] — 2026-10-08
 
 ### Añadido

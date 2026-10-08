@@ -294,7 +294,7 @@ eq('crear estructura: archivos del plan, sin los pasos de comando', scaffold.map
 eq('el esquema JSON conoce los tipos de paso', JSON.stringify(jsonSchema.properties.plan.items.properties.tipo.enum), JSON.stringify(require(out + 'projectFile.js').STEP_KINDS));
 
 console.log('— quiero aprender: catálogo ampliado y proyectos recomendados');
-eq('catálogo amplio: cada grupo tiene temas', [L.LEARN_TOPICS.length >= 40, L.TOPIC_KINDS.every((k) => L.LEARN_TOPICS.some((t) => t.tipo === k.tipo))], [true, true]);
+eq('catálogo amplio: cada grupo tiene temas', [L.LEARN_TOPICS.length >= 41, L.TOPIC_KINDS.every((k) => L.LEARN_TOPICS.some((t) => t.tipo === k.tipo))], [true, true]);
 const allWords = L.LEARN_TOPICS.flatMap((t) => t.palabras);
 eq('ninguna palabra clave apunta a dos temas', allWords.filter((w, i) => allWords.indexOf(w) !== i), []);
 eq('ids únicos', new Set(L.LEARN_TOPICS.map((t) => t.id)).size, L.LEARN_TOPICS.length);
@@ -320,5 +320,52 @@ eq('recomendar sin tema: según lo que le interesa, con su tema', [ip.includes('
 eq('el proyecto elegido llega al diseño', L.buildLearnSystemPrompt({ tema: 'ML', nivel: 'cero', tamano: 'corto', idea: ideas[0] }).includes('PROYECTO ELEGIDO (diseña exactamente este): «Clasificador de reseñas»'), true);
 eq('Terraform, Bicep y Dart se reconocen', [lfp('infra/main.tf'), lfp('infra/main.bicep'), lfp('lib/main.dart')], ['terraform', 'bicep', 'dart']);
 
-console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
-process.exit(fails ? 1 : 0);
+console.log('— patrones de API, IA con API key / local / sin IA, lecciones y asistente');
+eq('patrones de API ≠ patrones de diseño; «api rest con node» sigue siendo Node',
+  ['patrones de API', 'diseño de APIs REST', 'idempotencia y paginación', 'patrones de diseño', 'una api rest con node'].map((x) => L.matchTopic(x)?.id),
+  ['patrones-api', 'patrones-api', 'patrones-api', 'patrones-diseno', 'node-api']);
+const PC = require(out + 'providers/catalog.js');
+const kinds = (k) => PC.PROVIDERS.filter((p) => p.kind === k).map((p) => p.id);
+eq('proveedores por forma de uso', [kinds('local'), kinds('ninguna'), kinds('nube').length >= 8], [['ollama', 'lmstudio', 'llamacpp', 'jan'], ['none'], true]);
+eq('las IAs locales no piden API key y explican cómo ponerlas en marcha', PC.PROVIDERS.filter((p) => p.kind === 'local').every((p) => !p.needsKey && p.baseUrl.startsWith('http://localhost') && !!p.setup), true);
+eq('modelos de /models (OpenAI) y de /api/tags (Ollama)',
+  [PC.parseModelList({ data: [{ id: 'qwen2.5-coder' }, { id: 'llama3.1' }, { id: 'qwen2.5-coder' }] }), PC.parseModelList({ models: [{ name: 'llama3.1:8b' }] }), PC.parseModelList({ error: 'x' })],
+  [['qwen2.5-coder', 'llama3.1'], ['llama3.1:8b'], []]);
+const C = require(out + 'providers/client.js');
+let noai;
+try { C.complete({ provider: PC.PROVIDERS.find((p) => p.id === 'none'), baseUrl: '', model: '', apiKey: undefined, system: '', user: '', maxTokens: 1 }).catch((e) => { noai = e.name; }); } catch (e) { noai = e.name; }
+setTimeout(() => {}, 0);
+const W = require(out + 'wizard.js');
+(async () => {
+  const seen = [];
+  const script = [0, 'next', 1, 'back', 0, 'next', 1, 'next', 2, 'next'];
+  let k = 0;
+  const step = (i) => async () => { seen.push(i); k++; const a = script[k]; k++; return a === 'back' ? W.BACK : i + 1; };
+  const ok = await W.runSteps([step(0), step(1), step(2)]);
+  eq('asistente: ← Atrás vuelve al paso anterior y se puede seguir', [ok, seen], [true, [0, 1, 0, 1, 2]]);
+  eq('asistente: Atrás en el primer paso o cancelar → no termina', [await W.runSteps([async () => W.BACK]), await W.runSteps([async () => undefined])], [false, false]);
+  eq('sin IA: complete() avisa con NoAIError', noai, 'NoAIError');
+  finish();
+})();
+const LS = require(out + 'lessons.js');
+eq('lecciones: cada archivo del plan tiene su código y su tema existe en el catálogo',
+  LS.LESSONS.map((l) => l.plan.filter((st) => st.archivo).every((st) => Array.isArray(l.archivos[st.archivo])) && !!L.LEARN_TOPICS.find((t) => t.id === l.topicId)), LS.LESSONS.map(() => true));
+const typeable = /^[\x20-\x7E\náéíóúÁÉÍÓÚñÑüÜ¿¡]*$/;
+const badChars = [];
+for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) {
+  const text = lines.join('\n'), mask = T.autoMask(text, T.commentPrefixes(require(out + 'instructions.js').languageForPath(f) || 'json'));
+  for (let i = 0; i < text.length; i++) if (!mask[i] && !typeable.test(text[i])) badChars.push(f + ':' + text[i]);
+}
+eq('lecciones: todo lo que se teclea se puede escribir con un teclado en español', badChars, []);
+const lpfLesson = LS.lessonProjectFile(LS.getLesson('python-descargas'));
+const reread = parseProjectFile(JSON.stringify(lpfLesson));
+eq('lección → autocompletehelp.json (con «leccion», entorno y plan tipado)', [reread.leccion, reread.aprender.nivel, reread.plan.length, reread.plan[3].tipo, !!reread.entorno.testear], ['python-descargas', 'lección sin IA', 9, 'test', true]);
+eq('el código de la lección se encuentra por la ruta del archivo', [LS.lessonCode('typescript-gastos', 'src/gasto.ts').text.startsWith('// Cómo empezar'), LS.lessonCode('typescript-gastos', './src/main.ts') !== undefined, LS.lessonCode('typescript-gastos', 'otro.ts'), LS.lessonCode(undefined, 'src/gasto.ts')], [true, true, undefined, undefined]);
+eq('lecciones por tema', LS.lessonsForTopic('typescript').map((l) => l.id), ['typescript-gastos']);
+eq('el esquema JSON conoce las lecciones', JSON.stringify(jsonSchema.properties.leccion.enum), JSON.stringify(LS.LESSONS.map((l) => l.id)));
+eq('instalar de la lección de TypeScript incluye los tipos de Node', LS.getLesson('typescript-gastos').entorno.instalar[0].comando.includes('@types/node'), true);
+
+function finish() {
+  console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
+  process.exit(fails ? 1 : 0);
+}

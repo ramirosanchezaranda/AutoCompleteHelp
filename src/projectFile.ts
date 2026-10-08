@@ -79,6 +79,8 @@ export interface ProjectFile {
   arquitectura?: ProjectArchitecture;
   entorno?: ProjectEnvironment;
   aprender?: LearnInfo;
+  /** Lección sin IA (src/lessons.ts): el código de cada paso ya está escrito. */
+  leccion?: string;
   plan?: PlanStep[];
 }
 
@@ -137,6 +139,9 @@ export function parseProjectFile(text: string): ProjectFile | undefined {
       carpetas: strings(a.carpetas),
       reglas: strings(a.reglas)
     };
+  }
+  if (str(data.leccion)) {
+    project.leccion = str(data.leccion);
   }
   const entorno = parseEnvironment(data.entorno);
   if (entorno) {

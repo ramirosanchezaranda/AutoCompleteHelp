@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ProviderInfo } from './catalog';
+import { ProviderInfo, parseModelList } from './catalog';
 
 export interface CompletionRequest {
   provider: ProviderInfo;
@@ -24,6 +24,7 @@ export interface StreamHandlers {
  * Usa fetch nativo (Node 18+ del extension host) — sin dependencias.
  */
 export async function complete(req: CompletionRequest): Promise<string> {
+  assertAI(req.provider);
   const controller = new AbortController();
   const sub = req.token?.onCancellationRequested(() => controller.abort());
   try {
@@ -128,6 +129,7 @@ export async function streamComplete(
   req: CompletionRequest,
   handlers: StreamHandlers = {}
 ): Promise<string> {
+  assertAI(req.provider);
   const controller = new AbortController();
   const sub = req.token?.onCancellationRequested(() => controller.abort());
   let total = '';
@@ -310,4 +312,52 @@ async function parseJsonOrThrow(res: Response, providerLabel: string): Promise<a
     throw new Error(`${providerLabel} respondió HTTP ${res.status}: ${detail}`);
   }
   return res.json();
+}
+
+/** Error del modo sin IA: quien llama lo convierte en un mensaje útil. */
+export class NoAIError extends Error {
+  constructor() {
+    super('Modo sin IA: esta acción necesita un modelo. Elige uno con API key o una IA local.');
+    this.name = 'NoAIError';
+  }
+}
+
+function assertAI(provider: ProviderInfo): void {
+  if (provider.kind === 'ninguna') {
+    throw new NoAIError();
+  }
+}
+
+/**
+ * Modelos instalados en una IA local (o en cualquier endpoint
+ * OpenAI-compatible). Prueba /models y, para Ollama, /api/tags. Devuelve []
+ * si no responde en unos segundos: la IA local no está abierta.
+ */
+export async function listModels(baseUrl: string, apiKey?: string): Promise<string[]> {
+  const base = baseUrl.replace(/\/$/, '');
+  const urls = [`${base}/models`];
+  if (/\/v1$/.test(base)) {
+    urls.push(`${base.replace(/\/v1$/, '')}/api/tags`);
+  }
+  for (const url of urls) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    try {
+      const res = await fetch(url, {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+        signal: controller.signal
+      });
+      if (res.ok) {
+        const ids = parseModelList(await res.json());
+        if (ids.length) {
+          return ids;
+        }
+      }
+    } catch {
+      // no responde: se prueba la siguiente
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return [];
 }

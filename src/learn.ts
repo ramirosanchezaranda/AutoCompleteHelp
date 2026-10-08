@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import { resolveActiveConfig } from './providers/catalog';
+import { noAI, resolveActiveConfig } from './providers/catalog';
+import { LESSONS, Lesson, getLesson, lessonProjectFile, lessonsForTopic } from './lessons';
+import { BACK, Item, inputStep, pickStep, runSteps } from './wizard';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
 import { showMarkdownPanel } from './explain';
@@ -24,127 +26,339 @@ import {
   parseLearnAnswer
 } from './learnTopics';
 
-/** Valor especial de la lista de temas: pedir recomendaciones. */
-const RECOMMEND = '__recommend__';
-
 /** Proyecto creado en otra carpeta: al abrirla, se ofrece seguir. */
 const PENDING_KEY = 'autocompletehelp.pendingLearnFolder';
+const RECOMMEND = '__recommend__';
+const OTHER = '__other__';
 
-type Pick<T> = vscode.QuickPickItem & { value: T };
+type Llm = (system: string, user: string, maxTokens: number, title: string) => Thenable<string>;
+
+interface Target {
+  uri: vscode.Uri;
+  label: string;
+  isCurrent: boolean;
+}
+
+/** Lo elegido en cada paso: al volver con ← Atrás, sigue marcado. */
+interface LearnState {
+  recommend: boolean;
+  tema?: string;
+  topic?: LearnTopic;
+  interes?: string;
+  nivel?: LearnLevel;
+  ideas?: ProjectIdea[];
+  ideasKey?: string;
+  idea?: ProjectIdea;
+  tamano?: LearnSize;
+  folder?: Target;
+}
 
 /**
- * «Quiero aprender…»: tema → desde dónde arrancas → la IA RECOMIENDA tres
- * proyectos y eliges uno → tamaño y carpeta → la IA diseña el proyecto
- * completo (guía, stack, arquitectura, plan con tests y, si hace falta,
- * Docker) → se crea la carpeta → se construye completando juntos.
- *
- * Con `recommend`, se parte de lo que le interesa a la persona y la IA
- * recomienda proyectos de cualquier tema.
+ * «Quiero aprender…» como asistente paso a paso (cada paso se superpone al
+ * anterior, con «Paso n de N» y ← Atrás):
+ *   tema (o lo que te interesa) → desde dónde arrancas → proyecto
+ *   recomendado → tamaño → carpeta → la IA diseña el proyecto completo.
+ * Las lecciones sin IA aparecen entre las recomendaciones y no necesitan
+ * modelo: el código ya está escrito y probado. En modo sin IA, son la opción.
  */
 export async function learn(
   context: vscode.ExtensionContext,
   topicId?: string,
   opts: { recommend?: boolean } = {}
 ): Promise<void> {
-  let interes: string | undefined;
-  let tema: string | undefined;
-  let topic = topicId ? LEARN_TOPICS.find((t) => t.id === topicId) : undefined;
-  if (opts.recommend) {
-    interes = (
-      await vscode.window.showInputBox({
-        title: 'Recomiéndame un proyecto',
-        prompt: '¿Qué te interesa o para qué quieres aprender? Ej: "quiero trabajar de backend", "me gustan los videojuegos", "automatizar mi trabajo con Excel", "entender la IA".',
-        ignoreFocusOut: true
-      })
-    )?.trim();
-    if (!interes) {
+  const st: LearnState = { recommend: !!opts.recommend };
+  st.topic = topicId ? LEARN_TOPICS.find((t) => t.id === topicId) : undefined;
+  st.tema = st.topic?.nombre;
+
+  const sinIA = noAI();
+  let llm: Llm | undefined;
+  if (!sinIA) {
+    const { provider, model, baseUrl } = resolveActiveConfig();
+    const apiKey = await ensureApiKey(context, provider);
+    if (provider.needsKey && !apiKey) {
       return;
     }
-  } else {
-    tema = topic?.nombre ?? (await askTopic());
-    if (!tema) {
-      return;
+    llm = (system, user, maxTokens, title) =>
+      vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: true }, (_p, token) =>
+        complete({ provider, baseUrl, model, apiKey, system, user, maxTokens, token })
+      );
+  }
+
+  const total = () => (st.idea?.leccion ? 4 : 5);
+  const head = () => (st.recommend ? 'Recomiéndame un proyecto' : `Aprender ${st.tema ?? '…'}`);
+
+  const steps: (() => Promise<number | typeof BACK | undefined>)[] = [
+    // 0 · tema
+    async () => {
+      const items: (Item<string> | vscode.QuickPickItem)[] = [
+        { label: '$(lightbulb) Recomiéndame un proyecto', description: 'según lo que te interesa', value: RECOMMEND }
+      ];
+      if (LESSONS.length) {
+        items.push({ label: 'Lecciones sin IA', kind: vscode.QuickPickItemKind.Separator });
+        for (const l of LESSONS) {
+          items.push({ label: `$(book) ${l.tema}`, description: `${l.titulo} · sin IA`, value: `lesson:${l.id}` });
+        }
+      }
+      for (const kind of TOPIC_KINDS) {
+        items.push({ label: kind.titulo, kind: vscode.QuickPickItemKind.Separator });
+        for (const t of LEARN_TOPICS.filter((x) => x.tipo === kind.tipo)) {
+          items.push({ label: t.nombre, description: t.stack, value: t.id });
+        }
+      }
+      items.push({ label: '', kind: vscode.QuickPickItemKind.Separator }, { label: '$(edit) Otro tema…', description: 'escribe lo que quieras aprender', value: OTHER });
+      const r = await pickStep(items, { title: '¿Qué quieres aprender?', step: 1, total: total(), current: st.topic?.id, placeholder: 'Un lenguaje, la nube, patrones, IA… o una lección sin IA' });
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      if (r === RECOMMEND) {
+        st.recommend = true;
+        return 2;
+      }
+      st.recommend = false;
+      if (r === OTHER) {
+        return 1;
+      }
+      if (r.startsWith('lesson:')) {
+        const lesson = getLesson(r.slice(7))!;
+        st.topic = LEARN_TOPICS.find((t) => t.id === lesson.topicId);
+        st.tema = lesson.tema;
+        st.idea = lessonIdea(lesson);
+        return 6;
+      }
+      st.topic = LEARN_TOPICS.find((t) => t.id === r);
+      st.tema = st.topic?.nombre;
+      return 3;
+    },
+    // 1 · otro tema
+    async () => {
+      const r = await inputStep({ title: '¿Qué quieres aprender?', step: 1, total: total(), current: st.topic ? undefined : st.tema, prompt: 'Ej: "Rust", "patrones de API", "Kubernetes", "scraping con Python", "entrenar una IA".' });
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      st.tema = r;
+      st.topic = matchTopic(r);
+      return 3;
+    },
+    // 2 · lo que te interesa
+    async () => {
+      const r = await inputStep({ title: 'Recomiéndame un proyecto', step: 1, total: total(), current: st.interes, prompt: '¿Qué te interesa o para qué quieres aprender? Ej: "quiero trabajar de backend", "me gustan los videojuegos", "entender la IA", "automatizar mi trabajo con Excel".' });
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      st.interes = r;
+      return 3;
+    },
+    // 3 · nivel
+    async () => {
+      const r = await pickStep<LearnLevel>(
+        [
+          { label: 'Desde cero', description: 'nunca programé', value: 'cero' },
+          { label: 'Ya programo en otra cosa', description: 'otro lenguaje o herramienta', value: 'otro-lenguaje' },
+          { label: 'Lo usé un poco', description: 'quiero entenderlo de verdad', value: 'algo' }
+        ],
+        { title: `${head()} — ¿Desde dónde arrancas?`, step: 2, total: total(), current: st.nivel }
+      );
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      st.nivel = r;
+      return 4;
+    },
+    // 4 · proyecto recomendado
+    async () => {
+      const key = `${st.recommend ? st.interes : st.tema}|${st.nivel}`;
+      if (st.ideasKey !== key) {
+        st.ideas = await loadIdeas(llm, st, []);
+        st.ideasKey = key;
+      }
+      const ideas = st.ideas ?? [];
+      const MORE = -1;
+      const OWN = -2;
+      const nivelTxt = { baja: 'básico', media: 'intermedio', alta: 'avanzado' };
+      const items: (Item<number> | vscode.QuickPickItem)[] = ideas.map((i, n) => ({
+        label: `${i.leccion ? '$(book) ' : ''}${i.titulo}`,
+        description: [i.leccion ? 'sin IA' : '', st.recommend ? i.tema : '', nivelTxt[i.dificultad], i.duracion, i.docker ? 'Docker' : '', i.nube ? 'nube' : '', !i.leccion && !llm ? 'necesita IA' : '']
+          .filter(Boolean)
+          .join(' · '),
+        detail: i.descripcion + (i.aprendes.length ? ` Aprendes: ${i.aprendes.join(', ')}.` : ''),
+        value: n
+      }));
+      if (!ideas.length) {
+        items.push({ label: sinIA ? 'Sin IA no hay proyectos para este tema todavía' : 'No llegaron recomendaciones', description: sinIA ? 'elige una lección sin IA o activa una IA' : '', value: MORE });
+      }
+      items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+      if (llm) {
+        items.push({ label: '$(refresh) Otras recomendaciones', value: MORE });
+        if (!st.recommend) {
+          items.push({ label: '$(edit) Tengo mi propia idea de proyecto…', value: OWN });
+        }
+      }
+      const r = await pickStep(items, {
+        title: `${head()} — Proyectos recomendados`,
+        step: 3,
+        total: total(),
+        current: st.idea ? ideas.indexOf(st.idea) : undefined,
+        placeholder: llm ? 'La IA los eligió para tu nivel; las lecciones sin IA ya están escritas y probadas' : 'Modo sin IA: las lecciones están completas; el resto necesita una IA'
+      });
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      if (r === MORE) {
+        if (llm) {
+          st.ideas = await loadIdeas(llm, st, ideas.map((i) => i.titulo));
+        }
+        return 4;
+      }
+      if (r === OWN) {
+        const own = await inputStep({ title: `Tu proyecto para aprender ${st.tema}`, step: 3, total: total(), prompt: 'Describe qué quieres construir. Ej: "un bot que me recuerde tomar agua".' });
+        if (own === undefined) {
+          return undefined;
+        }
+        if (own === BACK) {
+          return 4;
+        }
+        st.idea = { titulo: own, descripcion: own, aprendes: [], dificultad: 'media', duracion: '', docker: false, nube: false, tema: st.tema };
+        return 5;
+      }
+      const idea = ideas[r];
+      if (!idea.leccion && !llm) {
+        const action = await vscode.window.showInformationMessage(
+          `«${idea.titulo}» lo diseña la IA: en modo sin IA solo están las lecciones ya escritas. Activa una IA con API key o una IA local (gratis, en tu PC).`,
+          'Elegir IA'
+        );
+        if (action) {
+          await vscode.commands.executeCommand('autocompletehelp.selectModel');
+          return undefined;
+        }
+        return 4;
+      }
+      st.idea = idea;
+      if (st.recommend || !st.tema) {
+        st.tema = idea.tema || idea.titulo;
+        st.topic = matchTopic(`${idea.tema ?? ''} ${idea.titulo}`);
+      }
+      return idea.leccion ? 6 : 5;
+    },
+    // 5 · tamaño
+    async () => {
+      const r = await pickStep<LearnSize>(
+        [
+          { label: 'Corto', description: '6 a 8 pasos · una o dos horas', value: 'corto' },
+          { label: 'Mediano', description: '10 a 12 pasos · un fin de semana', value: 'mediano' },
+          { label: 'Completo', description: '14 a 18 pasos · un proyecto entero', value: 'completo' }
+        ],
+        { title: `«${st.idea?.titulo}» — ¿Qué tamaño de proyecto?`, step: 4, total: total(), current: st.tamano }
+      );
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      st.tamano = r;
+      return 6;
+    },
+    // 6 · carpeta
+    async () => {
+      const r = await chooseFolder(st.tema ?? 'proyecto', total(), total());
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      st.folder = r;
+      return 7;
     }
-    if (tema === RECOMMEND) {
-      return learn(context, undefined, { recommend: true });
+  ];
+
+  const start = st.topic ? 3 : st.recommend ? 2 : 0;
+  if (!(await runSteps(steps, start)) || !st.folder || !st.idea || !st.tema) {
+    return;
+  }
+  const lesson = getLesson(st.idea.leccion);
+  if (lesson) {
+    await createFromLesson(context, lesson, st.folder);
+    return;
+  }
+  if (!llm || !st.nivel || !st.tamano) {
+    return;
+  }
+  await design(context, llm, { tema: st.tema, nivel: st.nivel, tamano: st.tamano, topic: st.topic, idea: st.idea }, st.folder);
+}
+
+function lessonIdea(l: Lesson): ProjectIdea {
+  return {
+    titulo: l.titulo,
+    descripcion: `Lección sin IA: el código y las explicaciones ya están escritos y probados. ${l.proyecto.charAt(0).toUpperCase()}${l.proyecto.slice(1)}.`,
+    aprendes: l.objetivos,
+    dificultad: l.dificultad,
+    duracion: l.duracion,
+    docker: !!l.entorno.docker,
+    nube: false,
+    tema: l.tema,
+    leccion: l.id
+  };
+}
+
+/**
+ * Proyectos para elegir: primero las lecciones sin IA del tema; después los
+ * que recomienda la IA o, sin respuesta (o sin IA), las ideas del catálogo.
+ */
+async function loadIdeas(llm: Llm | undefined, st: LearnState, previous: string[]): Promise<ProjectIdea[]> {
+  const lessons = (st.recommend ? LESSONS : lessonsForTopic(st.topic?.id)).map(lessonIdea);
+  let ideas: ProjectIdea[] = [];
+  if (llm) {
+    try {
+      const answer = await llm(
+        buildIdeasSystemPrompt({ tema: st.recommend ? undefined : st.tema, nivel: st.nivel ?? 'cero', interes: st.interes, topic: st.topic }),
+        previous.length ? `Recomiéndame otros, distintos de: ${previous.join('; ')}` : 'Recomiéndame proyectos.',
+        1500,
+        'AutoCompleteHelp: buscando proyectos para recomendarte…'
+      );
+      ideas = parseIdeas(answer);
+    } catch {
+      // sin respuesta: quedan las ideas del catálogo
     }
-    topic ??= matchTopic(tema);
   }
+  if (!ideas.length && st.topic) {
+    ideas = curatedIdeas(st.topic);
+  }
+  return [...lessons, ...ideas];
+}
 
-  const nivel = await ask<LearnLevel>(`${tema ? `Aprender ${tema}` : 'Recomiéndame un proyecto'} — ¿Desde dónde arrancas?`, [
-    { label: 'Desde cero', description: 'nunca programé', value: 'cero' },
-    { label: 'Ya programo en otra cosa', description: 'otro lenguaje o herramienta', value: 'otro-lenguaje' },
-    { label: 'Lo usé un poco', description: 'quiero entenderlo de verdad', value: 'algo' }
-  ]);
-  if (!nivel) {
-    return;
-  }
-
-  const { provider, model, baseUrl } = resolveActiveConfig();
-  const apiKey = await ensureApiKey(context, provider);
-  if (provider.needsKey && !apiKey) {
-    return;
-  }
-  const llm = (system: string, user: string, maxTokens: number, title: string) =>
-    vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: true }, (_p, token) =>
-      complete({ provider, baseUrl, model, apiKey, system, user, maxTokens, token })
-    );
-
-  // La IA recomienda proyectos; sin respuesta, quedan las ideas del catálogo.
-  const idea = await chooseIdea(llm, { tema, nivel, interes, topic });
-  if (!idea) {
-    return;
-  }
-  if (!tema) {
-    tema = idea.tema || idea.titulo;
-    topic = matchTopic(`${idea.tema ?? ''} ${idea.titulo}`);
-  }
-
-  const tamano = await ask<LearnSize>(`«${idea.titulo}» — ¿Qué tamaño de proyecto?`, [
-    { label: 'Corto', description: '6 a 8 pasos · una o dos horas', value: 'corto' },
-    { label: 'Mediano', description: '10 a 12 pasos · un fin de semana', value: 'mediano' },
-    { label: 'Completo', description: '14 a 18 pasos · un proyecto entero', value: 'completo' }
-  ]);
-  if (!tamano) {
-    return;
-  }
-  const folder = await chooseFolder(tema);
-  if (!folder) {
-    return;
-  }
-
-  const req: LearnRequest = { tema, nivel, tamano, topic, idea };
+/** La IA diseña el proyecto elegido y se crea en la carpeta. */
+async function design(context: vscode.ExtensionContext, llm: Llm, req: LearnRequest, folder: Target): Promise<void> {
   let answer = '';
   try {
-    answer = await llm(buildLearnSystemPrompt(req), `Quiero aprender: ${tema}. Proyecto: ${idea.titulo}`, 6000, `AutoCompleteHelp: diseñando «${idea.titulo}»…`);
+    answer = await llm(buildLearnSystemPrompt(req), `Quiero aprender: ${req.tema}. Proyecto: ${req.idea?.titulo}`, 6000, `AutoCompleteHelp: diseñando «${req.idea?.titulo}»…`);
   } catch (err: any) {
     if (err?.name !== 'AbortError') {
       vscode.window.showErrorMessage(`AutoCompleteHelp: no se pudo diseñar el proyecto (${err?.message ?? err}).`);
     }
     return;
   }
-
   const { markdown, proposal } = parseLearnAnswer(answer);
-  showMarkdownPanel(`AutoCompleteHelp — ${idea.titulo}`, markdown || answer);
+  showMarkdownPanel(`AutoCompleteHelp — ${req.idea?.titulo}`, markdown || answer);
   if (!proposal) {
-    vscode.window.showWarningMessage(
-      'AutoCompleteHelp: la respuesta no trajo un plan válido. Vuelve a intentarlo; la guía quedó en el panel.'
-    );
+    vscode.window.showWarningMessage('AutoCompleteHelp: la respuesta no trajo un plan válido. Vuelve a intentarlo; la guía quedó en el panel.');
     return;
   }
   const tests = proposal.plan.filter((s) => s.tipo === 'test').length;
   const docker = proposal.entorno?.docker ? ' · con Docker' : '';
   const ok = await vscode.window.showInformationMessage(
-    `«${idea.titulo}» para aprender ${tema}: ${proposal.stack.resumen ?? ''} · ${proposal.plan.length} pasos (${tests} de tests)${docker}. La guía está en el panel. ¿Lo creo en ${folder.label}?`,
+    `«${req.idea?.titulo}» para aprender ${req.tema}: ${proposal.stack.resumen ?? ''} · ${proposal.plan.length} pasos (${tests} de tests)${docker}. La guía está en el panel. ¿Lo creo en ${folder.label}?`,
     'Crear el proyecto'
   );
   if (!ok) {
     return;
   }
+  await writeLearnProject(folder.uri, learnProjectFile(proposal, req), markdown, req.tema);
+  await afterCreate(context, folder, req.tema);
+}
 
-  const project = learnProjectFile(proposal, req);
-  await writeLearnProject(folder.uri, project, markdown, tema);
+/** Una lección sin IA: se escribe tal cual, sin modelo. */
+async function createFromLesson(context: vscode.ExtensionContext, lesson: Lesson, folder: Target): Promise<void> {
+  showMarkdownPanel(`AutoCompleteHelp — ${lesson.titulo}`, `# ${lesson.titulo}\n\n${lesson.guia}`);
+  await writeLearnProject(folder.uri, lessonProjectFile(lesson), lesson.guia, lesson.tema);
+  await afterCreate(context, folder, lesson.tema);
+}
 
+async function afterCreate(context: vscode.ExtensionContext, folder: Target, tema: string): Promise<void> {
   if (folder.isCurrent) {
     await offerStart(tema);
     return;
@@ -153,152 +367,40 @@ export async function learn(
   await vscode.commands.executeCommand('vscode.openFolder', folder.uri, { forceNewWindow: false });
 }
 
-type Llm = (system: string, user: string, maxTokens: number, title: string) => Thenable<string>;
-
-/**
- * Proyectos recomendados por la IA para el tema (o para lo que le interesa a
- * la persona). «Otras recomendaciones» vuelve a pedir; «mi propia idea» deja
- * escribirla. Si la IA no responde, se ofrecen las ideas del catálogo.
- */
-async function chooseIdea(
-  llm: Llm,
-  req: { tema?: string; nivel: LearnLevel; interes?: string; topic?: LearnTopic }
-): Promise<ProjectIdea | undefined> {
-  const OWN = '__own__';
-  const MORE = '__more__';
-  let previous: string[] = [];
-  for (;;) {
-    let ideas: ProjectIdea[] = [];
-    let offline = false;
-    try {
-      const answer = await llm(
-        buildIdeasSystemPrompt(req),
-        previous.length ? `Recomiéndame otros, distintos de: ${previous.join('; ')}` : 'Recomiéndame proyectos.',
-        1500,
-        'AutoCompleteHelp: buscando proyectos para recomendarte…'
-      );
-      ideas = parseIdeas(answer);
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        return undefined;
-      }
-    }
-    if (!ideas.length && req.topic) {
-      ideas = curatedIdeas(req.topic);
-      offline = true;
-    }
-    if (!ideas.length && !req.tema) {
-      vscode.window.showWarningMessage('AutoCompleteHelp: no pude obtener recomendaciones. Prueba eligiendo un tema en «Quiero aprender».');
-      return undefined;
-    }
-    previous = previous.concat(ideas.map((i) => i.titulo));
-    const icon = { baja: '$(circle-large-outline)', media: '$(circle-large-filled)', alta: '$(flame)' };
-    const items: (Pick<ProjectIdea | string> | vscode.QuickPickItem)[] = [
-      ...ideas.map((i) => ({
-        label: `${icon[i.dificultad]} ${i.titulo}`,
-        description: [i.tema && !req.tema ? i.tema : '', i.duracion, i.docker ? 'Docker' : '', i.nube ? 'nube' : ''].filter(Boolean).join(' · '),
-        detail: i.descripcion + (i.aprendes.length ? ` Aprendes: ${i.aprendes.join(', ')}.` : ''),
-        value: i
-      })),
-      { label: '', kind: vscode.QuickPickItemKind.Separator },
-      ...(offline ? [] : [{ label: '$(refresh) Otras recomendaciones', value: MORE }]),
-      ...(req.tema ? [{ label: '$(edit) Tengo mi propia idea de proyecto…', value: OWN }] : [])
-    ];
-    const pick = (await vscode.window.showQuickPick(items, {
-      title: offline
-        ? `Proyectos para aprender ${req.tema} (ideas del catálogo: la IA no respondió)`
-        : `Proyectos recomendados${req.tema ? ` para aprender ${req.tema}` : ''}`,
-      matchOnDetail: true,
-      ignoreFocusOut: true
-    })) as Pick<ProjectIdea | string> | undefined;
-    if (!pick) {
-      return undefined;
-    }
-    if (pick.value === MORE) {
-      continue;
-    }
-    if (pick.value === OWN) {
-      const text = await vscode.window.showInputBox({
-        title: `Tu proyecto para aprender ${req.tema}`,
-        prompt: 'Describe qué quieres construir. Ej: "un bot de Telegram que me recuerde tomar agua".',
-        ignoreFocusOut: true
-      });
-      if (!text?.trim()) {
-        continue;
-      }
-      return { titulo: text.trim(), descripcion: text.trim(), aprendes: [], dificultad: 'media', duracion: '', docker: false, nube: false, tema: req.tema };
-    }
-    return pick.value as ProjectIdea;
+/** Lección elegida desde la sección: solo falta la carpeta. */
+async function learnLesson(context: vscode.ExtensionContext, id: string): Promise<void> {
+  const lesson = getLesson(id);
+  if (!lesson) {
+    return;
   }
-}
-
-async function ask<T>(title: string, items: Pick<T>[]): Promise<T | undefined> {
-  return (await vscode.window.showQuickPick(items, { title, ignoreFocusOut: true }))?.value;
-}
-
-/** Temas curados agrupados, u otro escrito a mano. */
-async function askTopic(): Promise<string | undefined> {
-  const OTHER = '__other__';
-  const items: (Pick<string> | vscode.QuickPickItem)[] = [
-    { label: '$(lightbulb) Recomiéndame un proyecto', description: 'según lo que te interesa', value: RECOMMEND }
-  ];
-  for (const kind of TOPIC_KINDS) {
-    items.push({ label: kind.titulo, kind: vscode.QuickPickItemKind.Separator });
-    for (const t of LEARN_TOPICS.filter((x) => x.tipo === kind.tipo)) {
-      items.push({ label: t.nombre, description: t.stack, value: t.nombre });
-    }
+  const folder = await chooseFolder(lesson.tema, 1, 1);
+  if (folder && folder !== BACK) {
+    await createFromLesson(context, lesson, folder);
   }
-  items.push({ label: '', kind: vscode.QuickPickItemKind.Separator }, { label: '$(edit) Otro tema…', description: 'escribe lo que quieras aprender', value: OTHER });
-  const pick = (await vscode.window.showQuickPick(items, {
-    title: '¿Qué quieres aprender?',
-    placeHolder: 'Un lenguaje, una librería, una arquitectura, una herramienta…',
-    matchOnDescription: true,
-    ignoreFocusOut: true
-  })) as Pick<string> | undefined;
-  if (!pick) {
-    return undefined;
-  }
-  if (pick.value !== OTHER) {
-    return pick.value;
-  }
-  // (RECOMMEND también vuelve tal cual: learn() lo reconoce.)
-  const text = await vscode.window.showInputBox({
-    title: '¿Qué quieres aprender?',
-    prompt: 'Ej: "Rust", "GraphQL", "Unity con C#", "scraping con Python", "patrones de diseño", "Kubernetes".',
-    ignoreFocusOut: true
-  });
-  return text?.trim() || undefined;
-}
-
-interface Target {
-  uri: vscode.Uri;
-  label: string;
-  isCurrent: boolean;
 }
 
 /**
  * Dónde crear el proyecto. La carpeta abierta solo si está vacía (o casi):
  * nunca se mezcla un proyecto nuevo con uno existente.
  */
-async function chooseFolder(tema: string): Promise<Target | undefined> {
+async function chooseFolder(tema: string, step: number, total: number): Promise<Target | typeof BACK | undefined> {
   const current = projectRoot();
   let currentUsable = false;
   if (current) {
     const entries = await vscode.workspace.fs.readDirectory(current);
     currentUsable = entries.filter(([name]) => !name.startsWith('.')).length === 0;
   }
-  const NEW = 'new';
-  const HERE = 'here';
-  const choice = await ask<string>(`Aprender ${tema} — ¿Dónde lo creo?`, [
-    { label: '$(new-folder) En una carpeta nueva', description: folderNameFor(tema), value: NEW },
-    ...(currentUsable
-      ? [{ label: '$(folder-opened) En la carpeta abierta', description: 'está vacía', value: HERE }]
-      : [])
-  ]);
-  if (!choice) {
-    return undefined;
+  const choice = await pickStep<string>(
+    [
+      { label: '$(new-folder) En una carpeta nueva', description: folderNameFor(tema), value: 'new' },
+      ...(currentUsable ? [{ label: '$(folder-opened) En la carpeta abierta', description: 'está vacía', value: 'here' }] : [])
+    ],
+    { title: `Aprender ${tema} — ¿Dónde lo creo?`, step, total }
+  );
+  if (choice === undefined || choice === BACK) {
+    return choice;
   }
-  if (choice === HERE && current) {
+  if (choice === 'here' && current) {
     return { uri: current, label: 'la carpeta abierta', isCurrent: true };
   }
   const parent = await vscode.window.showOpenDialog({
@@ -389,13 +491,30 @@ type LearnNode =
   | { kind: 'group'; titulo: string; tipo: LearnTopic['tipo'] }
   | { kind: 'topic'; topic: LearnTopic }
   | { kind: 'other' }
-  | { kind: 'recommend' };
+  | { kind: 'recommend' }
+  | { kind: 'lessons' }
+  | { kind: 'lesson'; lesson: Lesson };
 
 class LearnViewProvider implements vscode.TreeDataProvider<LearnNode> {
   getTreeItem(node: LearnNode): vscode.TreeItem {
     if (node.kind === 'group') {
       const item = new vscode.TreeItem(node.titulo, vscode.TreeItemCollapsibleState.Collapsed);
       item.contextValue = 'group';
+      return item;
+    }
+    if (node.kind === 'lessons') {
+      const item = new vscode.TreeItem('Lecciones sin IA', vscode.TreeItemCollapsibleState.Collapsed);
+      item.description = 'completas, gratis, sin conexión';
+      item.iconPath = new vscode.ThemeIcon('book');
+      return item;
+    }
+    if (node.kind === 'lesson') {
+      const l = node.lesson;
+      const item = new vscode.TreeItem(l.titulo, vscode.TreeItemCollapsibleState.None);
+      item.iconPath = new vscode.ThemeIcon('book');
+      item.description = `${l.tema} · ${l.duracion}`;
+      item.tooltip = new vscode.MarkdownString(`**${l.titulo}** (sin IA)\n\nEl código y las explicaciones ya están escritos y probados: completamos juntos cada línea sin API key ni modelo.\n\nAprendes: ${l.objetivos.join(', ')}`);
+      item.command = { command: 'autocompletehelp.learnLesson', title: 'Empezar la lección', arguments: [l.id] };
       return item;
     }
     if (node.kind === 'recommend') {
@@ -427,9 +546,13 @@ class LearnViewProvider implements vscode.TreeDataProvider<LearnNode> {
     if (!node) {
       return [
         { kind: 'recommend' as const },
+        ...(LESSONS.length ? [{ kind: 'lessons' as const }] : []),
         ...TOPIC_KINDS.map((k) => ({ kind: 'group' as const, titulo: k.titulo, tipo: k.tipo })),
         { kind: 'other' as const }
       ];
+    }
+    if (node.kind === 'lessons') {
+      return LESSONS.map((lesson) => ({ kind: 'lesson' as const, lesson }));
     }
     if (node.kind === 'group') {
       return LEARN_TOPICS.filter((t) => t.tipo === node.tipo).map((topic) => ({ kind: 'topic' as const, topic }));
@@ -445,6 +568,7 @@ export function registerLearnView(context: vscode.ExtensionContext): void {
       learn(context, typeof topicId === 'string' ? topicId : undefined)
     ),
     vscode.commands.registerCommand('autocompletehelp.recommendProject', () => learn(context, undefined, { recommend: true })),
+    vscode.commands.registerCommand('autocompletehelp.learnLesson', (id: string) => learnLesson(context, id)),
     vscode.commands.registerCommand('autocompletehelp.start', () => start(context)),
     // La sección «Empezar» solo muestra su bienvenida con los botones.
     vscode.window.createTreeView('autocompletehelp.start', { treeDataProvider: { getTreeItem: (x: never) => x, getChildren: () => [] } })
@@ -456,11 +580,11 @@ export function registerLearnView(context: vscode.ExtensionContext): void {
  * un proyecto propio, aprender un tema o pedir una recomendación.
  */
 export async function start(context: vscode.ExtensionContext): Promise<void> {
-  const pick = await ask<string>('AutoCompleteHelp — ¿Qué quieres hacer?', [
+  const pick = await pickStep<string>([
     { label: '$(rocket) Tengo un proyecto', description: 'lo describo y elijo stack y arquitectura', value: 'project' },
     { label: '$(mortar-board) Quiero aprender algo', description: 'un lenguaje, una librería, la nube, patrones, IA…', value: 'learn' },
     { label: '$(lightbulb) Recomiéndame un proyecto', description: 'según lo que me interesa', value: 'recommend' }
-  ]);
+  ], { title: 'AutoCompleteHelp — ¿Qué quieres hacer?', step: 1, total: 1 });
   if (pick === 'project') {
     await vscode.commands.executeCommand('autocompletehelp.setProjectPrompt');
   } else if (pick === 'learn') {

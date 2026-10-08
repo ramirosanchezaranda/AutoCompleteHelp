@@ -11,6 +11,14 @@
       "type": "string",
       "description": "Qué estás construyendo y cómo quieres que te ayude."
     },
+    "leccion": {
+      "type": "string",
+      "description": "Lección sin IA de AutoCompleteHelp: el código de cada paso ya está escrito y no necesita modelo.",
+      "enum": [
+        "typescript-gastos",
+        "python-descargas"
+      ]
+    },
     "perfil": {
       "type": "string",
       "description": "Perfil de stack curado. Lo fija «Elegir stack del proyecto»; define los archivos base y los comandos de «Crear estructura».",

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { resolveActiveConfig } from './providers/catalog';
+import { noAI, resolveActiveConfig } from './providers/catalog';
+import { lessonCode } from './lessons';
 import { complete, streamComplete } from './providers/client';
 import { getApiKey } from './secrets';
 import {
@@ -214,6 +215,21 @@ export class DictationManager implements vscode.Disposable {
     position: vscode.Position,
     instruction: string
   ): Promise<Generated | undefined> {
+    // Lección sin IA: el código del paso ya está escrito y revisado.
+    const lesson = lessonCode(getProject()?.leccion, vscode.workspace.asRelativePath(document.uri, false));
+    if (lesson) {
+      return { text: lesson.text, concepts: lesson.concepts };
+    }
+    if (noAI()) {
+      const action = await vscode.window.showInformationMessage(
+        'AutoCompleteHelp está en modo sin IA y este paso no es de una lección escrita. Puedes escribirlo tú (el plan y la guía siguen), elegir una lección sin IA en «Quiero aprender», o activar una IA con API key o local.',
+        'Elegir IA'
+      );
+      if (action) {
+        vscode.commands.executeCommand('autocompletehelp.selectModel');
+      }
+      return undefined;
+    }
     const cfg = vscode.workspace.getConfiguration('autocompletehelp');
     const { provider, model, baseUrl } = resolveActiveConfig();
     const apiKey = await getApiKey(this.context, provider);

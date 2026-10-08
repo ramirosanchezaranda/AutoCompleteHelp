@@ -4,6 +4,20 @@ Extensión para **VS Code, Cursor, Windsurf, VSCodium** y cualquier IDE basado e
 
 Construye tu proyecto desde el IDE **a partir de tu prompt**: describes qué estás construyendo y cómo quieres que te expliquen, eliges el stack y la arquitectura, y **completamos juntos** el código: la IA te muestra en gris una línea a la vez, con comentarios que explican qué hace y por qué se eligió esa forma, y **tú la escribes encima**. No hay autocompletado: nada entra a tu proyecto sin que lo teclees. El objetivo no es que la IA programe por ti: es **que aprendas y entiendas cada parte de tu proyecto**.
 
+## 🤖 Con API key, con una IA local o sin IA
+
+El comando **Elegir la IA** (o un clic en la barra de estado) es un asistente de tres pasos, con ← Atrás:
+
+1. **¿Cómo quieres usarla?**
+   - **Con API key**: Claude, ChatGPT, Gemini, Mistral, DeepSeek, Grok, Groq u OpenRouter. La clave se guarda cifrada en el sistema.
+   - **IA local**: Ollama, LM Studio, llama.cpp o Jan. Gratis y privada, en tu PC, sin internet ni API key. AutoCompleteHelp **detecta los modelos que tienes instalados**; si la IA no responde, te dice cómo ponerla en marcha.
+   - **Tus IAs**: las que agregaste con *Agregar IA* (en la nube con API key, o locales).
+   - **Sin IA**: todo lo que no necesita un modelo, gratis y sin conexión.
+2. El proveedor.
+3. El modelo.
+
+**Qué funciona sin IA:** las **lecciones sin IA** (proyectos completos con el código y las explicaciones ya escritos y probados, que se completan juntos igual, línea por línea), los perfiles de stack curados con su plan base, la elección de arquitectura, crear la estructura, preparar el entorno, el repaso espaciado y el progreso. Lo que necesita un modelo (diseñar un proyecto nuevo, explicar código o errores) lo avisa y ofrece elegir una IA.
+
 ## 🧭 Empezar
 
 AutoCompleteHelp tiene su propio ícono en la barra lateral, con tres secciones: **Empezar**, **Quiero aprender** y **Plan del proyecto**. En **Empezar** (o con el comando *Empezar*) eliges siempre qué hacer:
@@ -16,10 +30,12 @@ En los tres casos se construye igual: **completamos juntos** cada archivo, una l
 
 ## 🎓 Quiero aprender
 
-40 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **arquitectura y patrones** (patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
+41 temas curados, agrupados en lenguajes (TypeScript, Python, Go, Rust, Java, C#…), web y backend (React, Next.js, Node, FastAPI, GraphQL, Three.js), **arquitectura y patrones** (patrones de API —REST, paginación, versionado, idempotencia, rate limiting, webhooks, OpenAPI—, patrones de diseño, SOLID y código limpio, hexagonal, Clean Architecture, DDD, microservicios, eventos), **nube y DevOps** (AWS, Azure, Google Cloud, Terraform, Docker, Kubernetes, CI/CD), **inteligencia artificial y datos** (entrenar un modelo de IA, redes neuronales, apps con LLMs, análisis de datos, SQL), automatización, móvil y videojuegos (Flutter, Unity) y buenas prácticas (testing, Git, seguridad, algoritmos). O cualquier otro tema escrito a mano.
+
+El flujo es un **asistente paso a paso**: cada paso aparece sobre el anterior, con «Paso n de N» y ← Atrás para volver sin perder lo elegido.
 
 1. Eliges el tema y desde dónde arrancas (desde cero, ya programo en otra cosa, lo usé un poco).
-2. **La IA te recomienda tres proyectos** —uno sencillo, uno intermedio y uno más ambicioso— con lo que aprendes en cada uno, la duración y si usan Docker o la nube. Puedes pedir otras recomendaciones o escribir tu propia idea. Sin conexión, se ofrecen las ideas del catálogo.
+2. **La IA te recomienda tres proyectos** —y, si el tema tiene, primero las **lecciones sin IA**— —uno sencillo, uno intermedio y uno más ambicioso— con lo que aprendes en cada uno, la duración y si usan Docker o la nube. Puedes pedir otras recomendaciones o escribir tu propia idea. Sin conexión, se ofrecen las ideas del catálogo.
 3. Eliges el tamaño (corto, mediano o completo) y la carpeta.
 4. La IA diseña **ese proyecto, explicado de principio a fin**:
    - **guía** en `docs/APRENDER.md`: qué vas a construir, qué vas a aprender, qué instalar, cómo está organizado, el paso a paso, los tests, Docker y cómo seguir;
@@ -130,6 +146,9 @@ src/
 ├── learnCatalog.ts    # «Quiero aprender»: catálogo de temas curados
 ├── learnTopics.ts     # «Quiero aprender»: recomendaciones, prompt, lectura del proyecto
 ├── learn.ts           # «Quiero aprender»: comando y sección del explorador
+├── lessons.ts        # lecciones sin IA: código y explicaciones ya escritos y probados
+├── wizard.ts         # asistentes paso a paso con ← Atrás
+├── modelPicker.ts    # «Elegir la IA»: API key, local o sin IA
 ├── terminal.ts        # comandos escritos en la terminal (sin ejecutarse) y «Preparar el entorno»
 ├── stackAdvisor.ts    # elegir stack + arquitectura → plan
 ├── stackProfiles.ts   # perfiles de stack curados

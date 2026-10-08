@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { resolveActiveConfig } from './providers/catalog';
+import { noAI, resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
 import { buildExplainSystemPrompt, getProjectBlock } from './prompts';
@@ -12,6 +12,9 @@ export async function explainSelection(context: vscode.ExtensionContext): Promis
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.selection.isEmpty) {
     vscode.window.showInformationMessage('Selecciona el código que quieres que te explique.');
+    return;
+  }
+  if (await needsAI('explicar código')) {
     return;
   }
   const code = editor.document.getText(editor.selection);
@@ -44,6 +47,24 @@ export async function explainSelection(context: vscode.ExtensionContext): Promis
       }
     }
   );
+}
+
+/**
+ * En modo sin IA, las acciones que necesitan un modelo lo dicen y ofrecen
+ * elegir uno. Devuelve true si hay que detenerse.
+ */
+export async function needsAI(accion: string): Promise<boolean> {
+  if (!noAI()) {
+    return false;
+  }
+  const action = await vscode.window.showInformationMessage(
+    `AutoCompleteHelp: para ${accion} hace falta una IA. Estás en modo sin IA: elige una con API key o una IA local (gratis, en tu PC).`,
+    'Elegir IA'
+  );
+  if (action) {
+    await vscode.commands.executeCommand('autocompletehelp.selectModel');
+  }
+  return true;
 }
 
 /** Muestra Markdown renderizado en un panel lateral. Reutilizado por varios comandos. */

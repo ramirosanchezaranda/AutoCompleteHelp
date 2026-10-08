@@ -137,6 +137,17 @@ export const LEARN_TOPICS: LearnTopic[] = [
     notas: 'Cada patrón aparece cuando el código lo necesita: primero el problema sin el patrón, después el cambio, y los mismos tests siguen pasando.'
   },
   {
+    id: 'patrones-api', nombre: 'Patrones de API', tipo: 'arquitectura',
+    palabras: ['patrones de api', 'patrones api', 'diseno de apis', 'diseno de api', 'api design', 'rest', 'idempotencia', 'paginacion', 'versionado', 'rate limiting', 'webhooks', 'openapi', 'api gateway'],
+    stack: 'Node.js 22 + Express 5 + TypeScript + OpenAPI + Vitest + Supertest', arquitectura: 'capas',
+    ideas: [
+      'API de pedidos con paginación, filtros, versionado e idempotencia',
+      'API pública con OpenAPI, rate limiting y errores estándar (Problem Details, RFC 9457)',
+      'webhooks firmados con reintentos y un gateway que agrega dos servicios (BFF)'
+    ],
+    notas: 'Cada patrón resuelve un problema que primero se ve: listas enormes (paginación por cursor), reintentos que duplican cobros (clave de idempotencia), clientes que se rompen al cambiar la API (versionado), abuso (rate limiting), errores inconsistentes (Problem Details), avisos entre sistemas (webhooks con firma). Cada uno con su test.'
+  },
+  {
     id: 'solid', nombre: 'Principios SOLID y código limpio', tipo: 'arquitectura',
     palabras: ['solid', 'codigo limpio', 'clean code', 'refactor', 'refactorizar', 'refactorizacion'],
     stack: 'TypeScript + Vitest', arquitectura: 'capas',

@@ -3,7 +3,7 @@ import { resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
 import { getProjectBlock } from './prompts';
-import { showMarkdownPanel } from './explain';
+import { needsAI, showMarkdownPanel } from './explain';
 
 /**
  * «Entender este error»: aparece como acción rápida (la bombita) sobre los
@@ -85,6 +85,9 @@ export async function explainError(
     lines.push(document.lineAt(i).text);
   }
 
+  if (await needsAI('explicar el error')) {
+    return;
+  }
   const { provider, model, baseUrl } = resolveActiveConfig();
   const apiKey = await ensureApiKey(context, provider);
   if (provider.needsKey && !apiKey) {

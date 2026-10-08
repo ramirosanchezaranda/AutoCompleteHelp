@@ -13,6 +13,7 @@ import {
 } from './architectures';
 import { ProjectArchitecture, getProject, projectRoot, saveProject } from './projectFile';
 import { showMarkdownPanel } from './explain';
+import { BACK, pickStep, runSteps } from './wizard';
 
 export interface ArchChoice {
   arch: Architecture;
@@ -22,54 +23,86 @@ export interface ArchChoice {
 
 type Pick<T> = vscode.QuickPickItem & { value: T };
 
-async function ask<T>(title: string, items: Pick<T>[]): Promise<T | undefined> {
-  const pick = await vscode.window.showQuickPick(items, { title, ignoreFocusOut: true });
-  return pick?.value;
-}
 
 /**
  * Tres o cuatro preguntas → arquitectura recomendada (algoritmo, sin LLM) →
  * la persona elige, con la explicación de cada opción a la vista.
  */
 export async function pickArchitecture(profileId?: string): Promise<ArchChoice | undefined> {
-  const tipo =
-    appKindForProfile(profileId) ??
-    (await ask<AppKind>('Arquitectura 1/4 — ¿Qué tipo de aplicación es?', [
-      { label: 'API o backend', description: 'datos para una app web, móvil u otro sistema', value: 'api' },
-      { label: 'Web con páginas del servidor', description: 'el servidor arma el HTML (Django, Rails, Laravel)', value: 'web-servidor' },
-      { label: 'Frontend', description: 'interfaz que corre en el navegador (React, Vue…)', value: 'frontend' },
-      { label: 'Otra', description: 'escritorio, CLI, videojuego, script…', value: 'otra' }
-    ]));
-  if (!tipo) {
+  const fixedTipo = appKindForProfile(profileId);
+  const a: Partial<ArchAnswers> = { tipo: fixedTipo };
+  // Pasos (con ← Atrás): tipo de app (si el perfil no lo dice), equipo, áreas, objetivo.
+  const total = (fixedTipo ? 0 : 1) + (a.tipo === 'frontend' ? 0 : 3) + 1;
+  const n = (i: number) => (fixedTipo ? i : i + 1);
+  const steps = [
+    async () => {
+      if (fixedTipo) {
+        return 1;
+      }
+      const r = await pickStep<AppKind>(
+        [
+          { label: 'API o backend', description: 'datos para una app web, móvil u otro sistema', value: 'api' },
+          { label: 'Web con páginas del servidor', description: 'el servidor arma el HTML (Django, Rails, Laravel)', value: 'web-servidor' },
+          { label: 'Frontend', description: 'interfaz que corre en el navegador (React, Vue…)', value: 'frontend' },
+          { label: 'Otra', description: 'escritorio, CLI, videojuego, script…', value: 'otra' }
+        ],
+        { title: 'Arquitectura — ¿Qué tipo de aplicación es?', step: 1, total, current: a.tipo }
+      );
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      a.tipo = r;
+      return r === 'frontend' ? 4 : 1;
+    },
+    async () => {
+      const r = await pickStep<ArchAnswers['equipo']>(
+        [
+          { label: 'Solo yo', value: 'solo' },
+          { label: 'Un equipo pequeño', description: '2 a 6 personas', value: 'pequeno' },
+          { label: 'Varios equipos', description: 'cada uno a cargo de una parte', value: 'varios' }
+        ],
+        { title: 'Arquitectura — ¿Quiénes van a trabajar en el proyecto?', step: n(1), total, current: a.equipo }
+      );
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      a.equipo = r;
+      return 2;
+    },
+    async () => {
+      const r = await pickStep<ArchAnswers['areas']>(
+        [
+          { label: 'Pocas (1 o 2)', description: 'ej: un blog, una lista de tareas', value: 'pocas' },
+          { label: 'Varias que crecen por separado', description: 'ej: catálogo, carrito, pagos, envíos', value: 'varias' }
+        ],
+        { title: 'Arquitectura — ¿Cuántas áreas del negocio tiene?', step: n(2), total, current: a.areas }
+      );
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      a.areas = r;
+      return 3;
+    },
+    async () => {
+      const r = await pickStep<ArchAnswers['objetivo']>(
+        [
+          { label: 'Los fundamentos', description: 'lo más simple que separe bien las responsabilidades', value: 'fundamentos' },
+          { label: 'Diseño de software', description: 'separar el negocio de la tecnología, testear sin base de datos', value: 'diseno' }
+        ],
+        { title: 'Arquitectura — ¿Qué quieres aprender con este proyecto?', step: n(3), total, current: a.objetivo }
+      );
+      if (r === undefined || r === BACK) {
+        return r;
+      }
+      a.objetivo = r;
+      return 4;
+    }
+  ];
+  if (!(await runSteps(steps, fixedTipo ? (fixedTipo === 'frontend' ? 4 : 1) : 0))) {
     return undefined;
   }
-
-  let answers: ArchAnswers = { tipo, equipo: 'solo', areas: 'pocas', objetivo: 'fundamentos' };
-  if (tipo !== 'frontend') {
-    const equipo = await ask<ArchAnswers['equipo']>('Arquitectura — ¿Quiénes van a trabajar en el proyecto?', [
-      { label: 'Solo yo', value: 'solo' },
-      { label: 'Un equipo pequeño', description: '2 a 6 personas', value: 'pequeno' },
-      { label: 'Varios equipos', description: 'cada uno a cargo de una parte', value: 'varios' }
-    ]);
-    if (!equipo) {
-      return undefined;
-    }
-    const areas = await ask<ArchAnswers['areas']>('Arquitectura — ¿Cuántas áreas del negocio tiene?', [
-      { label: 'Pocas (1 o 2)', description: 'ej: un blog, una lista de tareas', value: 'pocas' },
-      { label: 'Varias que crecen por separado', description: 'ej: catálogo, carrito, pagos, envíos', value: 'varias' }
-    ]);
-    if (!areas) {
-      return undefined;
-    }
-    const objetivo = await ask<ArchAnswers['objetivo']>('Arquitectura — ¿Qué quieres aprender con este proyecto?', [
-      { label: 'Los fundamentos', description: 'lo más simple que separe bien las responsabilidades', value: 'fundamentos' },
-      { label: 'Diseño de software', description: 'separar el negocio de la tecnología, testear sin base de datos', value: 'diseno' }
-    ]);
-    if (!objetivo) {
-      return undefined;
-    }
-    answers = { tipo, equipo, areas, objetivo };
-  }
+  const tipo = a.tipo!;
+  const answers: ArchAnswers = { tipo, equipo: a.equipo ?? 'solo', areas: a.areas ?? 'pocas', objetivo: a.objetivo ?? 'fundamentos' };
 
   const rec = recommendArchitecture(answers);
   const order = [rec.recomendada, ...rec.alternativas];

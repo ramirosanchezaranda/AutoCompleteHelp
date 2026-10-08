@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { resolveActiveConfig } from './providers/catalog';
+import { noAI, resolveActiveConfig } from './providers/catalog';
 import { complete } from './providers/client';
 import { ensureApiKey } from './secrets';
 import { buildStackSystemPrompt, getProjectPrompt, saveProjectPrompt } from './prompts';
@@ -51,15 +51,23 @@ export async function recommendStack(context: vscode.ExtensionContext): Promise<
     return;
   }
 
-  const { provider, model, baseUrl } = resolveActiveConfig();
-  const apiKey = await ensureApiKey(context, provider);
-  if (provider.needsKey && !apiKey) {
-    return;
-  }
-
   let answer = '';
   let failure = '';
-  await vscode.window.withProgress(
+  const sinIA = noAI();
+  if (sinIA && !profile) {
+    vscode.window.showInformationMessage(
+      'AutoCompleteHelp: sin IA, el stack sale de los perfiles curados (traen su plan base). Elige uno, o activa una IA para cualquier otro stack.'
+    );
+    return;
+  }
+  const { provider, model, baseUrl } = resolveActiveConfig();
+  const apiKey = sinIA ? undefined : await ensureApiKey(context, provider);
+  if (!sinIA && provider.needsKey && !apiKey) {
+    return;
+  }
+  if (sinIA) {
+    failure = 'modo sin IA';
+  } else await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: preferred

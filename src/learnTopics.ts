@@ -88,6 +88,8 @@ export interface ProjectIdea {
   nube: boolean;
   /** Tema al que pertenece (en «Recomiéndame un proyecto», cada idea trae el suyo). */
   tema?: string;
+  /** Si es una lección sin IA (src/lessons.ts), su id. */
+  leccion?: string;
 }
 
 /** Ideas del catálogo, sin IA: la recomendación cuando no hay conexión. */

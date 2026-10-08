@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Construye tus proyectos o aprende cualquier tema —lenguajes, nube, patrones, IA— con proyectos que la IA te recomienda: dicta cada línea en gris y tú la escribes, con explicaciones, arquitectura, tests y Docker. Multi-LLM.",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -48,6 +48,10 @@
         "icon": "$(lightbulb)"
       },
       {
+        "command": "autocompletehelp.learnLesson",
+        "title": "AutoCompleteHelp: Empezar una lección sin IA"
+      },
+      {
         "command": "autocompletehelp.setProjectPrompt",
         "title": "AutoCompleteHelp: Definir prompt del proyecto"
       },
@@ -62,7 +66,7 @@
       },
       {
         "command": "autocompletehelp.selectModel",
-        "title": "AutoCompleteHelp: Elegir proveedor y modelo"
+        "title": "AutoCompleteHelp: Elegir la IA (API key, local o sin IA)"
       },
       {
         "command": "autocompletehelp.setApiKey",
@@ -110,7 +114,7 @@
       },
       {
         "command": "autocompletehelp.addProvider",
-        "title": "AutoCompleteHelp: Agregar IA (endpoint + API key)"
+        "title": "AutoCompleteHelp: Agregar IA (en la nube con API key, o local)"
       },
       {
         "command": "autocompletehelp.toggle",
@@ -208,6 +212,10 @@
         {
           "command": "autocompletehelp.dictation.menu",
           "when": "autocompletehelp.dictating"
+        },
+        {
+          "command": "autocompletehelp.learnLesson",
+          "when": "false"
         }
       ]
     },
@@ -233,7 +241,7 @@
         "autocompletehelp.provider": {
           "type": "string",
           "default": "anthropic",
-          "description": "Proveedor de LLM: anthropic | openai | google | mistral | deepseek | xai | groq | openrouter | ollama | custom, o el id de una IA agregada por ti ('custom:Nombre'). Usa el comando 'Elegir proveedor y modelo'."
+          "description": "Cómo se usa la IA: un proveedor con API key (anthropic, openai, google, mistral, deepseek, xai, groq, openrouter), una IA local (ollama, lmstudio, llamacpp, jan), una tuya ('custom:Nombre') o 'none' (sin IA). Usa el comando 'Elegir la IA'."
         },
         "autocompletehelp.customProviders": {
           "type": "array",
@@ -303,6 +311,14 @@
           "type": "string",
           "default": "",
           "description": "URL base para el proveedor 'custom' (debe exponer /chat/completions compatible con OpenAI)."
+        },
+        "autocompletehelp.localUrls": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "markdownDescription": "URL de cada IA local si no usa la de siempre. Ej: `{ \"lmstudio\": \"http://localhost:1234/v1\", \"llamacpp\": \"http://192.168.0.10:8080/v1\" }`. Para Ollama se usa `autocompletehelp.ollamaUrl`."
         }
       }
     },
@@ -325,7 +341,7 @@
     "viewsWelcome": [
       {
         "view": "autocompletehelp.start",
-        "contents": "¿Qué quieres hacer hoy?\n[$(rocket) Tengo un proyecto](command:autocompletehelp.setProjectPrompt)\n[$(mortar-board) Quiero aprender algo](command:autocompletehelp.learn)\n[$(lightbulb) Recomiéndame un proyecto](command:autocompletehelp.recommendProject)\nEn todos los casos completamos juntos el código: una línea en gris a la vez, con su explicación.\n[$(sparkle) Elegir la IA (proveedor y modelo)](command:autocompletehelp.selectModel)"
+        "contents": "¿Qué quieres hacer hoy?\n[$(rocket) Tengo un proyecto](command:autocompletehelp.setProjectPrompt)\n[$(mortar-board) Quiero aprender algo](command:autocompletehelp.learn)\n[$(lightbulb) Recomiéndame un proyecto](command:autocompletehelp.recommendProject)\nEn todos los casos completamos juntos el código: una línea en gris a la vez, con su explicación.\n[$(sparkle) Elegir la IA: con API key, local o sin IA](command:autocompletehelp.selectModel)"
       },
       {
         "view": "autocompletehelp.plan",
