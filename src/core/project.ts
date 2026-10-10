@@ -15,9 +15,12 @@ export interface StackInfo {
   [clave: string]: string | undefined;
 }
 
-/** teoria: apuntes en notas/*.md que también se completan escribiendo, antes del código que los usa. */
-export type StepKind = 'teoria' | 'codigo' | 'test' | 'config' | 'docker' | 'comando';
-export const STEP_KINDS: StepKind[] = ['teoria', 'codigo', 'test', 'config', 'docker', 'comando'];
+/**
+ * teoria: apuntes en notas/*.md que también se completan escribiendo, antes del código que los usa.
+ * ejercicio: un archivo con el enunciado que resuelve la persona; sus tests dicen si está bien.
+ */
+export type StepKind = 'teoria' | 'codigo' | 'test' | 'config' | 'docker' | 'comando' | 'ejercicio';
+export const STEP_KINDS: StepKind[] = ['teoria', 'codigo', 'test', 'config', 'docker', 'comando', 'ejercicio'];
 
 export interface PlanStep {
   paso: string;
@@ -27,6 +30,7 @@ export interface PlanStep {
   tipo?: StepKind;
   /** Pasos de tipo «comando»: lo que se escribe en la terminal (nunca se ejecuta solo). */
   comando?: string;
+  /** En los comandos, qué hace; en los ejercicios, el enunciado. */
   explicacion?: string;
   /** Comando que comprueba el paso al terminarlo (ej: npm test). */
   verificar?: string;

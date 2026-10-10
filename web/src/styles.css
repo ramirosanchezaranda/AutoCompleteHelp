@@ -197,6 +197,7 @@ a { color: var(--accent); }
 .chip:hover { border-color: var(--ink-3); }
 .chip[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .chip.lesson::before { content: '📗 '; }
+.chip.curso::before { content: '📘 '; }
 .home-foot { color: var(--ink-3); font-size: 14px; margin: 0; }
 .resume { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--rule-strong); border-radius: var(--radius); }
 .resume .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -278,7 +279,8 @@ a { color: var(--accent); }
 .dialog footer { padding: 10px 16px; border-top: 1px solid var(--rule); display: flex; gap: 8px; justify-content: space-between; }
 
 .toast {
-  position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60;
+  /* Arriba, debajo de la barra: no tapa la barra de dictado ni la de ejercicios. */
+  position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60;
   background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow); max-width: min(92vw, 560px);
   font-size: 15px;
 }
@@ -393,3 +395,9 @@ a { color: var(--accent); }
 
 .guide { padding: 14px 16px 28px; }
 .mini-list { margin: 0; padding-left: 18px; color: var(--ink-2); }
+
+/* Ejercicio: la barra de abajo mientras se resuelve libre */
+.dbar.exercise { border-top: 2px solid var(--amber); }
+.dbar.exercise .ex-head { font-size: 15px; line-height: 1.4; }
+.dbar.exercise .ex-head b { color: var(--amber); }
+.dbar.exercise .why { max-height: none; }

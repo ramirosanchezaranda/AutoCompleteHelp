@@ -12,6 +12,7 @@ import {
 import { findStepLine, insertInstruction, stepFileContent, stepInstruction } from './instructions';
 import { buildHere } from './dictation';
 import { writeCommand } from './terminal';
+import { starterFor } from './core/exercises';
 
 /**
  * Panel «Plan del proyecto» en el explorador. Convierte la guía
@@ -27,7 +28,8 @@ const KIND_ICON: Record<StepKind, string> = {
   test: 'beaker',
   config: 'gear',
   docker: 'package',
-  comando: 'terminal'
+  comando: 'terminal',
+  ejercicio: 'pencil'
 };
 const KIND_LABEL: Record<StepKind, string> = {
   teoria: 'teoría',
@@ -35,7 +37,8 @@ const KIND_LABEL: Record<StepKind, string> = {
   test: 'test',
   config: 'configuración',
   docker: 'Docker',
-  comando: 'comando'
+  comando: 'comando',
+  ejercicio: 'ejercicio'
 };
 
 class StepItem extends vscode.TreeItem {
@@ -169,6 +172,22 @@ async function openStep(index: number): Promise<void> {
   }
 
   const uri = vscode.Uri.joinPath(root, step.archivo);
+  // Ejercicio: el archivo nace con el enunciado y se resuelve escribiendo libre.
+  if (step.tipo === 'ejercicio') {
+    if (!(await exists(uri))) {
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(starterFor(getProject(), step)));
+    }
+    await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
+    const action = await vscode.window.showInformationMessage(
+      `Ejercicio ${index + 1}: ${step.paso}. Resuélvelo tú; los tests dicen si está bien. Si te trabas, escribe «// ach: solución» + Enter al final y la escribimos juntos, línea por línea.`,
+      ...(step.verificar ? ['Correr los tests'] : [])
+    );
+    if (action && step.verificar) {
+      writeCommand({ comando: step.verificar, explicacion: '' }, 'Si pasa en verde, marca el ejercicio como hecho en el plan.');
+    }
+    return;
+  }
   if (!(await exists(uri))) {
     // Archivo nuevo: vacío salvo la instrucción del paso. El código llega
     // dictado en gris y lo escribes encima (o como sugerencia, según el modo).

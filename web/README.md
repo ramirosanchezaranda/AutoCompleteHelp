@@ -15,6 +15,15 @@ La versión web (PWA) de AutoCompleteHelp: aprender a programar construyendo pro
 - **Datos**: proyectos y progreso en IndexedDB; las API keys cifradas con WebCrypto (clave AES no exportable). Export/import `.zip` con el mismo `autocompletehelp.json` que la extensión.
 - **IA a elección**: proveedores con API key (llamadas directas desde el navegador; Anthropic con `anthropic-dangerous-direct-browser-access`), IA local (Ollama, LM Studio, llama.cpp, Jan) o propia (OpenAI-compatible), o sin IA. Proxy sin estado opcional y autohospedable en [`proxy/`](proxy/api/ai.ts).
 
+## Teoría y ejercicios
+
+En «Quiero aprender», cada tema se puede aprender **con un proyecto** o **con teoría y ejercicios**:
+
+- **Sin IA**: cuatro cursos escritos y verificados con Vitest (con las soluciones, todo verde; con los enunciados, todo rojo), en [`src/core/lessonsCursos.ts`](../src/core/lessonsCursos.ts): Fundamentos de programación, Lógica para programar, Matemáticas para programar y Diseño con JavaScript.
+- **Con IA**: cualquier tema de cualquier sección. La IA arma el temario con el mismo formato.
+
+Cada tema son tres pasos que se completan escribiendo: el apunte (`notas/`), los tests y el ejercicio (`tipo: "ejercicio"`). El ejercicio arranca con el enunciado y las funciones vacías y se resuelve escribiendo libre. Las pistas salen de los comentarios de la solución (o de la IA, sin dar la solución). La solución guiada se escribe línea por línea. Cuando sus tests pasan a verde, el ejercicio queda resuelto.
+
 ## Desarrollo
 
 ```bash

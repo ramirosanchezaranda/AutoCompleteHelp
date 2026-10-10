@@ -8,7 +8,7 @@ import type { ArchId } from './architectures';
  * también funciona.
  */
 
-export type TopicKind = 'lenguaje' | 'web' | 'creativo' | 'arquitectura' | 'nube' | 'ia' | 'automatizacion' | 'movil' | 'practicas';
+export type TopicKind = 'fundamentos' | 'lenguaje' | 'web' | 'creativo' | 'arquitectura' | 'nube' | 'ia' | 'automatizacion' | 'movil' | 'practicas';
 
 export interface LearnTopic {
   id: string;
@@ -26,6 +26,7 @@ export interface LearnTopic {
 }
 
 export const TOPIC_KINDS: { tipo: TopicKind; titulo: string }[] = [
+  { tipo: 'fundamentos', titulo: 'Fundamentos: programación, lógica y matemáticas' },
   { tipo: 'lenguaje', titulo: 'Lenguajes' },
   { tipo: 'web', titulo: 'Web y backend' },
   { tipo: 'creativo', titulo: 'Diseño, animación y creative coding' },
@@ -48,7 +49,33 @@ const CREATIVO =
 const NUBE =
   'Costos: usar la capa gratuita y crear una alerta de presupuesto en el primer paso; el último paso destruye todo lo creado. Credenciales con el CLI (perfil o SSO), nunca en el código. La infraestructura se escribe como código, comentada.';
 
+/** Cómo se estudian los fundamentos: teoría escrita y ejercicios con tests. */
+const FUNDAMENTOS =
+  'Se aprende con teoría y ejercicios: cada tema tiene un apunte que se escribe, tests que definen qué hace cada función y un ejercicio que resuelve la persona (funciones puras, en JavaScript con Vitest, que corre en el navegador). Ejemplos chicos calculados a mano; los bordes (0, vacío, negativos) siempre tienen su test.';
+
 export const LEARN_TOPICS: LearnTopic[] = [
+  // Fundamentos
+  {
+    id: 'fundamentos-programacion', nombre: 'Fundamentos de programación', tipo: 'fundamentos',
+    palabras: ['fundamentos', 'fundamentos de programacion', 'variables', 'condicionales', 'bucles', 'pensamiento computacional'],
+    stack: 'JavaScript (ES modules) + Vitest', arquitectura: 'capas',
+    ideas: ['ejercicios de variables, condicionales y bucles', 'calculadora de notas de un curso', 'juego de adivinar el número'],
+    notas: FUNDAMENTOS
+  },
+  {
+    id: 'logica', nombre: 'Lógica para programar', tipo: 'fundamentos',
+    palabras: ['logica', 'logica de programacion', 'logica proposicional', 'booleanos', 'tablas de verdad', 'de morgan'],
+    stack: 'JavaScript (ES modules) + Vitest', arquitectura: 'capas',
+    ideas: ['validador de reglas de acceso', 'calendario con años bisiestos', 'evaluador de tablas de verdad'],
+    notas: FUNDAMENTOS
+  },
+  {
+    id: 'matematicas', nombre: 'Matemáticas para programar', tipo: 'fundamentos',
+    palabras: ['matematicas', 'matematica', 'aritmetica', 'numeros primos', 'porcentajes', 'matematica discreta'],
+    stack: 'JavaScript (ES modules) + Vitest', arquitectura: 'capas',
+    ideas: ['calculadora de descuentos y cuotas', 'explorador de números primos', 'sucesiones y gráficos simples'],
+    notas: FUNDAMENTOS + ' Los decimales se comparan con toBeCloseTo.'
+  },
   // Lenguajes
   {
     id: 'typescript', nombre: 'TypeScript', tipo: 'lenguaje',

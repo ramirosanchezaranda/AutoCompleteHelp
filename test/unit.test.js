@@ -372,7 +372,7 @@ eq('apunte de teoría: las citas (>) avanzan solas y se escribe el título', not
 const atDef = note.indexOf('Un tipo dice');
 eq('apunte de teoría: la explicación que se dicta es la cita de arriba', T.explanationAt(note, atDef, md).startsWith('Un tipo describe la forma'), true);
 eq('apunte de teoría: dentro del bloque de código, la cita de arriba sigue siendo la explicación', T.explanationAt(note, note.indexOf('let monto'), md).startsWith('Los tipos básicos'), true);
-eq('cada lección tiene apuntes de teoría antes del código', LS.LESSONS.map((l) => l.plan.findIndex((st) => st.tipo === 'teoria') < l.plan.findIndex((st) => st.tipo === 'codigo')), LS.LESSONS.map(() => true));
+eq('cada lección tiene apuntes de teoría antes del código o del primer ejercicio', LS.LESSONS.map((l) => l.plan.findIndex((st) => st.tipo === 'teoria') < l.plan.findIndex((st) => st.tipo === 'codigo' || st.tipo === 'ejercicio')), LS.LESSONS.map(() => true));
 const P2 = require(out + 'prompts.js');
 eq('un apunte .md que termina en un bloque de código no pierde su ``` final', P2.sanitizeCompletion('> idea\n```ts\nlet a = 1;\n```', ''), '> idea\n```ts\nlet a = 1;\n```');
 eq('una respuesta envuelta en ``` se sigue limpiando', P2.sanitizeCompletion('```ts\nlet a = 1;\n```', ''), 'let a = 1;');
@@ -400,7 +400,7 @@ const pkgCfg = JSON.parse(require('fs').readFileSync(__dirname + '/../package.js
 eq('ajuste de línea al completar juntos: activado por defecto', pkgCfg['autocompletehelp.dictation.wordWrap'].default, true);
 eq('el prompt pide comentarios que entren en la pantalla', P2.buildDictationSystemPrompt('', false).includes('80 caracteres'), true);
 // Diseño, animación y shaders
-eq('catálogo: 52 temas, con el área de diseño, animación y creative coding', [L.LEARN_TOPICS.length, L.TOPIC_KINDS.some((k) => k.tipo === 'creativo')], [52, true]);
+eq('catálogo: 55 temas en 10 áreas, con diseño y fundamentos', [L.LEARN_TOPICS.length, L.TOPIC_KINDS.length, L.TOPIC_KINDS.some((k) => k.tipo === 'creativo'), L.TOPIC_KINDS[0].tipo], [55, 10, true, 'fundamentos']);
 eq('temas creativos por lo que escribe la persona', ['quiero aprender gsap', 'shaders', 'arte generativo con p5', 'teoría del color', 'webgpu', 'framer motion'].map((t) => L.matchTopic(t)?.id), ['gsap', 'shaders-glsl', 'creative-coding', 'composicion-diseno', 'webgpu', 'motion-react']);
 eq('lecciones sin IA de GSAP y de shaders', [LS.lessonsForTopic('gsap').map((l) => l.id), LS.lessonsForTopic('shaders-glsl').map((l) => l.id)], [['gsap-tarjetas'], ['shader-atardecer']]);
 const I2 = require(out + 'instructions.js');
@@ -421,6 +421,30 @@ console.log('— núcleo compartido (src/core)');
   const l1 = CC.withAccepted({}, ['async/await'], 'dictado', '2026-01-01T00:00:00.000Z');
   eq('withAccepted cuenta práctica sin mutar', [l1['async-await'].practiced, Object.keys({}).length], [1, 0]);
   eq('reviewInstruction', CC.reviewInstruction('reduce').includes('«reduce»'), true);
+}
+
+console.log('— cursos de teoría y ejercicios');
+{
+  const EX = require(out + 'core/exercises.js');
+  const cursos = LS.LESSONS.filter((l) => l.tipo === 'curso');
+  eq('cuatro cursos sin IA: fundamentos, lógica, matemáticas y diseño', cursos.map((l) => l.topicId), ['fundamentos-programacion', 'logica', 'matematicas', 'composicion-diseno']);
+  eq('temas por palabra clave', ['quiero aprender lógica', 'matemáticas para programar', 'fundamentos de programación'].map((x) => L.matchTopic(x)?.id), ['logica', 'matematicas', 'fundamentos-programacion']);
+  eq('cada ejercicio tiene antes su test y su apunte', cursos.map((l) => l.plan.every((st, i) => st.tipo !== 'ejercicio' || (l.plan[i - 1].tipo === 'test' && l.plan[i - 2].tipo === 'teoria'))), cursos.map(() => true));
+  const sol = LS.lessonCode('fundamentos-js', 'ejercicios/02-condicionales.js').text;
+  const starter = EX.exerciseStarter(sol, 'ejercicios/02-condicionales.js');
+  eq('enunciado: los comentarios del principio y las funciones vacías', [starter.startsWith('// Ejercicio 1: clasificarEdad'), starter.includes('export function clasificarEdad(edad) {\n  // tu código\n}'), starter.includes('return')], [true, true, false]);
+  eq('pistas: los comentarios de la solución, sin enunciado ni resúmenes', EX.exerciseHints(sol, 'x.js').map((h) => h.slice(0, 22)), ['empieza por el tramo m', 'compara a con b. Si a ']);
+  const proj = LS.lessonProjectFile(LS.getLesson('logica-js'));
+  const ent = require(out + 'scaffold.js').scaffoldEntries(proj, undefined, 'logica');
+  const ej = ent.find((e) => e.archivo === 'ejercicios/01-booleanos.js');
+  eq('crear estructura: el ejercicio nace con su enunciado, sin «ach:»', [ej.contenido.includes('xor(a, b)'), ej.contenido.includes('ach:')], [true, false]);
+  const aiStep = { paso: 'Invertir un texto', tipo: 'ejercicio', archivo: 'ejercicios/01.py', explicacion: 'invertir(texto) devuelve el texto al revés. Ejemplo: invertir("hola") devuelve "aloh".' };
+  const cp = L.buildLearnSystemPrompt({ tema: 'Kubernetes', nivel: 'cero', tamano: 'mediano', modo: 'curso', topic: L.matchTopic('kubernetes') });
+  eq('modo curso para cualquier tema: teoría, tests y ejercicio por tema, enunciado en explicacion', [cp.includes('CURSOS DE TEORÍA Y EJERCICIOS'), cp.includes('tipo "ejercicio"'), cp.includes('5 temas'), cp.includes('SEMILLA CURADA'), cp.includes('ach-learn')], [true, true, true, true, true]);
+  eq('idea de curso → prompt de curso', L.buildLearnSystemPrompt({ tema: 'Rust', nivel: 'algo', tamano: 'corto', idea: L.courseIdea('Rust') }).includes('CURSOS DE TEORÍA'), true);
+  const cplan = L.parseLearnAnswer('```ach-learn\n' + JSON.stringify({ stack: { resumen: 'JS + Vitest' }, plan: [{ paso: 'Invertir', tipo: 'ejercicio', archivo: 'ejercicios/01.js', explicacion: 'invertir(t) devuelve t al revés', verificar: 'npx vitest run ejercicios/01' }] }) + '\n```').proposal.plan[0];
+  eq('el plan de la IA conserva el tipo ejercicio y su enunciado', [cplan.tipo, cplan.explicacion, cplan.verificar], ['ejercicio', 'invertir(t) devuelve t al revés', 'npx vitest run ejercicios/01']);
+  eq('ejercicio de la IA: el enunciado como comentarios del lenguaje', EX.starterFor(undefined, aiStep).split('\n')[0], '# Ejercicio: Invertir un texto');
 }
 
 function finish() {

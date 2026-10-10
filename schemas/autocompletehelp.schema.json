@@ -18,7 +18,11 @@
         "typescript-gastos",
         "python-descargas",
         "gsap-tarjetas",
-        "shader-atardecer"
+        "shader-atardecer",
+        "fundamentos-js",
+        "logica-js",
+        "matematicas-js",
+        "diseno-js"
       ]
     },
     "perfil": {
@@ -265,7 +269,8 @@
               "test",
               "config",
               "docker",
-              "comando"
+              "comando",
+              "ejercicio"
             ],
             "description": "Qué tipo de paso es."
           },

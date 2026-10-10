@@ -42,6 +42,15 @@ function relatedFiles(files: Record<string, string>, path: string, text: string)
     out.push(block);
     size += block.length;
   }
+  // Los tests que importan este archivo: dicen qué tiene que hacer (ejercicios).
+  const name = path.split('/').pop()!.replace(/\.[^.]+$/, '');
+  for (const [f, text] of Object.entries(files)) {
+    if (f === path || !/\.(test|spec)\.[jt]sx?$|(^|\/)test_[^/]*\.py$/.test(f) || !text.includes(name)) continue;
+    const block = `--- ${f} (tests que tiene que pasar) ---\n${text.slice(0, 4000)}`;
+    if (size + block.length > 9000) break;
+    out.push(block);
+    size += block.length;
+  }
   return out.join('\n\n');
 }
 

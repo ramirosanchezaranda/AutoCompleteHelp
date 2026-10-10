@@ -18,6 +18,8 @@ export interface LearnFlow {
   nivel?: LearnLevel;
   ideas?: ProjectIdea[];
   ideasKey?: string;
+  /** Con un proyecto, o con teoría y ejercicios. */
+  modo?: 'proyecto' | 'curso';
   idea?: ProjectIdea;
   tamano?: LearnSize;
   design?: { markdown: string; proposal?: LearnProposal };
@@ -75,6 +77,7 @@ interface AppState {
 }
 
 /** Orden de los campos: cambiar uno invalida los siguientes. */
+// «modo» (proyecto o curso) no está en el orden: lo cambia solo la persona y no se pierde al cambiar el nivel.
 const LEARN_ORDER: (keyof LearnFlow)[] = ['text', 'nivel', 'ideas', 'idea', 'tamano', 'design', 'projectId'];
 const PROJECT_ORDER: (keyof ProjectFlow)[] = ['text', 'stack', 'answers', 'archId', 'projectId'];
 

@@ -20,7 +20,7 @@ export const START_BOXES: { kind: StartKind; tab: string; titulo: string; ayuda:
     ayuda: 'Un lenguaje, una librería, la nube, patrones, IA… lo que sea.',
     placeholder: 'Ej: TypeScript, three.js, patrones de API, configurar AWS',
     boton: 'Ver proyectos para aprenderlo →',
-    ejemplos: ['TypeScript', 'arquitectura hexagonal', 'patrones de API', 'entrenar una IA']
+    ejemplos: ['fundamentos de programación', 'lógica', 'TypeScript', 'arquitectura hexagonal', 'entrenar una IA']
   },
   {
     kind: 'recommend',

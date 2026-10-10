@@ -34,7 +34,7 @@ export function Flow() {
         ? { label: 'Tema', todo: 'escribe o elige qué aprender', done: !!f.text.trim(), render: () => <TopicStep /> }
         : { label: 'Tu interés', todo: 'cuéntame qué te interesa', done: !!f.text.trim(), render: () => <InterestStep /> },
       { label: 'Tu nivel', todo: 'elige desde dónde arrancas', done: !!f.nivel, render: () => <LevelStep k={kind} /> },
-      { label: 'Proyecto', todo: 'elige un proyecto', done: !!f.idea, render: () => <IdeasStep k={kind} /> },
+      { label: 'Proyecto', todo: 'elige un proyecto o un curso', done: !!f.idea, render: () => <IdeasStep k={kind} /> },
       { label: 'Diseño', todo: 'revisa el diseño y créalo', done: !!f.projectId, render: () => <DesignStep k={kind} /> },
       { label: 'Completar código', todo: 'escribir', done: false }
     ];

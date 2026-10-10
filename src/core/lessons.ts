@@ -2,6 +2,7 @@ import type { ArchId } from './architectures';
 import { getArchitecture } from './architectures';
 import type { PlanStep, ProjectEnvironment, ProjectFile, StackInfo } from './project';
 import { LESSONS_CREATIVAS } from './lessonsCreative';
+import { LESSONS_CURSOS } from './lessonsCursos';
 import type { ProjectIdea } from './learnTopics';
 
 /**
@@ -12,6 +13,8 @@ import type { ProjectIdea } from './learnTopics';
  */
 export interface Lesson {
   id: string;
+  /** 'curso': teoría y ejercicios (apuntes, tests y ejercicios que resuelve la persona). Sin tipo: proyecto. */
+  tipo?: 'curso';
   tema: string;
   /** Tema del catálogo de «Quiero aprender». */
   topicId: string;
@@ -21,7 +24,8 @@ export interface Lesson {
   proyecto: string;
   stack: StackInfo;
   convenciones: string[];
-  arquitectura: ArchId;
+  /** Los cursos de teoría y ejercicios no necesitan una. */
+  arquitectura?: ArchId;
   objetivos: string[];
   entorno: ProjectEnvironment;
   plan: PlanStep[];
@@ -31,6 +35,11 @@ export interface Lesson {
   archivos: Record<string, string[]>;
   /** Conceptos de cada archivo, para el registro de progreso. */
   conceptos: Record<string, string[]>;
+  /**
+   * Ejercicios: el archivo con el que empiezan (enunciado y funciones vacías).
+   * Si falta, se arma desde la solución (ver exercises.ts).
+   */
+  enunciados?: Record<string, string[]>;
 }
 
 const TS_GUIA = `## Qué vas a construir
@@ -567,7 +576,8 @@ export const LESSONS: Lesson[] = [
       'ordenar/__main__.py': ['argparse']
     }
   },
-  ...LESSONS_CREATIVAS
+  ...LESSONS_CREATIVAS,
+  ...LESSONS_CURSOS
 ];
 
 export function getLesson(id: string | undefined): Lesson | undefined {
@@ -607,13 +617,16 @@ export function lessonCode(lessonId: string | undefined, path: string): { text: 
 export function lessonIdea(l: Lesson): ProjectIdea {
   return {
     titulo: l.titulo,
-    descripcion: `Lección sin IA: el código y las explicaciones ya están escritos y probados. ${l.proyecto.charAt(0).toUpperCase()}${l.proyecto.slice(1)}.`,
+    descripcion: l.tipo === 'curso'
+      ? `Curso sin IA: apuntes de teoría, tests y ejercicios que resuelves tú, ya escritos y probados. ${l.objetivos.length} temas.`
+      : `Lección sin IA: el código y las explicaciones ya están escritos y probados. ${l.proyecto.charAt(0).toUpperCase()}${l.proyecto.slice(1)}.`,
     aprendes: l.objetivos,
     dificultad: l.dificultad,
     duracion: l.duracion,
     docker: !!l.entorno.docker,
     nube: false,
     tema: l.tema,
-    leccion: l.id
+    leccion: l.id,
+    ...(l.tipo === 'curso' ? { modo: 'curso' as const } : {})
   };
 }

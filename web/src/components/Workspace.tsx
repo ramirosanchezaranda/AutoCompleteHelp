@@ -4,7 +4,9 @@ import { findStepLine, stepFileContent, stepInstruction } from '@core/instructio
 import { detectInstruction } from '@core/context';
 import { Ledger, applyReview, dueConcepts, knownIn, progressMarkdown, reviewAdvanced, reviewInstruction, reviewLanguage, withAccepted } from '@core/concepts';
 import { buildErrorSystemPrompt } from '@core/errors';
-import { formatProjectForPrompt } from '@core/project';
+import { formatProjectForPrompt, parseProjectFile, PROJECT_FILE } from '@core/project';
+import { buildHintSystemPrompt, buildHintUserPrompt, hintsFor, solutionInstruction, starterFor } from '@core/exercises';
+import { getLesson } from '@core/lessons';
 import { useApp } from '../store/app';
 import { useWidth } from '../lib/hooks';
 import { MissingKeyError, hasAI, llm, NoAIError } from '../lib/ai';
@@ -64,6 +66,10 @@ export function Workspace() {
   const [lineErrors, setLineErrors] = useState<Record<string, LineError[]>>({});
   const [shaderErrors, setShaderErrors] = useState<Record<string, LineError[]>>({});
   const [announce, setAnnounce] = useState('');
+  /** Pistas que ya se mostraron, por archivo de ejercicio. */
+  const [hints, setHints] = useState<Record<string, string[]>>({});
+  const [hintBusy, setHintBusy] = useState(false);
+  const ledgerRef = useRef<Ledger>({});
   const editor = useRef<CodeEditorHandle>(null);
   const term = useRef<TerminalHandle>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -106,7 +112,9 @@ export function Workspace() {
     if (pRef.current) void saveProject(pRef.current);
   }, []);
 
+  ledgerRef.current = ledger;
   const saveLedger = (l: Ledger) => {
+    ledgerRef.current = l;
     setLedger(l);
     void db.set(LEDGER, l);
   };
@@ -293,6 +301,18 @@ export function Workspace() {
     }
     const file = step.archivo;
     const existing = p.files[file];
+    // Ejercicio: el archivo nace con el enunciado y se resuelve escribiendo libre.
+    if (step.tipo === 'ejercicio') {
+      if (liveRef.current) {
+        notify('Termina el dictado (o Esc › opciones) antes de abrir otro paso.', 'warn');
+        return;
+      }
+      if (existing === undefined) update((prev) => withFile(prev, file, starterFor(project, step)), true);
+      setFinished(undefined);
+      setPath(file);
+      show('code');
+      return;
+    }
     if (existing === undefined) {
       const content = stepFileContent(file, step);
       void begin({ path: file, content, insertAt: content.length, instruction: stepInstruction(step), stepIndex: i });
@@ -416,6 +436,61 @@ export function Workspace() {
     for (const r of s.results) if (!r.ok && r.line) (errs[r.file] ??= []).push({ line: r.line, message: r.error ?? 'falló' });
     for (const e of s.compileErrors) if (e.line) (errs[e.path] ??= []).push({ line: e.line, message: e.message });
     setLineErrors(errs);
+    // Un ejercicio está resuelto cuando todos sus tests pasan: se marca solo.
+    const current = pRef.current;
+    const pj = current && parseProjectFile(current.files[PROJECT_FILE] ?? '');
+    pj?.plan?.forEach((st, i) => {
+      if (st.tipo !== 'ejercicio' || st.hecho || !st.verificar || !st.archivo) return;
+      const filter = st.verificar.split(/\s+/).slice(3).filter((w) => !w.startsWith('-'));
+      const mine = s.results.filter((r) => (filter.length ? filter.some((f) => r.file.includes(f)) : true));
+      if (!mine.length || !mine.every((r) => r.ok)) return;
+      update((prev) => markStep(prev, i, true), true);
+      const concepts = getLesson(pj.leccion)?.conceptos[st.archivo] ?? (st.concepto ? [st.concepto] : []);
+      saveLedger(withAccepted(ledgerRef.current, concepts, 'dictado'));
+      notify(`✓ Ejercicio resuelto: ${st.paso.replace(/^Ejercicio:\s*/, '')}. Lo escribiste tú.`);
+    });
+  };
+
+  // -------------------------------------------------------------------------
+  // Ejercicios: pistas y solución guiada
+  // -------------------------------------------------------------------------
+
+  const nextHint = async (step: PlanStep) => {
+    const file = step.archivo!;
+    const shown = hints[file] ?? [];
+    const written = hintsFor(project, file);
+    if (written.length) {
+      if (shown.length >= written.length) {
+        notify('No hay más pistas. Si sigues trabado, escribe la solución guiada: también se aprende escribiéndola.', 'warn');
+        return;
+      }
+      setHints({ ...hints, [file]: [...shown, written[shown.length]] });
+      return;
+    }
+    if (!hasAI(ai)) {
+      notify('Este ejercicio no trae pistas escritas: con una IA, te da una pista sin la solución.', 'warn');
+      openAIDialog();
+      return;
+    }
+    const tests = Object.entries(files).filter(([f, t]) => /\.(test|spec)\.|(^|\/)test_/.test(f) && t.includes(file.split('/').pop()!.replace(/\.[^.]+$/, ''))).map(([, t]) => t).join('\n\n');
+    setHintBusy(true);
+    try {
+      const hint = await llm(ai, buildHintSystemPrompt(), buildHintUserPrompt(step.explicacion ?? step.paso, files[file] ?? '', tests, shown), 400);
+      setHints({ ...hints, [file]: [...shown, hint.trim()] });
+    } catch (e: any) {
+      notify(e instanceof MissingKeyError ? `${e.message} Escríbela en «Cambiar IA».` : `No llegó la pista: ${e?.message ?? e}`, 'error');
+    } finally {
+      setHintBusy(false);
+    }
+  };
+
+  const guidedSolution = (i: number, step: PlanStep) => {
+    const file = step.archivo!;
+    const current = files[file] ?? '';
+    const starter = starterFor(project, step);
+    if (current.trim() !== starter.trim() && !confirm('La solución guiada reemplaza lo que escribiste en este archivo. ¿Seguir?')) return;
+    // Lección: se dicta la solución escrita. IA: se dicta lo que piden el enunciado y los tests.
+    void begin({ path: file, content: '', insertAt: 0, instruction: solutionInstruction(step), stepIndex: i });
   };
 
   const verify = (step: PlanStep) => {
@@ -461,6 +536,7 @@ export function Workspace() {
   const due = dueConcepts(ledger);
   const practiced = Object.entries(ledger).filter(([, s]) => s.practiced > 0);
   const finishedStep = finished?.stepIndex !== undefined ? plan[finished.stepIndex] : undefined;
+  const exIdx = path ? plan.findIndex((st) => st.tipo === 'ejercicio' && st.archivo === path) : -1;
   const guide = files['docs/APRENDER.md'] ?? files['docs/STACK.md'] ?? '';
 
   // ------------------------------- Paneles -------------------------------
@@ -600,7 +676,7 @@ export function Workspace() {
             {finished.summary && <span className="sum" style={{ color: 'var(--teal)' }}>↑ {finished.summary}</span>}
             <div className="row">
               {finishedStep?.verificar && (
-                <button className="btn" onClick={() => verify(finishedStep)}>{finishedStep.tipo === 'test' ? 'Correr los tests' : 'Comprobarlo'}</button>
+                <button className="btn" onClick={() => verify(finishedStep)}>{finishedStep.tipo === 'test' || finishedStep.tipo === 'ejercicio' ? 'Correr los tests' : 'Comprobarlo'}</button>
               )}
               {finished.stepIndex !== undefined && !plan[finished.stepIndex]?.hecho && (
                 <button
@@ -618,6 +694,30 @@ export function Workspace() {
               )}
               <button className="btn ghost" onClick={() => setFinished(undefined)}>Cerrar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {!live && !finished && exIdx >= 0 && (
+        <div className="dbar exercise">
+          <div className="ex-head">
+            <b>{plan[exIdx].hecho ? '✓ Resuelto' : 'Ejercicio'}:</b> {plan[exIdx].paso.replace(/^Ejercicio:\s*/, '')}. Escribe tu solución en el archivo y corre los tests: en verde, está resuelto.
+          </div>
+          {(hints[plan[exIdx].archivo!] ?? []).map((h, n) => (
+            <div key={n} className="why">
+              <b>Pista {n + 1}:</b> {h}
+            </div>
+          ))}
+          <div className="controls">
+            {plan[exIdx].verificar && (
+              <button className="btn small primary" onClick={() => verify(plan[exIdx])}>Correr los tests</button>
+            )}
+            <button className="btn small" disabled={hintBusy} onClick={() => void nextHint(plan[exIdx])}>
+              {hintBusy ? 'Pensando…' : (hints[plan[exIdx].archivo!] ?? []).length ? 'Otra pista' : 'Pista'}
+            </button>
+            <button className="btn small" onClick={() => guidedSolution(exIdx, plan[exIdx])}>Solución guiada</button>
+            {plan[exIdx].hecho && nextIdx >= 0 && (
+              <button className="btn small primary" onClick={() => openStep(nextIdx)}>Siguiente: {plan[nextIdx].paso}</button>
+            )}
           </div>
         </div>
       )}

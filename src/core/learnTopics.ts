@@ -70,6 +70,77 @@ export interface LearnRequest {
   topic?: LearnTopic;
   /** Proyecto elegido entre los recomendados (o escrito por la persona). */
   idea?: ProjectIdea;
+  /** 'curso': teoría y ejercicios en vez de un proyecto. */
+  modo?: 'proyecto' | 'curso';
+}
+
+const COURSE_TOPICS: Record<LearnSize, string> = {
+  corto: '3 temas (una o dos horas)',
+  mediano: '5 temas (una tarde)',
+  completo: '7 temas (un curso completo)'
+};
+
+/** Idea de «Teoría y ejercicios» de un tema: la diseña la IA, sin pedir recomendaciones. */
+export function courseIdea(tema: string): ProjectIdea {
+  return {
+    titulo: `Teoría y ejercicios de ${tema}`,
+    descripcion: `Apuntes que completas escribiendo y ejercicios con tests que resuelves tú, de lo simple a lo complejo. La IA diseña el temario para tu nivel.`,
+    aprendes: [],
+    dificultad: 'media',
+    duracion: '',
+    docker: false,
+    nube: false,
+    tema,
+    modo: 'curso'
+  };
+}
+
+/**
+ * Prompt para diseñar un CURSO de teoría y ejercicios: cada tema son tres
+ * pasos (apunte, tests, ejercicio) que se completan escribiendo.
+ */
+export function buildCourseSystemPrompt(req: LearnRequest): string {
+  const seed = req.topic
+    ? ['', `SEMILLA CURADA para este tema: stack ${req.topic.stack}.${req.topic.notas ? ` Notas: ${req.topic.notas}` : ''}`]
+    : [];
+  return [
+    'Eres un mentor que diseña CURSOS DE TEORÍA Y EJERCICIOS. La persona va a aprender escribiendo todo: los apuntes de teoría, los tests y la solución de cada ejercicio (la herramienta le dicta la teoría y los tests línea por línea; los ejercicios los resuelve ella).',
+    `Tema: «${req.tema}». Punto de partida: ${LEVEL_TEXT[req.nivel]}. Tamaño: ${COURSE_TOPICS[req.tamano]}.`,
+    '',
+    'Responde en español, en Markdown, con esta estructura exacta:',
+    '## Qué vas a aprender — los conceptos, en el orden en que aparecen.',
+    '## Cómo funciona — cada tema: el apunte (teoría escrita), los tests (dicen qué hace cada función) y el ejercicio que resuelves tú hasta que los tests pasen.',
+    '## Temario — cada tema con los nombres de sus funciones.',
+    '## Tests — cómo se corren.',
+    '## Cómo seguir — 3 ideas: otro tema o un proyecto para aplicar lo aprendido.',
+    '',
+    'REGLAS DEL PLAN:',
+    '- El primer paso es la configuración mínima (por ejemplo package.json con "type": "module" y vitest en devDependencies), tipo "config".',
+    '- Después, CADA TEMA son exactamente TRES pasos, en este orden:',
+    '  1. tipo "teoria", archivo notas/NN-tema.md: el apunte que se completa escribiendo (explicaciones en líneas con >, y debajo una definición corta o un mini ejemplo para escribir).',
+    '  2. tipo "test", archivo ejercicios/NN-tema.test.js con los tests de las funciones de ese tema (2 o 3 funciones): caso normal, borde y, si aplica, error. "verificar": "npx vitest run ejercicios/NN".',
+    '  3. tipo "ejercicio", archivo ejercicios/NN-tema.js, con el mismo "verificar". En "explicacion" va el ENUNCIADO completo: el nombre exacto de cada función exportada, sus parámetros, qué devuelve y un ejemplo con su resultado. Tiene que coincidir con lo que importan y esperan los tests.',
+    '- Lenguaje: JavaScript con ES modules y Vitest (corre en el navegador), salvo que el tema sea de otro lenguaje: entonces su equivalente (Python con pytest: tests/test_NN_tema.py y ejercicios/NN_tema.py).',
+    '- Ejercicios de lo simple a lo complejo; cada uno usa la teoría de su apunte y lo que ya se vio. Funciones puras con nombres en español: reciben datos y devuelven un resultado, sin leer el teclado ni imprimir, para que los tests las comprueben.',
+    '- Si el tema es teórico (arquitectura, nube, patrones, IA), los ejercicios modelan sus ideas con funciones chicas (por ejemplo, calcular un costo, validar una regla, decidir una ruta).',
+    '- Si el tema es visual (diseño, animación, shaders), los ejercicios calculan los números (tamaños, posiciones, colores, curvas) y al final un paso "codigo" dibuja con ellos (index.html y src/main.js) y un paso "comando" npx vite.',
+    '- El último paso es tipo "comando" con "npx vitest run" (o pytest) y su explicación.',
+    '',
+    'Después del Markdown, cierra SIEMPRE con un bloque de código con la etiqueta ach-learn que contenga JSON válido con esta forma exacta:',
+    '```ach-learn',
+    '{',
+    '  "proyecto": "una frase: curso de teoría y ejercicios de <tema> + cómo quiere que le expliquen",',
+    '  "objetivos": ["un concepto por tema"],',
+    '  "stack": { "resumen": "frase corta", "lenguaje": "nombre", "tests": "framework de tests" },',
+    '  "convenciones": ["3 a 5 convenciones concretas"],',
+    '  "entorno": { "instalar": [ { "comando": "…", "explicacion": "…" } ], "testear": { "comando": "…", "explicacion": "…" } },',
+    '  "plan": [ { "paso": "qué se escribe", "tipo": "teoria|test|ejercicio|config|codigo|comando", "archivo": "ruta/relativa.ext", "concepto": "concepto", "verificar": "comando (tests y ejercicios)", "explicacion": "enunciado (ejercicios) o qué hace (comandos)", "comando": "solo en pasos tipo comando" } ]',
+    '}',
+    '```',
+    ...seed
+  ]
+    .filter((line, i, all) => line !== '' || all[i - 1] !== '')
+    .join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +161,8 @@ export interface ProjectIdea {
   tema?: string;
   /** Si es una lección sin IA (src/lessons.ts), su id. */
   leccion?: string;
+  /** 'curso': teoría y ejercicios en vez de un proyecto. */
+  modo?: 'curso';
 }
 
 /** Ideas del catálogo, sin IA: la recomendación cuando no hay conexión. */
@@ -158,8 +231,11 @@ export function parseIdeas(answer: string): ProjectIdea[] {
     }));
 }
 
-/** Prompt de sistema para diseñar el proyecto de aprendizaje. */
+/** Prompt de sistema para diseñar el proyecto de aprendizaje (o el curso, en modo curso). */
 export function buildLearnSystemPrompt(req: LearnRequest): string {
+  if (req.modo === 'curso' || req.idea?.modo === 'curso') {
+    return buildCourseSystemPrompt(req);
+  }
   const ids = ARCHITECTURES.map((a) => a.id).join(', ');
   const seed = req.topic
     ? [

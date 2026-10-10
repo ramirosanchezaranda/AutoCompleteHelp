@@ -6,6 +6,7 @@ import {
   ProjectIdea,
   buildIdeasSystemPrompt,
   buildLearnSystemPrompt,
+  courseIdea,
   curatedIdeas,
   folderNameFor,
   learnProjectFile,
@@ -27,8 +28,8 @@ export function TopicStep() {
   const { flows, setLearn, setStep } = useApp();
   const f = flows.learn;
   const match = f.text.trim() ? matchTopic(f.text) : undefined;
-  const pick = (t: string) => {
-    setLearn('learn', { text: t }, 'text');
+  const pick = (t: string, modo?: 'proyecto' | 'curso') => {
+    setLearn('learn', { text: t, ...(modo ? { modo } : {}) }, 'text');
     setStep('learn', 2);
   };
   return (
@@ -49,12 +50,20 @@ export function TopicStep() {
         }}
       />
       {f.text.trim() && (
-        <p className="help">{match ? `Se usa la semilla del catálogo: ${match.nombre} (${match.stack}).` : 'No está en el catálogo: la IA diseña el proyecto desde cero.'}</p>
+        <p className="help">{match ? `Se usa la semilla del catálogo: ${match.nombre} (${match.stack}).` : 'No está en el catálogo: la IA lo diseña desde cero.'} En el paso Proyecto eliges cómo aprenderlo: con un proyecto, o con teoría y ejercicios.</p>
       )}
-      <div className="group-title">Lecciones sin IA</div>
+      <div className="group-title">Teoría y ejercicios sin IA</div>
       <div className="chips">
-        {LESSONS.map((l) => (
-          <button key={l.id} className="chip lesson" aria-pressed={f.text === l.tema} onClick={() => pick(l.tema)} title={l.titulo}>
+        {LESSONS.filter((l) => l.tipo === 'curso').map((l) => (
+          <button key={l.id} className="chip curso" aria-pressed={f.text === l.tema && f.modo === 'curso'} onClick={() => pick(l.tema, 'curso')} title={l.titulo}>
+            {l.tema}
+          </button>
+        ))}
+      </div>
+      <div className="group-title">Proyectos sin IA</div>
+      <div className="chips">
+        {LESSONS.filter((l) => l.tipo !== 'curso').map((l) => (
+          <button key={l.id} className="chip lesson" aria-pressed={f.text === l.tema && f.modo !== 'curso'} onClick={() => pick(l.tema, 'proyecto')} title={l.titulo}>
             {l.tema}: {l.titulo}
           </button>
         ))}
@@ -142,7 +151,12 @@ export function LevelStep({ k }: { k: K }) {
 
 const DIF = { baja: 'sencilla', media: 'intermedia', alta: 'ambiciosa' };
 
-/** Proyecto: primero las lecciones sin IA del tema; después, las recomendaciones. */
+type Modo = 'proyecto' | 'curso';
+
+/**
+ * Proyecto: cómo aprenderlo (un proyecto, o teoría y ejercicios) y qué hacer.
+ * Primero lo que está escrito sin IA; después, lo que diseña la IA.
+ */
 export function IdeasStep({ k }: { k: K }) {
   const { flows, setLearn, setStep, ai, openAIDialog, notify } = useApp();
   const f = flows[k];
@@ -153,12 +167,14 @@ export function IdeasStep({ k }: { k: K }) {
   const loading = useRef('');
   const withAI = hasAI(ai);
   const topic = k === 'learn' ? matchTopic(f.text) : undefined;
+  const modo: Modo = f.modo ?? (topic?.tipo === 'fundamentos' ? 'curso' : 'proyecto');
   const key = `${f.text.trim()}|${f.nivel}|${withAI ? ai.providerId : 'sin'}`;
+  const isCurso = (l: { tipo?: string }) => l.tipo === 'curso';
 
   const load = async (previous: string[] = []) => {
     setBusy(true);
     setErr('');
-    const lessons = (k === 'recommend' ? LESSONS : lessonsForTopic(topic?.id)).map(lessonIdea);
+    const lessons = (k === 'recommend' ? LESSONS : lessonsForTopic(topic?.id)).filter((l) => !isCurso(l)).map(lessonIdea);
     let ideas: ProjectIdea[] = [];
     if (withAI) {
       try {
@@ -186,15 +202,16 @@ export function IdeasStep({ k }: { k: K }) {
       asked.current = true;
       openAIDialog();
     }
-    if (f.ideasKey !== key && loading.current !== key) {
+    // Las recomendaciones de proyectos se piden solo en el modo proyecto.
+    if (modo === 'proyecto' && f.ideasKey !== key && loading.current !== key) {
       loading.current = key;
       void load();
     }
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, modo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const choose = (idea: ProjectIdea) => {
     if (!idea.leccion && !withAI) {
-      notify(`«${idea.titulo}» lo diseña la IA. Sin IA están las lecciones ya escritas.`, 'warn');
+      notify(`«${idea.titulo}» lo diseña la IA. Sin IA están las lecciones y los cursos ya escritos.`, 'warn');
       openAIDialog();
       return;
     }
@@ -202,50 +219,96 @@ export function IdeasStep({ k }: { k: K }) {
     setStep(k, 4);
   };
 
-  const ideas = f.ideasKey === key ? f.ideas ?? [] : [];
+  // Teoría y ejercicios: los cursos escritos del tema y, con IA, uno para cualquier tema.
+  const cursosDelTema = (k === 'recommend' ? LESSONS : lessonsForTopic(topic?.id)).filter(isCurso).map(lessonIdea);
+  const otrosCursos = k === 'learn' ? LESSONS.filter((l) => isCurso(l) && l.topicId !== topic?.id).map(lessonIdea) : [];
+  const cursoIA = k === 'learn' && f.text.trim() ? courseIdea(topic?.nombre ?? f.text.trim()) : undefined;
+  const ideas = modo === 'curso' ? [...cursosDelTema, ...(cursoIA ? [cursoIA] : [])] : f.ideasKey === key ? f.ideas ?? [] : [];
+
+  const card = (i: ProjectIdea) => (
+    <button key={`${i.leccion ?? ''}${i.titulo}`} className="choice" role="radio" aria-checked={f.idea?.titulo === i.titulo} onClick={() => choose(i)}>
+      <span className="t">{i.leccion ? (i.modo === 'curso' ? '📘 ' : '📗 ') : ''}{i.titulo}</span>
+      <span className="d">{i.descripcion}</span>
+      {i.aprendes.length > 0 && <span className="d">Aprendes: {i.aprendes.join(', ')}.</span>}
+      <span className="meta">
+        {i.leccion && <span className="tag lesson">sin IA</span>}
+        {i.modo === 'curso' && <span className="tag">teoría y ejercicios</span>}
+        {k === 'recommend' && i.tema && <span className="tag">{i.tema}</span>}
+        {i.duracion && <span className="tag">{DIF[i.dificultad]} · {i.duracion}</span>}
+        {i.docker && <span className="tag">Docker</span>}
+        {i.nube && <span className="tag">nube</span>}
+        {!i.leccion && !withAI && <span className="tag needs">necesita IA</span>}
+      </span>
+    </button>
+  );
+
   return (
     <>
-      <h2>Proyectos para {k === 'learn' ? `aprender ${f.text.trim()}` : 'ti'}</h2>
-      {busy && (
+      <h2>{k === 'learn' ? `Aprender ${f.text.trim()}` : 'Para ti'}: ¿cómo quieres aprenderlo?</h2>
+      <div className="seg" role="radiogroup" aria-label="Cómo aprenderlo">
+        {(
+          [
+            ['proyecto', 'Con un proyecto'],
+            ['curso', 'Teoría y ejercicios']
+          ] as [Modo, string][]
+        ).map(([v, t]) => (
+          <button key={v} className="chip" role="radio" aria-checked={modo === v} aria-pressed={modo === v} onClick={() => setLearn(k, { modo: v }, 'ideas')}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <p className="help">
+        {modo === 'curso'
+          ? 'Cada tema: un apunte de teoría que completas escribiendo, los tests que dicen qué hace cada función y el ejercicio, que resuelves tú. Si te trabas: pistas y solución guiada.'
+          : 'Un proyecto real, de punta a punta: cada archivo se completa escribiendo, con su explicación arriba.'}
+      </p>
+      {modo === 'proyecto' && busy && (
         <div className="loading" role="status">
           <span className="spinner" /> {withAI ? 'La IA está eligiendo proyectos para tu nivel…' : 'Buscando…'}
         </div>
       )}
-      {err && <div className="callout bad">{err}</div>}
+      {modo === 'proyecto' && err && <div className="callout bad">{err}</div>}
       {!busy && !ideas.length && (
         <div className="callout">
-          {withAI ? 'No llegaron recomendaciones.' : 'Sin IA no hay proyectos para este tema todavía: elige una lección sin IA o activa una IA.'}
+          {modo === 'curso'
+            ? 'Sin IA no hay un curso escrito para este tema todavía. Elige uno de los cursos sin IA de abajo o activa una IA: con IA, cualquier tema tiene teoría y ejercicios.'
+            : withAI
+              ? 'No llegaron recomendaciones.'
+              : 'Sin IA no hay proyectos para este tema todavía: elige una lección sin IA o activa una IA.'}
         </div>
       )}
-      <div className="choices" role="radiogroup" aria-label="Proyectos">
-        {ideas.map((i) => (
-          <button key={`${i.leccion ?? ''}${i.titulo}`} className="choice" role="radio" aria-checked={f.idea?.titulo === i.titulo} onClick={() => choose(i)}>
-            <span className="t">{i.leccion ? '📗 ' : ''}{i.titulo}</span>
-            <span className="d">{i.descripcion}</span>
-            {i.aprendes.length > 0 && <span className="d">Aprendes: {i.aprendes.join(', ')}.</span>}
-            <span className="meta">
-              {i.leccion && <span className="tag lesson">sin IA</span>}
-              {k === 'recommend' && i.tema && <span className="tag">{i.tema}</span>}
-              {i.duracion && <span className="tag">{DIF[i.dificultad]} · {i.duracion}</span>}
-              {i.docker && <span className="tag">Docker</span>}
-              {i.nube && <span className="tag">nube</span>}
-              {!i.leccion && !withAI && <span className="tag needs">necesita IA</span>}
-            </span>
-          </button>
-        ))}
+      <div className="choices" role="radiogroup" aria-label={modo === 'curso' ? 'Cursos' : 'Proyectos'}>
+        {ideas.map(card)}
       </div>
-      <div className="row">
-        {withAI ? (
-          <button className="btn" disabled={busy} onClick={() => load(ideas.filter((i) => !i.leccion).map((i) => i.titulo))}>
-            Otras recomendaciones
-          </button>
-        ) : (
+      {modo === 'curso' && otrosCursos.length > 0 && (
+        <>
+          <div className="group-title">Otros cursos sin IA</div>
+          <div className="choices" role="radiogroup" aria-label="Otros cursos">
+            {otrosCursos.map(card)}
+          </div>
+        </>
+      )}
+      {modo === 'proyecto' && (
+        <div className="row">
+          {withAI ? (
+            <button className="btn" disabled={busy} onClick={() => load(ideas.filter((i) => !i.leccion).map((i) => i.titulo))}>
+              Otras recomendaciones
+            </button>
+          ) : (
+            <button className="btn" onClick={() => openAIDialog()}>
+              Elegir una IA para recomendaciones
+            </button>
+          )}
+        </div>
+      )}
+      {modo === 'curso' && !withAI && (
+        <div className="row">
           <button className="btn" onClick={() => openAIDialog()}>
-            Elegir una IA para recomendaciones
+            Elegir una IA: teoría y ejercicios de cualquier tema
           </button>
-        )}
-      </div>
-      {k === 'learn' && withAI && (
+        </div>
+      )}
+      {modo === 'proyecto' && k === 'learn' && withAI && (
         <div className="field">
           <label htmlFor="own">O escribe tu propia idea de proyecto</label>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
@@ -264,10 +327,10 @@ export function IdeasStep({ k }: { k: K }) {
   );
 }
 
-const SIZES: { v: LearnSize; t: string; d: string }[] = [
-  { v: 'corto', t: 'Corto', d: '6 a 8 pasos · una o dos horas' },
-  { v: 'mediano', t: 'Mediano', d: '10 a 12 pasos · un fin de semana' },
-  { v: 'completo', t: 'Completo', d: '14 a 18 pasos · un proyecto entero' }
+const SIZES: { v: LearnSize; t: string; d: string; curso: string }[] = [
+  { v: 'corto', t: 'Corto', d: '6 a 8 pasos · una o dos horas', curso: '3 temas · una o dos horas' },
+  { v: 'mediano', t: 'Mediano', d: '10 a 12 pasos · un fin de semana', curso: '5 temas · una tarde' },
+  { v: 'completo', t: 'Completo', d: '14 a 18 pasos · un proyecto entero', curso: '7 temas · un curso completo' }
 ];
 
 /** Diseño: qué se va a construir, con qué y cómo; y el botón para crearlo. */
@@ -318,7 +381,7 @@ export function DesignStep({ k }: { k: K }) {
       const answer = await llm(
         ai,
         buildLearnSystemPrompt({ tema: tema!, nivel: f.nivel ?? 'cero', tamano: f.tamano ?? 'corto', topic, idea }),
-        `Quiero aprender: ${tema}. Proyecto: ${idea.titulo}`,
+        idea.modo === 'curso' ? `Quiero aprender: ${tema}. Teoría y ejercicios.` : `Quiero aprender: ${tema}. Proyecto: ${idea.titulo}`,
         6000,
         { signal: abort.current.signal, onDelta: (_d, total) => setLines(total.split('\n').length) }
       );
@@ -339,12 +402,16 @@ export function DesignStep({ k }: { k: K }) {
       <>
         <h2>{lesson.titulo}</h2>
         <dl className="facts">
-          <dt>Tema</dt><dd>{lesson.tema} · lección sin IA (funciona sin conexión)</dd>
+          <dt>Tema</dt><dd>{lesson.tema} · {lesson.tipo === 'curso' ? 'curso' : 'lección'} sin IA (funciona sin conexión)</dd>
           <dt>Stack</dt><dd>{lesson.stack.resumen}</dd>
-          <dt>Arquitectura</dt><dd>{arch?.nombre}: {arch?.resumen}</dd>
-          <dt>Pasos</dt><dd>{lesson.plan.length} ({tests} de tests) · {lesson.duracion}</dd>
+          {arch && (<><dt>Arquitectura</dt><dd>{arch.nombre}: {arch.resumen}</dd></>)}
+          {lesson.tipo === 'curso' ? (
+            <><dt>Contenido</dt><dd>{lesson.plan.filter((s) => s.tipo === 'teoria').length} apuntes, {lesson.plan.filter((s) => s.tipo === 'ejercicio').length} ejercicios con sus tests · {lesson.duracion}</dd></>
+          ) : (
+            <><dt>Pasos</dt><dd>{lesson.plan.length} ({tests} de tests) · {lesson.duracion}</dd></>
+          )}
         </dl>
-        <button className="btn primary" onClick={create}>Crear el proyecto</button>
+        <button className="btn primary" onClick={create}>{lesson.tipo === 'curso' ? 'Crear el curso' : 'Crear el proyecto'}</button>
         <Markdown text={lesson.guia} />
       </>
     );
@@ -362,14 +429,14 @@ export function DesignStep({ k }: { k: K }) {
           {SIZES.map((s) => (
             <button key={s.v} className="choice" role="radio" aria-checked={(f.tamano ?? 'corto') === s.v} onClick={() => setLearn(k, { tamano: s.v }, 'tamano')}>
               <span className="t">{s.t}</span>
-              <span className="d">{s.d}</span>
+              <span className="d">{idea.modo === 'curso' ? s.curso : s.d}</span>
             </button>
           ))}
         </div>
       </div>
       {!design && !busy && (
         <button className="btn primary" onClick={run}>
-          Diseñar el proyecto
+          {idea.modo === 'curso' ? 'Diseñar el curso' : 'Diseñar el proyecto'}
         </button>
       )}
       {busy && (
@@ -385,11 +452,15 @@ export function DesignStep({ k }: { k: K }) {
             <dt>Tema</dt><dd>{tema}</dd>
             <dt>Stack</dt><dd>{p.stack.resumen ?? Object.values(p.stack).join(', ')}</dd>
             {arch && (<><dt>Arquitectura</dt><dd>{arch.nombre}. Por qué: {arch.resumen} {arch.cuandoSi[0]}.</dd></>)}
-            <dt>Pasos</dt><dd>{p.plan.length} ({p.plan.filter((s) => s.tipo === 'test').length} de tests){p.entorno?.docker ? ' · con Docker' : ''}</dd>
+            {idea.modo === 'curso' ? (
+              <><dt>Contenido</dt><dd>{p.plan.filter((s) => s.tipo === 'teoria').length} apuntes, {p.plan.filter((s) => s.tipo === 'ejercicio').length} ejercicios con sus tests</dd></>
+            ) : (
+              <><dt>Pasos</dt><dd>{p.plan.length} ({p.plan.filter((s) => s.tipo === 'test').length} de tests){p.entorno?.docker ? ' · con Docker' : ''}</dd></>
+            )}
             <dt>Tamaño</dt><dd>{SIZES.find((s) => s.v === (f.tamano ?? 'corto'))?.t}</dd>
           </dl>
           <div className="row">
-            <button className="btn primary" onClick={create}>Crear el proyecto</button>
+            <button className="btn primary" onClick={create}>{idea.modo === 'curso' ? 'Crear el curso' : 'Crear el proyecto'}</button>
             <button className="btn ghost" onClick={run} disabled={busy}>Diseñar otra vez</button>
           </div>
         </>
