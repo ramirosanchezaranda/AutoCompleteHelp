@@ -1,3 +1,4 @@
+import { textForSave } from '@core/comments';
 /**
  * Del proyecto (ruta → texto) a un grafo de módulos que el navegador puede
  * ejecutar: cada archivo TS/JS se transforma con Sucrase a CommonJS (rápido,
@@ -70,7 +71,7 @@ export function joinPath(base: string, rel: string): string {
 /** Versión de un paquete según package.json (para fijarla en esm.sh). */
 function versionOf(files: Record<string, string>, name: string): string | undefined {
   try {
-    const pkg = JSON.parse(files['package.json'] ?? '{}');
+    const pkg = JSON.parse(textForSave('package.json', files['package.json'] ?? '{}'));
     const v = pkg.dependencies?.[name] ?? pkg.devDependencies?.[name];
     return typeof v === 'string' && /^[~^]?\d/.test(v) ? v : undefined;
   } catch {
@@ -121,7 +122,7 @@ export function resolveSpec(files: Record<string, string>, from: string, spec: s
   }
   if (found.endsWith('.json')) {
     try {
-      return { t: 'json', value: JSON.parse(text) };
+      return { t: 'json', value: JSON.parse(textForSave(found, text)) };
     } catch {
       return { t: 'missing', message: `${found} no es JSON válido.` };
     }

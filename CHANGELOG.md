@@ -2,6 +2,29 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.13.0] — 2026-10-10
+
+### Cambiado
+
+- **Cada línea de código tiene su comentario justo arriba, y el comentario
+  también se escribe.** Vale para todo: lecciones, cursos, proyectos, ideas y
+  lo que dicta la IA. Incluye imports, llaves y paréntesis de cierre, cada
+  línea de JSON, HTML y CSS, y los bloques de código de los apuntes.
+  `autocompletehelp.dictation.typeComments` pasa a `true` por defecto.
+- En JSON los comentarios se escriben para entender cada línea y se quitan al
+  terminar (tsconfig y jsconfig los conservan).
+- Las ocho lecciones sin IA se reescribieron con un comentario por línea; un
+  test lo verifica en todas.
+- Los ejercicios: el enunciado trae la regla y cada función vacía con su
+  comentario; en la web, un ejercicio queda resuelto cuando los tests pasan y
+  cada línea de la solución tiene su comentario. Las pistas salen solo de los
+  comentarios «Pista:».
+
+### Corregido
+
+- Web en el celular: los teclados que componen o autocorrigen palabras
+  (Gboard, iOS) ya no duplican letras ni cuentan errores fantasma.
+
 ## [0.12.0] — 2026-10-09
 
 ### Añadido

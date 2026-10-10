@@ -1,3 +1,4 @@
+import { stripsComments, textForSave } from './core/comments';
 import * as vscode from 'vscode';
 import { noAI, resolveActiveConfig } from './providers/catalog';
 import { lessonCode } from './lessons';
@@ -348,7 +349,7 @@ export class DictationManager implements vscode.Disposable {
     const cfg = vscode.workspace.getConfiguration('autocompletehelp');
     const text = generated.text;
     const prefixes = commentPrefixes(doc.languageId);
-    const mask = autoMask(text, prefixes, cfg.get<boolean>('dictation.typeComments', false));
+    const mask = autoMask(text, prefixes, cfg.get<boolean>('dictation.typeComments', true));
     const pos = skipAuto(mask, 0);
     const shown = revealEnd(text, pos);
 
@@ -677,6 +678,7 @@ export class DictationManager implements vscode.Disposable {
       await this.finishReview(s, how);
       return;
     }
+    await this.stripJsonComments(s.doc);
     if (vscode.workspace.getConfiguration('autocompletehelp').get<boolean>('fadingScaffolding', true)) {
       await recordAccepted(this.context, s.concepts, how === 'escrito' ? 'dictado' : 'aceptado');
     }
@@ -699,6 +701,26 @@ export class DictationManager implements vscode.Disposable {
     } else if (action && s.stepIndex !== undefined) {
       await markStep(this.context, s.stepIndex, true);
     }
+  }
+
+  /**
+   * En JSON los comentarios se escriben (explican cada línea) pero el formato
+   * no los admite: al terminar se quitan y se guarda el archivo limpio.
+   */
+  private async stripJsonComments(doc: vscode.TextDocument): Promise<void> {
+    if (!stripsComments(doc.uri.path)) {
+      return;
+    }
+    const before = doc.getText();
+    const after = textForSave(doc.uri.path, before);
+    if (after === before) {
+      return;
+    }
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(doc.uri, new vscode.Range(doc.positionAt(0), doc.positionAt(before.length)), after);
+    await vscode.workspace.applyEdit(edit);
+    await doc.save();
+    vscode.window.showInformationMessage('JSON no admite comentarios: los que escribiste explican cada línea y se quitaron del archivo al terminar.');
   }
 
   private async finishReview(s: Session, how: 'escrito' | 'completado'): Promise<void> {

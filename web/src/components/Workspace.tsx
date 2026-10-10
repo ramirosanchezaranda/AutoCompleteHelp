@@ -14,6 +14,7 @@ import { db } from '../lib/db';
 import { StoredProject, applyStructure, loadProject, markStep, pendingStructure, projectJson, saveProject, withFile } from '../lib/projects';
 import { exportZip } from '../lib/zip';
 import { fromAI, fromLesson, reviewFromLessons } from '../lib/dictate';
+import { stripsComments, textForSave, uncommentedLines } from '@core/comments';
 import { Session, back, completeRest, dictateLine, feed, isDone, lastSummary, startSession, typedCount, viewOf } from '../engine/session';
 import { CodeEditor, CodeEditorHandle, DictationMarks, LineError } from './CodeEditor';
 import { Terminal, TerminalHandle } from './Terminal';
@@ -163,13 +164,15 @@ export function Workspace() {
 
   const persistTyped = (l: Live) => {
     // En el archivo queda solo lo que escribiste (nunca el gris).
-    update((prev) => withFile(prev, l.session.path, l.before + l.session.text.slice(0, l.session.pos) + l.after));
+    update((prev) => withFile(prev, l.session.path, textForSave(l.session.path, l.before + l.session.text.slice(0, l.session.pos) + l.after)));
   };
 
   const finish = (l: Live, how: 'escrito' | 'completado') => {
     const s = l.session;
-    update((prev) => withFile(prev, s.path, l.before + s.text + l.after), true);
+    update((prev) => withFile(prev, s.path, textForSave(s.path, l.before + s.text + l.after)), true);
     setLive(undefined);
+    liveRef.current = undefined;
+    if (stripsComments(s.path) && /^\s*\/\//m.test(s.text)) notify('JSON no admite comentarios: los que escribiste explican cada línea y se quitaron del archivo al guardar.');
     let review: Finished['review'];
     if (s.reviewConcept) {
       const stat = ledger[s.reviewConcept];
@@ -194,9 +197,12 @@ export function Workspace() {
       el.style.left = `${Math.max(0, c.left)}px`;
       el.style.top = `${Math.max(0, c.top)}px`;
     }
-    el.value = SENTINEL;
+    if (!composing.current) {
+      el.value = SENTINEL;
+      fed.current = { text: '', ok: [] };
+    }
     el.focus({ preventScroll: true });
-    el.setSelectionRange(1, 1);
+    if (!composing.current) el.setSelectionRange(1, 1);
   };
 
   const apply = (fn: (s: Session) => Session) => {
@@ -366,9 +372,11 @@ export function Workspace() {
   // Teclado del dictado: un campo invisible recibe lo que se escribe (también en el celular).
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!liveRef.current) return;
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       e.preventDefault();
+      syncField(e.currentTarget);
       typeChars('\n');
+      resetField(e.currentTarget);
     } else if (e.key === 'Tab') {
       e.preventDefault();
       notify('Tab no completa nada: cada palabra la escribes tú. Si te trabas, Esc › opciones.', 'warn');
@@ -378,25 +386,66 @@ export function Workspace() {
     } else if (e.key === 'Backspace' && e.currentTarget.value === SENTINEL) {
       e.preventDefault();
       apply(back);
+      fed.current = { text: '', ok: [] };
     }
   };
-  const onInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
-    const el = e.currentTarget;
-    const native = e.nativeEvent as InputEvent;
-    if ((native as any).isComposing) return;
-    if (native.inputType === 'deleteContentBackward') apply(back);
-    else if (native.inputType === 'insertLineBreak' || native.inputType === 'insertParagraph') typeChars('\n');
-    else {
-      const typed = el.value.startsWith(SENTINEL) ? el.value.slice(SENTINEL.length) : el.value;
-      if (typed) typeChars(typed.replace(/\r?\n/g, '\n'));
-    }
+  /**
+   * Lo que hay en el campo invisible se compara con lo que ya se le pasó al
+   * dictado (no se borra en cada tecla). Así los teclados del celular, que
+   * escriben y corrigen palabras enteras mientras se compone (Gboard, iOS),
+   * no duplican letras ni cuentan errores fantasma: si el teclado reemplaza
+   * «hla» por «hola», solo se deshace lo que cambió y se escribe lo nuevo.
+   */
+  const fed = useRef<{ text: string; ok: boolean[] }>({ text: '', ok: [] });
+  const composing = useRef(false);
+  const resetField = (el: HTMLTextAreaElement) => {
     el.value = SENTINEL;
     el.setSelectionRange(1, 1);
+    fed.current = { text: '', ok: [] };
+  };
+  const syncField = (el: HTMLTextAreaElement) => {
+    if (!liveRef.current) return;
+    if (!el.value.startsWith(SENTINEL)) {
+      // Se borró el separador: con el campo vacío, retroceso es volver un carácter.
+      apply(back);
+      resetField(el);
+      return;
+    }
+    const now = el.value.slice(SENTINEL.length).replace(/\r\n?/g, '\n');
+    const { text: was, ok } = fed.current;
+    let k = 0;
+    while (k < was.length && k < now.length && was[k] === now[k]) k++;
+    // Lo que el teclado quitó: se deshace solo lo que había avanzado.
+    for (let i = was.length - 1; i >= k; i--) if (ok[i]) apply(back);
+    const nextOk = ok.slice(0, k);
+    for (const ch of now.slice(k)) {
+      const before = liveRef.current?.session.pos;
+      apply((x) => feed(x, ch));
+      nextOk.push(liveRef.current !== undefined && liveRef.current.session.pos !== before);
+    }
+    fed.current = { text: now, ok: nextOk };
+    // Sin composición en curso, después de un Enter o de mucho texto, se vacía el campo.
+    if (!composing.current && (now.includes('\n') || now.length > 40)) resetField(el);
+  };
+  const onInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const native = e.nativeEvent as InputEvent;
+    if (native.inputType === 'insertLineBreak' || native.inputType === 'insertParagraph') {
+      // Algunos teclados mandan el Enter sin \n en el valor.
+      if (!e.currentTarget.value.includes('\n')) {
+        syncField(e.currentTarget);
+        typeChars('\n');
+        resetField(e.currentTarget);
+        return;
+      }
+    }
+    syncField(e.currentTarget);
+  };
+  const onCompositionStart = () => {
+    composing.current = true;
   };
   const onCompositionEnd = (e: React.CompositionEvent<HTMLTextAreaElement>) => {
-    const el = e.currentTarget;
-    if (e.data) typeChars(e.data);
-    el.value = SENTINEL;
+    composing.current = false;
+    syncField(e.currentTarget);
   };
   useEffect(() => {
     if (live) {
@@ -444,6 +493,14 @@ export function Workspace() {
       const filter = st.verificar.split(/\s+/).slice(3).filter((w) => !w.startsWith('-'));
       const mine = s.results.filter((r) => (filter.length ? filter.some((f) => r.file.includes(f)) : true));
       if (!mine.length || !mine.every((r) => r.ok)) return;
+      // Verde no alcanza: cada línea de la solución lleva su comentario arriba.
+      const missing = uncommentedLines(current!.files[st.archivo] ?? '', st.archivo, { strict: false });
+      if (missing.length) {
+        for (const line of missing) (errs[st.archivo] ??= []).push({ line, message: 'Falta el comentario de esta línea: arriba, en una línea, qué hace.' });
+        setLineErrors({ ...errs });
+        notify(`Los tests pasan, pero ${missing.length === 1 ? 'a 1 línea le falta' : `a ${missing.length} líneas les falta`} su comentario arriba (línea ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}). Escríbelo y vuelve a correr los tests.`, 'warn');
+        return;
+      }
       update((prev) => markStep(prev, i, true), true);
       const concepts = getLesson(pj.leccion)?.conceptos[st.archivo] ?? (st.concepto ? [st.concepto] : []);
       saveLedger(withAccepted(ledgerRef.current, concepts, 'dictado'));
@@ -623,6 +680,7 @@ export function Workspace() {
             defaultValue={SENTINEL}
             onKeyDown={onKeyDown}
             onInput={onInput}
+            onCompositionStart={onCompositionStart}
             onCompositionEnd={onCompositionEnd}
             tabIndex={live ? 0 : -1}
           />

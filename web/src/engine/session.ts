@@ -68,7 +68,7 @@ export function languageOf(path: string): string {
 export function startSession(o: StartOptions): Session {
   const prefixes = commentPrefixes(languageOf(o.path));
   const text = o.text.replace(/\r\n?/g, '\n');
-  const mask = autoMask(text, prefixes, o.typeComments ?? false);
+  const mask = autoMask(text, prefixes, o.typeComments ?? true);
   const pos = skipAuto(mask, 0);
   return {
     path: o.path,

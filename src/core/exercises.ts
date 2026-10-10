@@ -30,9 +30,13 @@ function strip(line: string, prefixes: string[]): string {
 const FN_JS = /^(\s*)export\s+(async\s+)?function\s+[\w$]+\s*\(.*\)\s*\{\s*$/;
 const FN_PY = /^(\s*)def\s+\w+\s*\(.*\)\s*(->\s*[^:]+)?:\s*$/;
 
+/** La regla de los ejercicios: cada línea de código lleva su comentario arriba. */
+export const COMMENT_RULE = 'Regla: arriba de cada línea de código, un comentario que diga qué hace.';
+
 /**
  * El archivo con el que empieza un ejercicio, armado desde la solución: el
- * enunciado (los comentarios del principio) y cada función exportada vacía.
+ * enunciado (los comentarios del principio), la regla de los comentarios y
+ * cada función exportada vacía, con su comentario de arriba y el de cierre.
  * Las funciones vacías devuelven undefined (o None): los tests dan rojo.
  */
 export function exerciseStarter(solution: string, path: string): string {
@@ -45,41 +49,59 @@ export function exerciseStarter(solution: string, path: string): string {
   for (; i < lines.length && isComment(lines[i], prefixes); i++) {
     out.push(lines[i]);
   }
-  out.push('');
-  for (const line of lines.slice(i)) {
-    const js = line.match(FN_JS);
-    if (js) {
-      out.push(line, `${js[1]}  ${open} tu código`, `${js[1]}}`, '');
-      continue;
-    }
-    const py = line.match(FN_PY);
-    if (py) {
-      out.push(line, `${py[1]}    ${open} tu código`, `${py[1]}    pass`, '');
-    }
+  if (!out.some((l) => l.includes('Regla:'))) {
+    out.push(`${open} ${COMMENT_RULE}`);
   }
+  out.push('');
+  const rest = lines.slice(i);
+  rest.forEach((line, k) => {
+    const js = line.match(FN_JS);
+    const py = js ? null : line.match(FN_PY);
+    if (!js && !py) {
+      return;
+    }
+    // El comentario de arriba de la firma (el «Declara …»), sin pistas.
+    const above: string[] = [];
+    for (let j = k - 1; j >= 0 && isComment(rest[j], prefixes) && !isSummaryLine(rest[j], prefixes); j--) {
+      above.unshift(rest[j]);
+    }
+    const start = above.findIndex((l) => /^Pista:/.test(strip(l, prefixes)));
+    out.push(...(start >= 0 ? above.slice(0, start) : above));
+    const name = line.match(/(?:function|def)\s+([\w$]+)/)?.[1] ?? '';
+    if (js) {
+      out.push(line, `${js[1]}  ${open} Tu código va acá: una línea de comentario y abajo su línea de código.`, `${js[1]}${open} Cierra la función ${name}.`, `${js[1]}}`, '');
+    } else if (py) {
+      out.push(line, `${py[1]}    ${open} Tu código va acá: una línea de comentario y abajo su línea de código.`, `${py[1]}    pass`, '');
+    }
+  });
   return out.join('\n').replace(/\n+$/, '\n');
 }
 
 /**
  * Pistas de un ejercicio, en orden: cada bloque de comentarios de la solución
- * que va antes de un trozo de código (sin el enunciado ni los resúmenes ↑).
+ * que empieza con «Pista:».
  */
 export function exerciseHints(solution: string, path: string): string[] {
   const prefixes = commentPrefixes(languageForPath(path) ?? 'javascript');
-  const lines = solution.split('\n');
-  let i = 0;
-  while (i < lines.length && isComment(lines[i], prefixes)) {
-    i++;
-  }
   const hints: string[] = [];
-  let block: string[] = [];
-  for (const line of lines.slice(i)) {
-    if (isComment(line, prefixes) && !isSummaryLine(line, prefixes)) {
-      block.push(strip(line, prefixes));
-    } else if (block.length) {
-      hints.push(block.join(' ').replace(/^Pista:\s*/, ''));
-      block = [];
+  let block: string[] | null = null;
+  for (const line of solution.split('\n')) {
+    const comment = isComment(line, prefixes) && !isSummaryLine(line, prefixes);
+    const text = comment ? strip(line, prefixes) : '';
+    if (comment && /^Pista:/.test(text)) {
+      if (block) {
+        hints.push(block.join(' '));
+      }
+      block = [text.replace(/^Pista:\s*/, '')];
+    } else if (comment && block) {
+      block.push(text);
+    } else if (block) {
+      hints.push(block.join(' '));
+      block = null;
     }
+  }
+  if (block) {
+    hints.push(block.join(' '));
   }
   return hints.filter((h) => h && !h.startsWith(SUMMARY_MARK));
 }
@@ -115,6 +137,7 @@ export function aiExerciseStarter(step: PlanStep, path: string): string {
     c(`Ejercicio: ${step.paso.replace(/^Ejercicio:\s*/i, '')}`),
     ...wrapText(step.explicacion ?? '').map(c),
     c('Escribe tu solución aquí abajo. Los tests dicen qué tiene que hacer.'),
+    c(COMMENT_RULE),
     ''
   ].join('\n');
 }

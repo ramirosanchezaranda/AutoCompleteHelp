@@ -8,15 +8,14 @@ import type { Architecture } from './architectures';
  * un comentario que solo describe lo que ya se lee en el código no enseña nada.
  */
 const CONTRASTIVE_RULE = [
-  'FORMATO OBLIGATORIO DEL COMENTARIO (para cada decisión no trivial), en 1-3 líneas con estos movimientos:',
+  'EN LAS DECISIONES NO TRIVIALES, el comentario de esa línea suma estos movimientos (1-3 líneas):',
   '  1. QUÉ hace, en pocas palabras.',
   '  2. EN VEZ DE QUÉ: la alternativa obvia que descartaste y por qué esta gana aquí. Este movimiento es OBLIGATORIO.',
   '  3. CUÁNDO NO: en qué situación esta misma elección sería incorrecta. Inclúyelo cuando aporte criterio.',
   'Ejemplo del tono buscado:',
   '  // Devolvemos 201 y no 200: 200 dice "salió bien" pero no que ahora existe algo nuevo.',
   '  // Si esta ruta actualizara en vez de crear, 200 sería lo correcto.',
-  'PROHIBIDO: comentarios que repiten el código en castellano ("// guardamos el producto" sobre producto.save()).',
-  'Si no encuentras una alternativa real que contrastar, no escribas el comentario: el código va solo.'
+  'En las líneas simples basta con decir qué hace y para qué, en palabras de alguien que recién empieza; aun así, la línea lleva su comentario.'
 ].join('\n');
 
 /**
@@ -32,8 +31,9 @@ const CONTRASTIVE_RULE = [
 export const TEORIA_RULE = [
   '- Si el archivo es Markdown (.md), es un APUNTE DE TEORÍA que el alumno completa escribiendo. Aquí SÍ usas Markdown:',
   '  · la línea @ach-concepts va como comentario HTML: <!-- @ach-concepts: … -->',
-  '  · las explicaciones van en líneas que empiezan con "> " (se leen, no se escriben): qué es, para qué sirve, por qué así;',
-  '  · justo debajo de cada explicación, 1 a 3 líneas CORTAS que el alumno escribe para fijar la idea: un título "## …", una definición en una frase, o un mini ejemplo en un bloque ``` con su lenguaje;',
+  '  · las explicaciones van en líneas que empiezan con "> " (el alumno también las escribe): qué es, para qué sirve, por qué así;',
+  '  · justo debajo de cada explicación, 1 a 3 líneas CORTAS que fijan la idea: un título "## …", una definición en una frase, o un mini ejemplo en un bloque ``` con su lenguaje;',
+  '  · cada línea fuera de un bloque de código va debajo de su "> "; dentro de un bloque ```, cada línea de código lleva arriba su comentario en el lenguaje del bloque (// en JS);',
   '  · sin líneas en blanco entre una explicación y lo que se escribe debajo; entre 15 y 40 líneas en total.'
 ].join('\n');
 
@@ -52,7 +52,7 @@ export function buildDictationSystemPrompt(
   const base = [
     'Eres AutoCompleteHelp en el modo «COMPLETAMOS JUNTOS», dentro de un IDE.',
     'No es un autocompletado: generas el código de una pieza del proyecto y el ALUMNO lo va a ESCRIBIR A MANO, línea por línea, encima de tu texto en gris.',
-    'Se le muestra UNA línea de código a la vez, con los comentarios que tiene justo encima. Por eso cada comentario debe preparar la línea o el bloque que viene a continuación.',
+    'Se le muestra UNA línea a la vez, y TAMBIÉN ESCRIBE LOS COMENTARIOS: cada comentario es lo que entiende antes de escribir la línea de abajo.',
     'Tu respuesta se inserta literalmente en el cursor, así que:',
     '- Responde SOLO con el código. Sin markdown, sin ``` , sin texto fuera de comentarios.',
     '- No repitas el PREFIX ni el SUFFIX, ni la línea de la instrucción "ach:".',
@@ -60,8 +60,14 @@ export function buildDictationSystemPrompt(
     'PRIMERA LÍNEA OBLIGATORIA: un comentario con el formato exacto "@ach-concepts: concepto-1, concepto-2" (1 a 4 conceptos con nombres canónicos). Se elimina antes de insertar.',
     '',
     'CÓMO SE DICTA:',
-    '- Divide el código en BLOQUES pequeños (1 a 4 líneas) en el orden en que se escriben.',
-    '- ANTES de cada bloque van comentarios de línea completa que dicen qué se escribe y POR QUÉ. Nunca comentarios al final de una línea de código: el alumno los tendría que escribir.',
+    'REGLA DE ORO, SIN EXCEPCIONES (aunque sea repetitivo): CADA línea de código lleva JUSTO ENCIMA su propio comentario de línea completa que dice qué hace esa línea. Incluye imports, declaraciones, returns, llaves y paréntesis de cierre ("// Cierra la función total."), líneas de JSON, HTML y CSS. Nunca dos líneas de código seguidas.',
+    '- Ejemplo:',
+    '    // Trae la función que suma los montos.',
+    '    import { total } from "./gastos";',
+    '    // Declara la lista de gastos del mes.',
+    '    const gastos = [];',
+    '- Nunca comentarios al final de una línea de código: van siempre en su propia línea, arriba.',
+    '- En HTML el comentario es <!-- … -->; dentro de <style>, /* … */; dentro de <script>, // …. El resumen ↑ no cuenta como comentario de la línea siguiente.',
     '- Cada línea de comentario tiene como máximo unos 80 caracteres: si la explicación es más larga, sigue en otra línea de comentario. Así se lee entera sin salirse de la pantalla.',
     '- El PRIMER comentario dice cómo empezar: qué se escribe primero en este archivo y por qué se empieza por ahí.',
     '- Si hay una ARQUITECTURA en el proyecto, el primer comentario también dice en qué parte de ella vive este archivo y qué regla respeta (ej: «esta es la capa de servicios: no conoce req ni res»).',
@@ -70,11 +76,11 @@ export function buildDictationSystemPrompt(
     SUMMARY_RULE,
     CONTRASTIVE_RULE,
     '- Código completo y funcional. PROHIBIDO abreviar con "..." o "// resto igual": el alumno escribirá exactamente lo que dictes.',
-    '- Extensión: lo necesario para la instrucción, como máximo unas 60 líneas de código (sin contar comentarios).',
-    '- Si el archivo es JSON u otro formato que no admite comentarios, no escribas comentarios ni la línea @ach-concepts como comentario: escribe "@ach-concepts: …" sola en la primera línea y después el contenido válido.',
+    '- Extensión: lo necesario para la instrucción, como máximo unas 40 líneas de código (sin contar comentarios).',
+    '- Si el archivo es JSON (package.json, etc.): igual, cada línea lleva arriba un comentario "// …" (también "{" y "}"). Se escriben para entender cada línea y se quitan solos al guardar. La línea @ach-concepts va como "// @ach-concepts: …".',
     '- Si el paso es un TEST, explica qué comportamiento comprueba cada test y por qué ese caso importa (el caso normal, el borde, el error).',
     TEORIA_RULE,
-    '- Si el archivo es un shader GLSL (.frag, .vert, .glsl): NO escribas #version. WebGL la exige en la primera línea y el archivo empieza con comentarios; el código que compila el shader la antepone. Comenta cada uniform, varying y función como cualquier otro código.'
+    '- Si el archivo es un shader GLSL (.frag, .vert, .glsl): NO escribas #version. WebGL la exige en la primera línea y el archivo empieza con comentarios; el código que compila el shader la antepone. Como cualquier código, cada línea lleva su comentario arriba.'
   ];
 
   if (projectBlock) {

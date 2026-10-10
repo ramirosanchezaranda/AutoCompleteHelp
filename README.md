@@ -81,7 +81,7 @@ Dos lecciones sin IA para empezar, probadas en el navegador:
 6. **Completamos juntos, línea por línea**:
    - Se ve en gris **solo la línea que vas a escribir**, con los comentarios que la explican justo arriba. El primero te dice cómo empezar y en qué parte de la arquitectura vive el archivo.
    - Lo que tecleas bien se vuelve código; un error marca el carácter en rojo y no avanza. Al terminar la línea pulsas Enter y aparece la siguiente.
-   - Los comentarios y la indentación avanzan solos (se leen, no se copian); el código y cada Enter los escribes tú.
+   - **Cada línea de código tiene su propio comentario justo arriba** que dice qué hace (también los imports, las llaves de cierre y cada línea de un JSON), y **el comentario también lo escribes**: escribirlo es entender la línea antes de escribirla. La indentación avanza sola; en JSON los comentarios se quitan al terminar, porque el formato no los admite (setting `autocompletehelp.dictation.typeComments`).
    - **Tab no completa nada**: cada palabra la escribes tú. **Retroceso** vuelve atrás y **Esc** abre las opciones: dictarte la línea, completar el resto o terminar borrando lo que falta.
    - **Ajuste de línea**: mientras completas, lo que no entra en el ancho de la pantalla sigue en la línea de abajo, sin barra horizontal; al terminar, el editor vuelve a como estaba (setting `autocompletehelp.dictation.wordWrap`).
    - **Al cerrar cada bloque** (la `}` de una función, un `if`, una clase; en Python, al terminar su cuerpo) aparece un comentario `↑` que resume qué hace lo que acabas de escribir. La barra de estado lo muestra mientras empiezas lo siguiente.

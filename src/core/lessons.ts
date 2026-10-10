@@ -5,6 +5,10 @@ import { LESSONS_CREATIVAS } from './lessonsCreative';
 import { LESSONS_CURSOS } from './lessonsCursos';
 import type { ProjectIdea } from './learnTopics';
 
+
+/** Texto multilínea → líneas (sin la primera línea vacía). */
+const L = (s: string): string[] => s.replace(/^\n/, '').replace(/\n$/, '').split('\n');
+
 /**
  * Lecciones sin IA: proyectos completos con el código y las explicaciones ya
  * escritos y revisados. Se completan juntos, línea por línea, igual que los
@@ -145,170 +149,227 @@ export const LESSONS: Lesson[] = [
     ],
     guia: TS_GUIA,
     archivos: {
-      'notas/01-tipos.md': [
-        '> Apunte 1. Antes de escribir los tipos del proyecto, la idea. Las líneas con > se leen; lo demás lo escribes tú.',
-        '## Tipos en TypeScript',
-        '> Un tipo describe la forma de un dato. TypeScript lo revisa mientras escribes, ANTES de ejecutar.',
-        'Un tipo dice qué forma tiene un dato.',
-        '> Los tipos básicos tienen nombre: string (texto), number (número) y boolean (verdadero o falso).',
-        '```ts',
-        'let nombre: string = "Ana";',
-        'let monto: number = 1200;',
-        '```',
-        '> Una unión de textos limita los valores posibles: solo esos, ningún otro. Un error de tipeo ya no pasa.',
-        '```ts',
-        'type Categoria = "comida" | "transporte";',
-        '```',
-        '> Una interface describe un objeto: qué propiedades tiene y de qué tipo es cada una. El ? marca una opcional.',
-        '```ts',
-        'interface Gasto {',
-        '  monto: number;',
-        '  categoria: Categoria;',
-        '  nota?: string;',
-        '}',
-        '```',
-        '> Para recordar: el error aparece en el editor, no cuando el programa ya falló.',
-        'Los errores de tipo se ven al escribir, no al ejecutar.'
-      ],
-      'notas/02-tests.md': [
-        '> Apunte 2. Vas a escribir los tests ANTES que la función. Por qué conviene, en tres ideas.',
-        '## Tests primero',
-        '> Un test es código que usa tu función con un caso concreto y comprueba el resultado.',
-        'Un test comprueba un caso concreto.',
-        '> Rojo: escribes el test y falla, porque la función todavía no existe. Eso prueba que el test sirve.',
-        'Rojo: el test falla primero.',
-        '> Verde: escribes lo justo para que pase. Ni más ni menos.',
-        'Verde: lo justo para que pase.',
-        '> Así se ve un test en Vitest: describe agrupa, it nombra el caso y expect compara.',
-        '```ts',
-        'it("suma los montos", () => {',
-        '  expect(total([])).toBe(0);',
-        '});',
-        '```'
-      ],
-      'package.json': [
-        '{',
-        '  "name": "aprender-typescript",',
-        '  "version": "1.0.0",',
-        '  "type": "module",',
-        '  "scripts": {',
-        '    "test": "vitest run",',
-        '    "start": "tsx src/main.ts"',
-        '  }',
-        '}'
-      ],
-      'tsconfig.json': [
-        '{',
-        '  "compilerOptions": {',
-        '    "target": "ES2022",',
-        '    "module": "ESNext",',
-        '    "moduleResolution": "Bundler",',
-        '    "strict": true,',
-        '    "noEmit": true',
-        '  },',
-        '  "include": ["src"]',
-        '}'
-      ],
-      'src/gasto.ts': [
-        '// Cómo empezar: primero los TIPOS. Describen los datos antes de escribir la',
-        '// lógica, y el compilador te avisa si algo no encaja. Esta es la base de las capas.',
-        '// Una unión de textos en vez de string: solo se aceptan estas categorías.',
-        "export type Categoria = 'comida' | 'transporte' | 'ocio' | 'otros';",
-        '',
-        '// interface en vez de type para objetos: se lee como «la forma de un gasto»',
-        '// y se puede extender después (ej: un gasto con fecha).',
-        'export interface Gasto {',
-        '  categoria: Categoria;',
-        '  // number y no string: así se puede sumar sin convertir.',
-        '  monto: number;',
-        '  // El ? la vuelve opcional: un gasto puede no tener descripción.',
-        '  descripcion?: string;',
-        '}',
-        '// ↑ Gasto: la forma de cada gasto: una categoría válida, un monto numérico y una descripción opcional.'
-      ],
-      'src/gastos.test.ts': [
-        '// Cómo empezar: los tests van ANTES que la función. Fallan (rojo) porque',
-        '// gastos.ts todavía no existe: eso confirma que prueban algo real.',
-        "import { describe, it, expect } from 'vitest';",
-        "import { total, porCategoria } from './gastos';",
-        "import type { Gasto } from './gasto';",
-        '',
-        '// Datos de prueba fijos: el resultado esperado se calcula a mano.',
-        'const gastos: Gasto[] = [',
-        "  { categoria: 'comida', monto: 1200 },",
-        "  { categoria: 'transporte', monto: 300 },",
-        "  { categoria: 'comida', monto: 800 }",
-        '];',
-        '// ↑ gastos: tres gastos de ejemplo; los resultados esperados (2300 en total) se calculan a mano.',
-        '',
-        "describe('total', () => {",
-        '  // El caso normal: la suma de todos los montos.',
-        "  it('suma todos los montos', () => {",
-        '    expect(total(gastos)).toBe(2300);',
-        '  });',
-        '  // El caso borde: sin gastos el total es 0, no undefined ni NaN.',
-        "  it('sin gastos devuelve 0', () => {",
-        '    expect(total([])).toBe(0);',
-        '  });',
-        '});',
-        '// ↑ total: comprueba la suma normal y que una lista vacía dé 0.',
-        '',
-        '// toEqual y no toBe: compara el contenido del objeto, no si es el mismo objeto.',
-        "it('agrupa por categoría', () => {",
-        '  expect(porCategoria(gastos)).toEqual({ comida: 2000, transporte: 300 });',
-        '});',
-        '// ↑ porCategoria: comprueba que agrupa los gastos y suma los montos de cada categoría.'
-      ],
-      'src/gastos.ts': [
-        '// Cómo empezar: lo justo para que los tests pasen (verde). Esta es la capa',
-        '// de lógica: no lee la terminal ni imprime nada, por eso se testea sola.',
-        "import type { Gasto, Categoria } from './gasto';",
-        '',
-        '// reduce en vez de un for: recorre la lista y acumula en un solo valor.',
-        '// El 0 inicial es lo que hace que una lista vacía devuelva 0.',
-        'export function total(gastos: Gasto[]): number {',
-        '  return gastos.reduce((suma, g) => suma + g.monto, 0);',
-        '}',
-        '// ↑ total: suma los montos de todos los gastos; sin gastos devuelve 0.',
-        '',
-        '// Partial<Record<…>>: un objeto con categorías como claves, donde puede',
-        '// faltar alguna (las que no tienen gastos).',
-        'export function porCategoria(gastos: Gasto[]): Partial<Record<Categoria, number>> {',
-        '  const resultado: Partial<Record<Categoria, number>> = {};',
-        '  for (const g of gastos) {',
-        '    // ?? 0: si la categoría todavía no tiene suma, arranca en 0.',
-        '    resultado[g.categoria] = (resultado[g.categoria] ?? 0) + g.monto;',
-        '  }',
-        '  // ↑ for: va sumando cada monto en la categoría que le corresponde.',
-        '  return resultado;',
-        '}',
-        '// ↑ porCategoria: devuelve cuánto se gastó en cada categoría.'
-      ],
-      'src/main.ts': [
-        '// Cómo empezar: este archivo conecta la lógica con el mundo: lee lo que',
-        '// escribes en la terminal. La lógica quedó en gastos.ts, separada y testeada.',
-        "import { total, porCategoria } from './gastos';",
-        "import type { Categoria } from './gasto';",
-        '',
-        "const categorias: Categoria[] = ['comida', 'transporte', 'ocio', 'otros'];",
-        '// process.argv trae lo escrito después del comando; los dos primeros son',
-        '// node y el archivo, por eso empezamos en el índice 2.',
-        'const [categoria, montoTexto] = process.argv.slice(2);',
-        'const monto = Number(montoTexto);',
-        '',
-        '// Validamos en el borde del programa: lo que llega de afuera es texto y',
-        '// puede venir mal. Mejor fallar con un mensaje claro que calcular basura.',
-        'if (!categorias.includes(categoria as Categoria) || Number.isNaN(monto)) {',
-        "  console.error('Uso: npx tsx src/main.ts <comida|transporte|ocio|otros> <monto>');",
-        '  process.exit(1);',
-        '}',
-        '// ↑ if: si la categoría o el monto no son válidos, muestra cómo se usa y termina con error (código 1).',
-        '',
-        '// as Categoria le pide al compilador que confíe: es seguro porque lo validamos arriba.',
-        'const gastos = [{ categoria: categoria as Categoria, monto }];',
-        "console.log('Total:', total(gastos));",
-        "console.log('Por categoría:', porCategoria(gastos));"
-      ]
+      'notas/01-tipos.md': L(`
+> Apunte 1. Antes de escribir los tipos del proyecto, la idea. Todo se escribe: también las explicaciones.
+> Las líneas con > explican; las de código llevan arriba su comentario.
+## Tipos en TypeScript
+> Un tipo describe la forma de un dato. TypeScript lo revisa mientras escribes, ANTES de ejecutar.
+Un tipo dice qué forma tiene un dato.
+> Los tipos básicos tienen nombre: string (texto), number (número) y boolean (verdadero o falso).
+\`\`\`ts
+// nombre solo acepta texto: string.
+let nombre: string = "Ana";
+// monto solo acepta números: number.
+let monto: number = 1200;
+\`\`\`
+> Una unión de textos limita los valores posibles: solo esos, ningún otro. Un error de tipeo ya no pasa.
+\`\`\`ts
+// Categoria solo puede ser "comida" o "transporte".
+type Categoria = "comida" | "transporte";
+\`\`\`
+> Una interface describe un objeto: qué propiedades tiene y de qué tipo es cada una. El ? marca una opcional.
+\`\`\`ts
+// Abre la descripción de la forma de un gasto.
+interface Gasto {
+  // monto es obligatorio y es un número.
+  monto: number;
+  // categoria solo acepta los valores de Categoria.
+  categoria: Categoria;
+  // nota es opcional por el ?: puede faltar.
+  nota?: string;
+// Cierra la interface.
+}
+\`\`\`
+> Para recordar: el error aparece en el editor, no cuando el programa ya falló.
+Los errores de tipo se ven al escribir, no al ejecutar.`),
+      'notas/02-tests.md': L(`
+> Apunte 2. Vas a escribir los tests ANTES que la función. Por qué conviene, en tres ideas.
+## Tests primero
+> Un test es código que usa tu función con un caso concreto y comprueba el resultado.
+Un test comprueba un caso concreto.
+> Rojo: escribes el test y falla, porque la función todavía no existe. Eso prueba que el test sirve.
+Rojo: el test falla primero.
+> Verde: escribes lo justo para que pase. Ni más ni menos.
+Verde: lo justo para que pase.
+> Así se ve un test en Vitest: describe agrupa, it nombra el caso y expect compara.
+\`\`\`ts
+// it nombra el caso que se prueba.
+it("suma los montos", () => {
+  // expect compara lo que devuelve total con lo esperado: 0.
+  expect(total([])).toBe(0);
+// Cierra el caso.
+});
+\`\`\``),
+      'package.json': L(`
+// Abre el objeto del manifiesto. En JSON los comentarios no van: se quitan al guardar.
+{
+  // El nombre del proyecto, en minúsculas y con guiones.
+  "name": "aprender-typescript",
+  // La versión del proyecto.
+  "version": "1.0.0",
+  // "module": los archivos usan import y export.
+  "type": "module",
+  // Abre los scripts: atajos que se corren con npm run.
+  "scripts": {
+    // npm test corre todos los tests una vez.
+    "test": "vitest run",
+    // npm start ejecuta el programa con tsx.
+    "start": "tsx src/main.ts"
+  // Cierra los scripts.
+  }
+// Cierra el manifiesto.
+}`),
+      'tsconfig.json': L(`
+// Abre la configuración del compilador. tsconfig sí admite comentarios.
+{
+  // Abre las opciones del compilador.
+  "compilerOptions": {
+    // target: qué versión de JavaScript se genera.
+    "target": "ES2022",
+    // module: los archivos son módulos con import y export.
+    "module": "ESNext",
+    // moduleResolution: cómo encuentra los archivos que importas.
+    "moduleResolution": "Bundler",
+    // strict: el modo más estricto, el que más errores atrapa.
+    "strict": true,
+    // noEmit: solo revisa los tipos; tsx ejecuta el código.
+    "noEmit": true
+  // Cierra las opciones.
+  },
+  // include: revisa los archivos de la carpeta src.
+  "include": ["src"]
+// Cierra la configuración.
+}`),
+      'src/gasto.ts': L(`
+// Cómo empezar: primero los TIPOS. Describen los datos antes de escribir la
+// lógica, y el compilador te avisa si algo no encaja. Esta es la base de las capas.
+// Una unión de textos en vez de string: solo se aceptan estas categorías.
+export type Categoria = 'comida' | 'transporte' | 'ocio' | 'otros';
+
+// interface en vez de type para objetos: se lee como «la forma de un gasto»
+// y se puede extender después (ej: un gasto con fecha).
+export interface Gasto {
+  // categoria solo acepta una de las cuatro de Categoria.
+  categoria: Categoria;
+  // number y no string: así se puede sumar sin convertir.
+  monto: number;
+  // El ? la vuelve opcional: un gasto puede no tener descripción.
+  descripcion?: string;
+// Cierra la interface Gasto.
+}
+// ↑ Gasto: la forma de cada gasto: una categoría válida, un monto numérico y una descripción opcional.`),
+      'src/gastos.test.ts': L(`
+// Cómo empezar: los tests van ANTES que la función. Fallan (rojo) porque
+// gastos.ts todavía no existe: eso confirma que prueban algo real.
+// describe, it y expect: las tres piezas de un test, desde Vitest.
+import { describe, it, expect } from 'vitest';
+// Las funciones que vamos a probar (todavía no existen).
+import { total, porCategoria } from './gastos';
+// import type: solo el tipo, para declarar los datos de prueba.
+import type { Gasto } from './gasto';
+
+// Datos de prueba fijos: el resultado esperado se calcula a mano.
+const gastos: Gasto[] = [
+  // Un gasto de comida de 1200.
+  { categoria: 'comida', monto: 1200 },
+  // Un gasto de transporte de 300.
+  { categoria: 'transporte', monto: 300 },
+  // Otro de comida, de 800: comida suma 2000.
+  { categoria: 'comida', monto: 800 }
+// Cierra la lista de gastos.
+];
+// ↑ gastos: tres gastos de ejemplo; los resultados esperados (2300 en total) se calculan a mano.
+
+// describe agrupa los tests de total.
+describe('total', () => {
+  // El caso normal: la suma de todos los montos.
+  it('suma todos los montos', () => {
+    // 1200 + 300 + 800 = 2300.
+    expect(total(gastos)).toBe(2300);
+  // Cierra el caso normal.
+  });
+  // El caso borde: sin gastos el total es 0, no undefined ni NaN.
+  it('sin gastos devuelve 0', () => {
+    // Una lista vacía tiene que dar 0.
+    expect(total([])).toBe(0);
+  // Cierra el caso borde.
+  });
+// Cierra el grupo de total.
+});
+// ↑ total: comprueba la suma normal y que una lista vacía dé 0.
+
+// toEqual y no toBe: compara el contenido del objeto, no si es el mismo objeto.
+it('agrupa por categoría', () => {
+  // comida suma 1200 + 800; transporte, 300.
+  expect(porCategoria(gastos)).toEqual({ comida: 2000, transporte: 300 });
+// Cierra el caso.
+});
+// ↑ porCategoria: comprueba que agrupa los gastos y suma los montos de cada categoría.`),
+      'src/gastos.ts': L(`
+// Cómo empezar: lo justo para que los tests pasen (verde). Esta es la capa
+// de lógica: no lee la terminal ni imprime nada, por eso se testea sola.
+// Los tipos que usan las funciones, desde gasto.ts.
+import type { Gasto, Categoria } from './gasto';
+
+// reduce en vez de un for: recorre la lista y acumula en un solo valor.
+// El 0 inicial es lo que hace que una lista vacía devuelva 0.
+export function total(gastos: Gasto[]): number {
+  // suma empieza en 0 y en cada vuelta se le agrega el monto del gasto g.
+  return gastos.reduce((suma, g) => suma + g.monto, 0);
+// Cierra la función total.
+}
+// ↑ total: suma los montos de todos los gastos; sin gastos devuelve 0.
+
+// Partial<Record<…>>: un objeto con categorías como claves, donde puede
+// faltar alguna (las que no tienen gastos).
+export function porCategoria(gastos: Gasto[]): Partial<Record<Categoria, number>> {
+  // El resultado empieza vacío: todavía no hay ninguna categoría.
+  const resultado: Partial<Record<Categoria, number>> = {};
+  // Recorre cada gasto de la lista.
+  for (const g of gastos) {
+    // ?? 0: si la categoría todavía no tiene suma, arranca en 0.
+    resultado[g.categoria] = (resultado[g.categoria] ?? 0) + g.monto;
+  // Cierra el for.
+  }
+  // ↑ for: va sumando cada monto en la categoría que le corresponde.
+  // Devuelve las sumas por categoría.
+  return resultado;
+// Cierra la función porCategoria.
+}
+// ↑ porCategoria: devuelve cuánto se gastó en cada categoría.`),
+      'src/main.ts': L(`
+// Cómo empezar: este archivo conecta la lógica con el mundo: lee lo que
+// escribes en la terminal. La lógica quedó en gastos.ts, separada y testeada.
+// Las dos funciones de la lógica.
+import { total, porCategoria } from './gastos';
+// El tipo Categoria, para validar lo que llega.
+import type { Categoria } from './gasto';
+
+// Las categorías válidas, en una lista para poder buscar en ella.
+const categorias: Categoria[] = ['comida', 'transporte', 'ocio', 'otros'];
+// process.argv trae lo escrito después del comando; los dos primeros son
+// node y el archivo, por eso empezamos en el índice 2.
+const [categoria, montoTexto] = process.argv.slice(2);
+// Number convierte el texto en número (o en NaN si no es un número).
+const monto = Number(montoTexto);
+
+// Validamos en el borde del programa: lo que llega de afuera es texto y
+// puede venir mal. Mejor fallar con un mensaje claro que calcular basura.
+if (!categorias.includes(categoria as Categoria) || Number.isNaN(monto)) {
+  // Muestra cómo se usa el programa.
+  console.error('Uso: npx tsx src/main.ts <comida|transporte|ocio|otros> <monto>');
+  // Termina con código 1: avisa que hubo un error.
+  process.exit(1);
+// Cierra el if.
+}
+// ↑ if: si la categoría o el monto no son válidos, muestra cómo se usa y termina con error (código 1).
+
+// as Categoria le pide al compilador que confíe: es seguro porque lo validamos arriba.
+const gastos = [{ categoria: categoria as Categoria, monto }];
+// Muestra el total.
+console.log('Total:', total(gastos));
+// Muestra la suma por categoría.
+console.log('Por categoría:', porCategoria(gastos));`)
     },
     conceptos: {
       'notas/01-tipos.md': ['tipos', 'uniones de texto', 'interfaces'],
@@ -354,216 +415,282 @@ export const LESSONS: Lesson[] = [
     ],
     guia: PY_GUIA,
     archivos: {
-      'notas/01-diccionarios.md': [
-        '> Apunte 1. Las reglas del proyecto son un diccionario y una función. Primero la idea; las líneas con > se leen.',
-        '## Diccionarios',
-        '> Un diccionario guarda pares clave → valor. Buscar por la clave es directo: no recorre nada.',
-        'Un diccionario relaciona una clave con un valor.',
-        '```python',
-        'precios = {"pan": 900, "leche": 1200}',
-        'precios["pan"]',
-        '```',
-        '> Con corchetes, una clave que no existe da KeyError. .get(clave, defecto) devuelve el defecto en su lugar.',
-        '```python',
-        'precios.get("queso", 0)',
-        '```',
-        '## Funciones puras',
-        '> Una función pura solo calcula: misma entrada, misma salida, sin tocar el disco ni la pantalla. Por eso se testea fácil.',
-        'Una función pura no tiene efectos: solo calcula.',
-        '```python',
-        'def doble(n: int) -> int:',
-        '    return n * 2',
-        '```'
-      ],
-      'notas/02-rutas.md': [
-        '> Apunte 2. Para planificar qué mover, dos herramientas de la biblioteca estándar.',
-        '## pathlib',
-        '> Path representa una ruta como objeto: sirve igual en Windows, macOS y Linux, sin pegar textos con barras.',
-        'Path es una ruta que entiende cualquier sistema.',
-        '```python',
-        'from pathlib import Path',
-        'foto = Path("Descargas") / "foto.PNG"',
-        'foto.suffix.lower()',
-        '```',
-        '## dataclasses',
-        '> @dataclass arma una clase para guardar datos sin escribir __init__ a mano. frozen=True la vuelve inmutable.',
-        'Una dataclass es una clase solo para datos.',
-        '```python',
-        '@dataclass(frozen=True)',
-        'class Movimiento:',
-        '    origen: Path',
-        '    destino: Path',
-        '```'
-      ],
-      'pyproject.toml': [
-        '# Cómo empezar: la configuración del proyecto y de sus herramientas en un solo archivo.',
-        '[project]',
-        'name = "ordenar-descargas"',
-        'version = "1.0.0"',
-        'requires-python = ">=3.12"',
-        '',
-        '# pythonpath = ["."]: pytest encuentra el paquete ordenar/ sin instalarlo.',
-        '[tool.pytest.ini_options]',
-        'pythonpath = ["."]'
-      ],
-      'ordenar/__init__.py': [
-        '# Este archivo convierte la carpeta ordenar/ en un paquete de Python:',
-        '# así «from ordenar.reglas import ...» y «python -m ordenar» la encuentran.',
-        '# Puede quedar vacío: solo con existir ya cumple su función.'
-      ],
-      'ordenar/reglas.py': [
-        '# Cómo empezar: las REGLAS van primero y aparte: deciden a qué carpeta va cada',
-        '# archivo, sin tocar el disco. Así se testean solas y se cambian sin riesgo.',
-        '# Un diccionario en vez de muchos if: agregar una extensión es agregar una línea.',
-        'CARPETAS = {',
-        '    ".jpg": "Imágenes",',
-        '    ".png": "Imágenes",',
-        '    ".pdf": "Documentos",',
-        '    ".docx": "Documentos",',
-        '    ".xlsx": "Documentos",',
-        '    ".mp3": "Música",',
-        '    ".mp4": "Videos",',
-        '    ".zip": "Comprimidos",',
-        '}',
-        '# ↑ CARPETAS: a qué carpeta va cada extensión.',
-        '',
-        '# Lo que no reconocemos va a «Otros» en vez de quedarse suelto o dar error.',
-        'OTROS = "Otros"',
-        '',
-        '',
-        'def carpeta_para(nombre: str) -> str:',
-        '    # lower() para que «FOTO.JPG» y «foto.jpg» vayan al mismo lugar.',
-        '    # rpartition separa por el ÚLTIMO punto: «informe.final.pdf» da «pdf».',
-        '    _, punto, extension = nombre.lower().rpartition(".")',
-        '    if not punto:',
-        '        return OTROS',
-        '    return CARPETAS.get("." + extension, OTROS)',
-        '# ↑ carpeta_para: mira la extensión del nombre y devuelve su carpeta, u Otros si no la conoce.'
-      ],
-      'tests/test_reglas.py': [
-        '# Cómo empezar: probamos las reglas con nombres inventados; ningún archivo real.',
-        'from ordenar.reglas import OTROS, carpeta_para',
-        '',
-        '',
-        '# El caso normal: la extensión decide la carpeta.',
-        'def test_imagen_va_a_imagenes():',
-        '    assert carpeta_para("vacaciones.jpg") == "Imágenes"',
-        '',
-        '',
-        '# Mayúsculas y varios puntos: casos que en la vida real aparecen.',
-        'def test_mayusculas_y_varios_puntos():',
-        '    assert carpeta_para("INFORME.final.PDF") == "Documentos"',
-        '',
-        '',
-        '# Lo desconocido y lo que no tiene extensión van a Otros, sin error.',
-        'def test_desconocido_y_sin_extension():',
-        '    assert carpeta_para("datos.xyz") == OTROS',
-        '    assert carpeta_para("LEEME") == OTROS'
-      ],
-      'ordenar/plan.py': [
-        '# Cómo empezar: esta capa PLANIFICA sin mover nada: devuelve la lista de',
-        '# movimientos. Separar «decidir» de «hacer» es lo que permite simular.',
-        'from dataclasses import dataclass',
-        'from pathlib import Path',
-        '',
-        'from ordenar.reglas import carpeta_para',
-        '',
-        '',
-        '# dataclass en vez de una tupla: cada movimiento tiene nombres claros.',
-        '# frozen=True la vuelve inmutable: un plan no se modifica por accidente.',
-        '@dataclass(frozen=True)',
-        'class Movimiento:',
-        '    origen: Path',
-        '    destino: Path',
-        '# ↑ Movimiento: un archivo y adónde iría; solo datos, sin lógica.',
-        '',
-        '',
-        'def planificar(carpeta: Path) -> list[Movimiento]:',
-        '    movimientos = []',
-        '    # sorted para que el plan salga siempre en el mismo orden (y los tests también).',
-        '    for archivo in sorted(carpeta.iterdir()):',
-        '        # Solo archivos: las carpetas (incluidas las que ya creamos) se dejan.',
-        '        if not archivo.is_file():',
-        '            continue',
-        '        destino = carpeta / carpeta_para(archivo.name) / archivo.name',
-        '        movimientos.append(Movimiento(archivo, destino))',
-        '    # ↑ for: arma un movimiento por cada archivo, saltando las carpetas.',
-        '    return movimientos',
-        '# ↑ planificar: devuelve qué se movería y adónde, sin mover nada.'
-      ],
-      'tests/test_plan.py': [
-        '# Cómo empezar: tmp_path es una carpeta temporal que pytest crea y borra:',
-        '# nunca tocamos tus archivos reales.',
-        'from ordenar.plan import planificar',
-        '',
-        '',
-        'def test_planifica_sin_mover_nada(tmp_path):',
-        '    (tmp_path / "foto.png").write_text("x")',
-        '    (tmp_path / "notas.pdf").write_text("x")',
-        '    plan = planificar(tmp_path)',
-        '    # Dos movimientos, en orden alfabético, cada uno a su carpeta.',
-        '    assert [m.destino.parent.name for m in plan] == ["Imágenes", "Documentos"]',
-        '    # Y lo más importante: los archivos siguen donde estaban.',
-        '    assert (tmp_path / "foto.png").exists()',
-        '# ↑ test: con dos archivos, el plan manda cada uno a su carpeta y no mueve ninguno.',
-        '',
-        '',
-        '# Las subcarpetas no se mueven: el plan solo mira archivos.',
-        'def test_ignora_carpetas(tmp_path):',
-        '    (tmp_path / "Imágenes").mkdir()',
-        '    assert planificar(tmp_path) == []'
-      ],
-      'ordenar/ejecutar.py': [
-        '# Cómo empezar: la única capa que toca el disco va al final y es pequeña:',
-        '# lo peligroso queda aislado y fácil de revisar.',
-        'import shutil',
-        '',
-        'from ordenar.plan import Movimiento',
-        '',
-        '',
-        'def ejecutar(plan: list[Movimiento]) -> int:',
-        '    movidos = 0',
-        '    for m in plan:',
-        '        # parents=True crea la carpeta si falta; exist_ok evita el error si ya existe.',
-        '        m.destino.parent.mkdir(parents=True, exist_ok=True)',
-        '        # Si ya hay un archivo con ese nombre, no lo pisamos: lo saltamos.',
-        '        if m.destino.exists():',
-        '            continue',
-        '        # shutil.move y no rename: también funciona entre discos distintos.',
-        '        shutil.move(m.origen, m.destino)',
-        '        movidos += 1',
-        '    # ↑ for: crea la carpeta destino y mueve cada archivo, sin pisar los que ya existen.',
-        '    return movidos',
-        '# ↑ ejecutar: aplica el plan en el disco y devuelve cuántos archivos movió.'
-      ],
-      'ordenar/__main__.py': [
-        '# Cómo empezar: el punto de entrada. «python -m ordenar» ejecuta este archivo.',
-        '# Lee los argumentos, muestra el plan y solo mueve si no es una simulación.',
-        'import argparse',
-        'from pathlib import Path',
-        '',
-        'from ordenar.ejecutar import ejecutar',
-        'from ordenar.plan import planificar',
-        '',
-        '# argparse en vez de leer sys.argv a mano: valida y genera la ayuda (--help).',
-        'parser = argparse.ArgumentParser(description="Ordena una carpeta por tipo de archivo.")',
-        'parser.add_argument("carpeta", type=Path)',
-        '# store_true: --simular no lleva valor; si aparece, vale True.',
-        'parser.add_argument("--simular", action="store_true", help="muestra el plan sin mover nada")',
-        'args = parser.parse_args()',
-        '',
-        '# expanduser convierte «~» en tu carpeta personal.',
-        'plan = planificar(args.carpeta.expanduser())',
-        'for m in plan:',
-        '    print(f"{m.origen.name} -> {m.destino.parent.name}/")',
-        '',
-        '# Primero se mira, después se hace: el mismo plan, ahora de verdad.',
-        'if args.simular:',
-        '    print(f"Simulación: {len(plan)} archivos se moverían.")',
-        'else:',
-        '    print(f"Movidos: {ejecutar(plan)} archivos.")',
-        '# ↑ if/else: con --simular solo cuenta los archivos; sin él, los mueve de verdad.'
-      ]
+      'notas/01-diccionarios.md': L(`
+> Apunte 1. Las reglas del proyecto son un diccionario y una función. Todo se escribe: también las explicaciones.
+> Las líneas con > explican; las de código llevan arriba su comentario.
+## Diccionarios
+> Un diccionario guarda pares clave → valor. Buscar por la clave es directo: no recorre nada.
+Un diccionario relaciona una clave con un valor.
+\`\`\`python
+# precios: cada producto (clave) con su precio (valor).
+precios = {"pan": 900, "leche": 1200}
+# Busca el valor de la clave "pan": 900.
+precios["pan"]
+\`\`\`
+> Con corchetes, una clave que no existe da KeyError. .get(clave, defecto) devuelve el defecto en su lugar.
+\`\`\`python
+# "queso" no está: get devuelve el 0 que le pasamos.
+precios.get("queso", 0)
+\`\`\`
+> Ahora, la segunda idea del apunte.
+## Funciones puras
+> Una función pura solo calcula: misma entrada, misma salida, sin tocar el disco ni la pantalla. Por eso se testea fácil.
+Una función pura no tiene efectos: solo calcula.
+\`\`\`python
+# def declara la función doble: recibe un entero y devuelve un entero.
+def doble(n: int) -> int:
+    # Devuelve el número multiplicado por 2.
+    return n * 2
+\`\`\``),
+      'notas/02-rutas.md': L(`
+> Apunte 2. Para planificar qué mover, dos herramientas de la biblioteca estándar.
+## pathlib
+> Path representa una ruta como objeto: sirve igual en Windows, macOS y Linux, sin pegar textos con barras.
+Path es una ruta que entiende cualquier sistema.
+\`\`\`python
+# Trae Path desde la biblioteca estándar.
+from pathlib import Path
+# / une partes de una ruta, sin escribir las barras a mano.
+foto = Path("Descargas") / "foto.PNG"
+# suffix es la extensión (".PNG"); lower la pasa a minúsculas.
+foto.suffix.lower()
+\`\`\`
+> Ahora, la segunda herramienta.
+## dataclasses
+> @dataclass arma una clase para guardar datos sin escribir __init__ a mano. frozen=True la vuelve inmutable.
+Una dataclass es una clase solo para datos.
+\`\`\`python
+# El decorador arma la clase; frozen=True no deja cambiar sus datos.
+@dataclass(frozen=True)
+# La clase Movimiento guarda un archivo y su destino.
+class Movimiento:
+    # origen: dónde está el archivo ahora.
+    origen: Path
+    # destino: adónde iría.
+    destino: Path
+\`\`\``),
+      'pyproject.toml': L(`
+# Cómo empezar: la configuración del proyecto y de sus herramientas en un solo archivo.
+# Abre la sección con los datos del proyecto.
+[project]
+# El nombre del proyecto.
+name = "ordenar-descargas"
+# La versión del proyecto.
+version = "1.0.0"
+# Pide Python 3.12 o más nuevo.
+requires-python = ">=3.12"
+
+# Abre la sección de configuración de pytest.
+[tool.pytest.ini_options]
+# pythonpath = ["."]: pytest encuentra el paquete ordenar/ sin instalarlo.
+pythonpath = ["."]`),
+      'ordenar/__init__.py': L(`
+# Este archivo convierte la carpeta ordenar/ en un paquete de Python:
+# así «from ordenar.reglas import ...» y «python -m ordenar» la encuentran.
+# Puede quedar vacío: solo con existir ya cumple su función.`),
+      'ordenar/reglas.py': L(`
+# Cómo empezar: las REGLAS van primero y aparte: deciden a qué carpeta va cada
+# archivo, sin tocar el disco. Así se testean solas y se cambian sin riesgo.
+# Un diccionario en vez de muchos if: agregar una extensión es agregar una línea.
+CARPETAS = {
+    # Las fotos JPG van a Imágenes.
+    ".jpg": "Imágenes",
+    # Las PNG también.
+    ".png": "Imágenes",
+    # Los PDF van a Documentos.
+    ".pdf": "Documentos",
+    # Los documentos de Word también.
+    ".docx": "Documentos",
+    # Y las planillas de Excel.
+    ".xlsx": "Documentos",
+    # La música MP3 va a Música.
+    ".mp3": "Música",
+    # Los videos MP4 van a Videos.
+    ".mp4": "Videos",
+    # Los ZIP van a Comprimidos.
+    ".zip": "Comprimidos",
+# Cierra el diccionario.
+}
+# ↑ CARPETAS: a qué carpeta va cada extensión.
+
+# Lo que no reconocemos va a «Otros» en vez de quedarse suelto o dar error.
+OTROS = "Otros"
+
+
+# carpeta_para recibe el nombre de un archivo y devuelve su carpeta.
+def carpeta_para(nombre: str) -> str:
+    # lower() para que «FOTO.JPG» y «foto.jpg» vayan al mismo lugar.
+    # rpartition separa por el ÚLTIMO punto: «informe.final.pdf» da «pdf».
+    _, punto, extension = nombre.lower().rpartition(".")
+    # Si no hay punto, el archivo no tiene extensión.
+    if not punto:
+        # Sin extensión, va a Otros.
+        return OTROS
+    # Busca la extensión en el diccionario; si no está, Otros.
+    return CARPETAS.get("." + extension, OTROS)
+# ↑ carpeta_para: mira la extensión del nombre y devuelve su carpeta, u Otros si no la conoce.`),
+      'tests/test_reglas.py': L(`
+# Cómo empezar: probamos las reglas con nombres inventados; ningún archivo real.
+# Trae lo que se prueba: la carpeta Otros y la función.
+from ordenar.reglas import OTROS, carpeta_para
+
+
+# El caso normal: la extensión decide la carpeta.
+def test_imagen_va_a_imagenes():
+    # Una foto .jpg tiene que ir a Imágenes.
+    assert carpeta_para("vacaciones.jpg") == "Imágenes"
+
+
+# Mayúsculas y varios puntos: casos que en la vida real aparecen.
+def test_mayusculas_y_varios_puntos():
+    # Manda la última extensión, sin importar las mayúsculas.
+    assert carpeta_para("INFORME.final.PDF") == "Documentos"
+
+
+# Lo desconocido y lo que no tiene extensión van a Otros, sin error.
+def test_desconocido_y_sin_extension():
+    # Una extensión que no está en las reglas.
+    assert carpeta_para("datos.xyz") == OTROS
+    # Un nombre sin extensión.
+    assert carpeta_para("LEEME") == OTROS`),
+      'ordenar/plan.py': L(`
+# Cómo empezar: esta capa PLANIFICA sin mover nada: devuelve la lista de
+# movimientos. Separar «decidir» de «hacer» es lo que permite simular.
+# dataclass, para la clase que guarda cada movimiento.
+from dataclasses import dataclass
+# Path, para trabajar con rutas.
+from pathlib import Path
+
+# La regla que decide la carpeta de cada archivo.
+from ordenar.reglas import carpeta_para
+
+
+# dataclass en vez de una tupla: cada movimiento tiene nombres claros.
+# frozen=True la vuelve inmutable: un plan no se modifica por accidente.
+@dataclass(frozen=True)
+# Un movimiento: de dónde a dónde.
+class Movimiento:
+    # origen: dónde está el archivo.
+    origen: Path
+    # destino: adónde iría.
+    destino: Path
+# ↑ Movimiento: un archivo y adónde iría; solo datos, sin lógica.
+
+
+# planificar recibe una carpeta y devuelve la lista de movimientos.
+def planificar(carpeta: Path) -> list[Movimiento]:
+    # La lista empieza vacía.
+    movimientos = []
+    # sorted para que el plan salga siempre en el mismo orden (y los tests también).
+    for archivo in sorted(carpeta.iterdir()):
+        # Solo archivos: las carpetas (incluidas las que ya creamos) se dejan.
+        if not archivo.is_file():
+            # continue salta al siguiente de la lista.
+            continue
+        # El destino: la carpeta, la subcarpeta que dicta la regla y el mismo nombre.
+        destino = carpeta / carpeta_para(archivo.name) / archivo.name
+        # Agrega el movimiento a la lista.
+        movimientos.append(Movimiento(archivo, destino))
+    # ↑ for: arma un movimiento por cada archivo, saltando las carpetas.
+    # Devuelve el plan completo.
+    return movimientos
+# ↑ planificar: devuelve qué se movería y adónde, sin mover nada.`),
+      'tests/test_plan.py': L(`
+# Cómo empezar: tmp_path es una carpeta temporal que pytest crea y borra:
+# nunca tocamos tus archivos reales.
+# La función que se prueba.
+from ordenar.plan import planificar
+
+
+# tmp_path llega solo: pytest lo pasa por el nombre del parámetro.
+def test_planifica_sin_mover_nada(tmp_path):
+    # Crea una foto de prueba en la carpeta temporal.
+    (tmp_path / "foto.png").write_text("x")
+    # Y un PDF de prueba.
+    (tmp_path / "notas.pdf").write_text("x")
+    # Arma el plan para esa carpeta.
+    plan = planificar(tmp_path)
+    # Dos movimientos, en orden alfabético, cada uno a su carpeta.
+    assert [m.destino.parent.name for m in plan] == ["Imágenes", "Documentos"]
+    # Y lo más importante: los archivos siguen donde estaban.
+    assert (tmp_path / "foto.png").exists()
+# ↑ test: con dos archivos, el plan manda cada uno a su carpeta y no mueve ninguno.
+
+
+# Las subcarpetas no se mueven: el plan solo mira archivos.
+def test_ignora_carpetas(tmp_path):
+    # Crea una subcarpeta.
+    (tmp_path / "Imágenes").mkdir()
+    # Sin archivos, el plan queda vacío.
+    assert planificar(tmp_path) == []`),
+      'ordenar/ejecutar.py': L(`
+# Cómo empezar: la única capa que toca el disco va al final y es pequeña:
+# lo peligroso queda aislado y fácil de revisar.
+# shutil tiene las funciones para mover archivos.
+import shutil
+
+# El tipo Movimiento, para declarar qué recibe la función.
+from ordenar.plan import Movimiento
+
+
+# ejecutar recibe el plan y devuelve cuántos archivos movió.
+def ejecutar(plan: list[Movimiento]) -> int:
+    # El contador empieza en 0.
+    movidos = 0
+    # Recorre cada movimiento del plan.
+    for m in plan:
+        # parents=True crea la carpeta si falta; exist_ok evita el error si ya existe.
+        m.destino.parent.mkdir(parents=True, exist_ok=True)
+        # Si ya hay un archivo con ese nombre, no lo pisamos: lo saltamos.
+        if m.destino.exists():
+            # continue pasa al siguiente movimiento.
+            continue
+        # shutil.move y no rename: también funciona entre discos distintos.
+        shutil.move(m.origen, m.destino)
+        # Cuenta un archivo movido más.
+        movidos += 1
+    # ↑ for: crea la carpeta destino y mueve cada archivo, sin pisar los que ya existen.
+    # Devuelve cuántos se movieron.
+    return movidos
+# ↑ ejecutar: aplica el plan en el disco y devuelve cuántos archivos movió.`),
+      'ordenar/__main__.py': L(`
+# Cómo empezar: el punto de entrada. «python -m ordenar» ejecuta este archivo.
+# Lee los argumentos, muestra el plan y solo mueve si no es una simulación.
+# argparse lee los argumentos de la línea de comandos.
+import argparse
+# Path, para convertir el argumento en una ruta.
+from pathlib import Path
+
+# La capa que mueve de verdad.
+from ordenar.ejecutar import ejecutar
+# La capa que planifica.
+from ordenar.plan import planificar
+
+# argparse en vez de leer sys.argv a mano: valida y genera la ayuda (--help).
+parser = argparse.ArgumentParser(description="Ordena una carpeta por tipo de archivo.")
+# El primer argumento es la carpeta, convertida en Path.
+parser.add_argument("carpeta", type=Path)
+# store_true: --simular no lleva valor; si aparece, vale True.
+parser.add_argument("--simular", action="store_true", help="muestra el plan sin mover nada")
+# Lee lo que se escribió en la terminal.
+args = parser.parse_args()
+
+# expanduser convierte «~» en tu carpeta personal.
+plan = planificar(args.carpeta.expanduser())
+# Recorre el plan para mostrarlo.
+for m in plan:
+    # Muestra el nombre del archivo y la carpeta adonde iría.
+    print(f"{m.origen.name} -> {m.destino.parent.name}/")
+
+# Primero se mira, después se hace: el mismo plan, ahora de verdad.
+if args.simular:
+    # En simulación solo cuenta cuántos se moverían.
+    print(f"Simulación: {len(plan)} archivos se moverían.")
+# Si no es una simulación:
+else:
+    # Mueve de verdad y muestra cuántos movió.
+    print(f"Movidos: {ejecutar(plan)} archivos.")
+# ↑ if/else: con --simular solo cuenta los archivos; sin él, los mueve de verdad.`)
     },
     conceptos: {
       'notas/01-diccionarios.md': ['diccionarios', 'funciones'],

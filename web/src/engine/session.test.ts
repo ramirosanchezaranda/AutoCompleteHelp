@@ -15,9 +15,11 @@ function typeAll(s: ReturnType<typeof start>) {
 }
 
 describe('Completamos juntos (web)', () => {
-  it('los comentarios avanzan solos: empieza en el primer carácter de código', () => {
+  it('los comentarios también se escriben: empieza en el primer comentario', () => {
     const s = start('src/gasto.ts');
-    expect(s.text.slice(s.pos, s.pos + 6)).toBe('export');
+    expect(s.text.slice(s.pos, s.pos + 6)).toBe('// Cóm');
+    const solo = startSession({ path: 'src/gasto.ts', instruction: 'x', text: s.text, concepts: [], insertAt: 0, typeComments: false });
+    expect(solo.text.slice(solo.pos, solo.pos + 6)).toBe('export');
     // Solo se muestra la línea actual (con sus comentarios), no el resto.
     expect(s.text.slice(0, s.shown)).not.toContain('interface Gasto');
   });
@@ -28,12 +30,19 @@ describe('Completamos juntos (web)', () => {
     s = feed(s, 'X');
     expect(s.pos).toBe(pos);
     expect(s.errors).toBe(1);
-    expect(viewOf(s).hint).toBe('esperaba «e»');
+    expect(viewOf(s).hint).toBe('esperaba «/»');
   });
 
   it('acentos tolerantes: «e» vale por «é»', () => {
     const s = startSession({ path: 'notas/a.md', instruction: 'x', text: 'Qué', concepts: [], insertAt: 0 });
     expect(isDone(feed(feed(feed(s, 'Q'), 'u'), 'e'))).toBe(true);
+  });
+
+  it('JSON: los comentarios se escriben y cada línea tiene el suyo', () => {
+    const code = lessonCode('typescript-gastos', 'package.json')!;
+    const s = startSession({ path: 'package.json', instruction: 'x', text: code.text, concepts: [], insertAt: 0 });
+    expect(s.text.slice(s.pos, s.pos + 2)).toBe('//');
+    expect(typeAll(s).errors).toBe(0);
   });
 
   it('Enter muestra la línea siguiente y el ↑ aparece al cerrar el bloque', () => {
@@ -54,9 +63,10 @@ describe('Completamos juntos (web)', () => {
     expect(s.text[s.pos - 1]).not.toBe('e');
   });
 
-  it('teoría: las líneas > avanzan solas y el título se escribe', () => {
+  it('teoría: las explicaciones > también se escriben, antes del título', () => {
     const code = lessonCode('typescript-gastos', 'notas/01-tipos.md')!;
     const s = startSession({ path: 'notas/01-tipos.md', instruction: 'x', text: code.text, concepts: [], insertAt: 0 });
-    expect(s.text.slice(s.pos).startsWith('## Tipos en TypeScript')).toBe(true);
+    expect(s.text.slice(s.pos).startsWith('>')).toBe(true);
+    expect(s.text.slice(s.pos, s.text.indexOf('## Tipos en TypeScript'))).not.toContain('\n\n');
   });
 });

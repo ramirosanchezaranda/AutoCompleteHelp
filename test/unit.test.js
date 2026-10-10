@@ -164,8 +164,8 @@ const pm = T.autoMask(py, T.commentPrefixes('python'));
 eq('python: # avanza solo', py.slice(T.skipAuto(pm, 0), T.skipAuto(pm, 0) + 4), 'with');
 const { buildDictationSystemPrompt } = require(out + 'prompts.js');
 const dp = buildDictationSystemPrompt('Objetivo: e-commerce completa, explica cada código que agregues y por qué elegiste esa metodología', true);
-eq('prompt de dictado: comentarios antes de cada bloque, metodología y objetivo',
-  [dp.includes('ANTES de cada bloque'), dp.includes('METODOLOGÍA'), dp.includes('e-commerce completa'), dp.includes('@ach-concepts')], [true, true, true, true]);
+eq('prompt de dictado: un comentario arriba de CADA línea (también se escribe), metodología y objetivo',
+  [dp.includes('CADA línea de código lleva JUSTO ENCIMA su propio comentario') && dp.includes('TAMBIÉN ESCRIBE LOS COMENTARIOS'), dp.includes('METODOLOGÍA'), dp.includes('e-commerce completa'), dp.includes('@ach-concepts')], [true, true, true, true]);
 
 console.log('— fase 3: huecos (solo en los repasos)');
 const gaps = T.chooseGaps(dict, mask, 0.4, 7);
@@ -212,7 +212,7 @@ eq('tras Enter aparece el comentario y la línea siguiente', cj.slice(T.revealEn
 const p2 = T.typeKeys(cj, cjm, p1, 'const app = express();\n').pos;
 eq('al terminar se muestra el comentario final', [p2, T.revealEnd(cj, p2)], [cj.length, cj.length]);
 eq('a mitad de línea, lo visible llega hasta el fin de esa línea', T.revealEnd(cj, p0 + 6), cj.indexOf('\n', p0));
-eq('prompt: una línea a la vez y la arquitectura en el primer comentario', [dp.includes('UNA línea de código a la vez'), dp.includes('ARQUITECTURA')], [true, true]);
+eq('prompt: una línea a la vez y la arquitectura en el primer comentario', [dp.includes('UNA línea a la vez'), dp.includes('ARQUITECTURA')], [true, true]);
 
 console.log('— arquitectura y diseño de sistemas');
 const A = require(out + 'architectures.js');
@@ -353,10 +353,19 @@ eq('lecciones: cada archivo del plan tiene su código y su tema existe en el cat
 const typeable = /^[\x20-\x7E\náéíóúÁÉÍÓÚñÑüÜ¿¡]*$/;
 const badChars = [];
 for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) {
-  const text = lines.join('\n'), mask = T.autoMask(text, T.commentPrefixes(require(out + 'instructions.js').languageForPath(f) || 'json'));
+  const text = lines.join('\n'), mask = T.autoMask(text, T.commentPrefixes(require(out + 'instructions.js').languageForPath(f) || 'json'), true);
   for (let i = 0; i < text.length; i++) if (!mask[i] && !typeable.test(text[i])) badChars.push(f + ':' + text[i]);
 }
-eq('lecciones: todo lo que se teclea se puede escribir con un teclado en español', badChars, []);
+eq('lecciones: todo lo que se teclea (comentarios incluidos) se puede escribir con un teclado en español', badChars, []);
+{
+  const C = require(out + 'core/comments.js');
+  const sin = [];
+  for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) for (const i of C.uncommentedLines(lines.join('\n'), f, { strict: true })) sin.push(`${l.id} ${f}:${i + 1}`);
+  eq('lecciones: cada línea de código tiene su comentario justo arriba (cierres, imports y JSON incluidos)', sin, []);
+  eq('regla de comentarios: detecta la línea sin comentario', C.uncommentedLines('// suma\nconst a = 1;\nconst b = 2;', 'a.js'), [3]);
+  eq('regla de comentarios: en modo flexible los cierres no cuentan', [C.uncommentedLines('// abre\nif (a) {\n  // hace\n  b();\n}', 'a.js', { strict: false }), C.uncommentedLines('// abre\nif (a) {\n  // hace\n  b();\n}', 'a.js')], [[], [5]]);
+  eq('JSON: los comentarios // se escriben pero se quitan al guardar', [C.textForSave('package.json', '// abre\n{\n  // nombre\n  "name": "x"\n}'), C.textForSave('tsconfig.json', '// a\n{}')], ['{\n  "name": "x"\n}', '// a\n{}']);
+}
 const lpfLesson = LS.lessonProjectFile(LS.getLesson('python-descargas'));
 const reread = parseProjectFile(JSON.stringify(lpfLesson));
 eq('lección → autocompletehelp.json (con «leccion», entorno y plan tipado)', [reread.leccion, reread.aprender.nivel, reread.plan.length, reread.plan[2].tipo, reread.plan[4].tipo, !!reread.entorno.testear], ['python-descargas', 'lección sin IA', 11, 'teoria', 'test', true]);
@@ -371,7 +380,7 @@ const firstTyped = T.skipAuto(nm, 0);
 eq('apunte de teoría: las citas (>) avanzan solas y se escribe el título', note.slice(firstTyped, note.indexOf('\n', firstTyped)), '## Tipos en TypeScript');
 const atDef = note.indexOf('Un tipo dice');
 eq('apunte de teoría: la explicación que se dicta es la cita de arriba', T.explanationAt(note, atDef, md).startsWith('Un tipo describe la forma'), true);
-eq('apunte de teoría: dentro del bloque de código, la cita de arriba sigue siendo la explicación', T.explanationAt(note, note.indexOf('let monto'), md).startsWith('Los tipos básicos'), true);
+eq('apunte de teoría: dentro del bloque de código, la explicación es el comentario de la línea', T.explanationAt(note, note.indexOf('let monto'), md), 'monto solo acepta números: number.');
 eq('cada lección tiene apuntes de teoría antes del código o del primer ejercicio', LS.LESSONS.map((l) => l.plan.findIndex((st) => st.tipo === 'teoria') < l.plan.findIndex((st) => st.tipo === 'codigo' || st.tipo === 'ejercicio')), LS.LESSONS.map(() => true));
 const P2 = require(out + 'prompts.js');
 eq('un apunte .md que termina en un bloque de código no pierde su ``` final', P2.sanitizeCompletion('> idea\n```ts\nlet a = 1;\n```', ''), '> idea\n```ts\nlet a = 1;\n```');
@@ -387,7 +396,7 @@ const tsCode = LS.lessonCode('typescript-gastos', 'src/gastos.ts').text;
 const afterTotal = tsCode.indexOf('export function porCategoria');
 eq('al empezar el bloque siguiente, se muestra el resumen del que cerraste', T.summaryAt(tsCode, afterTotal, js), 'total: suma los montos de todos los gastos; sin gastos devuelve 0.');
 eq('el resumen (↑) no se confunde con la explicación de lo que viene', T.explanationAt(tsCode, afterTotal, js).startsWith('Partial<Record'), true);
-eq('dentro de una función, un ↑ de un bloque interno no corta la explicación', T.explanationAt(tsCode, tsCode.indexOf('  return resultado'), js).startsWith('?? 0'), true);
+eq('dentro de una función, el ↑ de un bloque interno no tapa el comentario de la línea', T.explanationAt(tsCode, tsCode.indexOf('  return resultado'), js), 'Devuelve las sumas por categoría.');
 eq('lejos de un cierre no hay resumen', T.summaryAt(tsCode, tsCode.indexOf('return gastos.reduce'), js), '');
 const unsummarized = [];
 for (const l of LS.LESSONS) for (const [f, lines] of Object.entries(l.archivos)) {
@@ -432,7 +441,7 @@ console.log('— cursos de teoría y ejercicios');
   eq('cada ejercicio tiene antes su test y su apunte', cursos.map((l) => l.plan.every((st, i) => st.tipo !== 'ejercicio' || (l.plan[i - 1].tipo === 'test' && l.plan[i - 2].tipo === 'teoria'))), cursos.map(() => true));
   const sol = LS.lessonCode('fundamentos-js', 'ejercicios/02-condicionales.js').text;
   const starter = EX.exerciseStarter(sol, 'ejercicios/02-condicionales.js');
-  eq('enunciado: los comentarios del principio y las funciones vacías', [starter.startsWith('// Ejercicio 1: clasificarEdad'), starter.includes('export function clasificarEdad(edad) {\n  // tu código\n}'), starter.includes('return')], [true, true, false]);
+  eq('enunciado: los comentarios del principio y las funciones vacías', [starter.startsWith('// Ejercicio 1: clasificarEdad'), starter.includes('export function clasificarEdad(edad) {\n  // Tu código va acá: una línea de comentario y abajo su línea de código.\n// Cierra la función clasificarEdad.\n}'), starter.includes('// Regla: arriba de cada línea'), starter.includes('return')], [true, true, true, false]);
   eq('pistas: los comentarios de la solución, sin enunciado ni resúmenes', EX.exerciseHints(sol, 'x.js').map((h) => h.slice(0, 22)), ['empieza por el tramo m', 'compara a con b. Si a ']);
   const proj = LS.lessonProjectFile(LS.getLesson('logica-js'));
   const ent = require(out + 'scaffold.js').scaffoldEntries(proj, undefined, 'logica');

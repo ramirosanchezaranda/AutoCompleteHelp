@@ -22,7 +22,11 @@ En «Quiero aprender», cada tema se puede aprender **con un proyecto** o **con 
 - **Sin IA**: cuatro cursos escritos y verificados con Vitest (con las soluciones, todo verde; con los enunciados, todo rojo), en [`src/core/lessonsCursos.ts`](../src/core/lessonsCursos.ts): Fundamentos de programación, Lógica para programar, Matemáticas para programar y Diseño con JavaScript.
 - **Con IA**: cualquier tema de cualquier sección. La IA arma el temario con el mismo formato.
 
-Cada tema son tres pasos que se completan escribiendo: el apunte (`notas/`), los tests y el ejercicio (`tipo: "ejercicio"`). El ejercicio arranca con el enunciado y las funciones vacías y se resuelve escribiendo libre. Las pistas salen de los comentarios de la solución (o de la IA, sin dar la solución). La solución guiada se escribe línea por línea. Cuando sus tests pasan a verde, el ejercicio queda resuelto.
+Cada tema son tres pasos que se completan escribiendo: el apunte (`notas/`), los tests y el ejercicio (`tipo: "ejercicio"`). El ejercicio arranca con el enunciado y las funciones vacías y se resuelve escribiendo libre. Las pistas salen de los comentarios de la solución (o de la IA, sin dar la solución). La solución guiada se escribe línea por línea. Cuando sus tests pasan a verde **y cada línea de la solución tiene su comentario arriba**, el ejercicio queda resuelto; si falta alguno, se marca la línea.
+
+**Regla de los comentarios, en todo (lecciones, proyectos, ideas, cursos y lo que genera la IA):** cada línea de código lleva justo arriba un comentario que dice qué hace, y ese comentario también se escribe. En JSON se escriben y se quitan al guardar.
+
+**Teclado del celular:** lo que escribe el teclado se compara con lo que ya se dictó, así que los teclados que componen palabras enteras (Gboard, iOS) o las autocorrigen no duplican letras ni suman errores fantasma.
 
 ## Desarrollo
 

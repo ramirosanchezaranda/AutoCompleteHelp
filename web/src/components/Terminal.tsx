@@ -1,3 +1,4 @@
+import { textForSave } from '@core/comments';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { environmentSteps, ProjectFile } from '@core/project';
 import { runProgram, runTests, TestSummary } from '../runtime/runner';
@@ -69,7 +70,7 @@ export const Terminal = forwardRef<TerminalHandle, Props>(function Terminal(prop
 
   const scripts = (): Record<string, string> => {
     try {
-      return JSON.parse(files.current['package.json'] ?? '{}').scripts ?? {};
+      return JSON.parse(textForSave('package.json', files.current['package.json'] ?? '{}')).scripts ?? {};
     } catch {
       return {};
     }

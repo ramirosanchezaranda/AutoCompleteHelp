@@ -20,12 +20,14 @@ export function commentPrefixes(languageId: string): string[] {
   if (['sql', 'lua', 'haskell', 'ada'].includes(languageId)) {
     return ['--'];
   }
+  // HTML: también los comentarios de su CSS (/* */) y de sus scripts (//).
   if (['html', 'xml', 'vue-html', 'svg'].includes(languageId)) {
-    return ['<!--'];
+    return ['<!--', '/*', '//'];
   }
-  // Apuntes de teoría: las citas (>) son la explicación que se lee; lo demás se escribe.
+  // Apuntes de teoría: las citas (>) son la explicación; dentro de los ejemplos
+  // de código, sus comentarios (//) explican cada línea.
   if (languageId === 'markdown') {
-    return ['>', '<!--'];
+    return ['>', '<!--', '//'];
   }
   if (['css', 'scss', 'less'].includes(languageId)) {
     return ['/*', '*'];
@@ -40,8 +42,19 @@ function isCommentLine(line: string, prefixes: string[]): boolean {
 }
 
 /**
+ * ¿Se puede escribir con un teclado en español? Las letras con tilde o diéresis
+ * valen por su letra base (base()); lo que no está en el teclado (« » — … ↑ →)
+ * avanza solo.
+ */
+export function isTypeable(ch: string): boolean {
+  return ch === '\n' || ch === '\t' || /^[\x20-\x7E\u00F1\u00D1\u00BF\u00A1]$/.test(base(ch));
+}
+
+/**
  * Para cada carácter del texto dictado: true si avanza solo (no se teclea).
- * Se calcula una vez por dictado.
+ * Se calcula una vez por dictado. Con typeComments, los comentarios también se
+ * escriben: es la regla de AutoCompleteHelp (cada línea con su comentario, y el
+ * comentario se escribe). Lo que no está en el teclado avanza solo siempre.
  */
 export function autoMask(text: string, prefixes: string[], typeComments = false): boolean[] {
   const mask = new Array<boolean>(text.length).fill(false);
@@ -56,6 +69,11 @@ export function autoMask(text: string, prefixes: string[], typeComments = false)
     const autoUntil = whole ? (nl < 0 ? end : end + 1) : start + (line.length - line.trimStart().length);
     for (let i = start; i < autoUntil; i++) {
       mask[i] = true;
+    }
+    for (let i = autoUntil; i < end; i++) {
+      if (!isTypeable(text[i])) {
+        mask[i] = true;
+      }
     }
     if (nl < 0) {
       break;

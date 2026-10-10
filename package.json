@@ -2,7 +2,7 @@
   "name": "autocompletehelp",
   "displayName": "AutoCompleteHelp",
   "description": "Construye tus proyectos o aprende cualquier tema —lenguajes, nube, patrones, IA— con proyectos que la IA te recomienda: dicta cada línea en gris y tú la escribes, con explicaciones, arquitectura, tests y Docker. Multi-LLM.",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "publisher": "ramirosanchezaranda",
   "license": "MIT",
   "repository": {
@@ -246,8 +246,8 @@
         },
         "autocompletehelp.dictation.typeComments": {
           "type": "boolean",
-          "default": false,
-          "description": "En el dictado, escribir también los comentarios. Por defecto avanzan solos: son la explicación, se leen."
+          "default": true,
+          "description": "En el dictado, escribir también los comentarios: cada línea de código tiene el suyo arriba y escribirlo es entender qué hace. Si lo desactivas, los comentarios avanzan solos."
         },
         "autocompletehelp.provider": {
           "type": "string",
