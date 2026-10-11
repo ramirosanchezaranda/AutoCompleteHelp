@@ -3,6 +3,7 @@ import { START_BOXES } from '@core/start';
 import type { StartKind } from '@core/start';
 import { useApp } from '../store/app';
 import { listProjects, ProjectSummary } from '../lib/projectIndex';
+import { LearnCatalog } from './LearnCatalog';
 
 /** Empezar: tres caminos, cada uno con su caja de texto. */
 export function Home() {
@@ -98,6 +99,14 @@ export function Home() {
         )}
         <p className="home-foot">En los tres caminos todo se completa escribiendo: el código y la teoría.</p>
       </div>
+      {kind === 'learn' && (
+        <LearnCatalog
+          onPick={(t, modo) => {
+            setLearn('learn', { text: t, ...(modo ? { modo } : {}) }, 'text');
+            setStep('learn', 2);
+          }}
+        />
+      )}
     </div>
   );
 }

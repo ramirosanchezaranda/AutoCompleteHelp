@@ -6,6 +6,12 @@ Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
 ### Añadido
 
+- **Catálogo «Qué puedes aprender» a la vista**, en la portada (pestaña Aprender) y
+  en el paso Tema, en computadora y celular: las 9 lecciones listas sin IA como
+  tarjetas (teoría y ejercicios primero, con duración y dificultad), los 56 temas
+  en sus 10 áreas (abiertas en pantallas anchas, plegables con vista previa en el
+  celular) y un buscador; si un tema no está, ofrece aprenderlo con IA.
+
 - **Tema nuevo en «Quiero aprender»: Efectos WebGPU por capas** con la librería
   [`shaders`](https://github.com/shader-effects-inc/shaders) (Shader Effects, Inc., MIT desde la 4).
   La IA arma el plan con la versión fija (4.0.4), detecta WebGPU antes de dibujar,

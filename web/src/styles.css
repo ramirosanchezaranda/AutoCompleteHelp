@@ -163,7 +163,7 @@ a { color: var(--accent); }
 .main { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ---------- Inicio ---------- */
-.home { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; padding: 20px 16px 24px; }
+.home { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 28px; padding: 20px 16px 24px; }
 .home-inner { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 14px; }
 .home h1 { font-size: clamp(24px, 6vw, 34px); line-height: 1.12; margin: 4px 0 0; letter-spacing: -0.02em; font-weight: 700; }
 .home .lead { margin: 0; color: var(--ink-2); max-width: 54ch; }
@@ -196,8 +196,6 @@ a { color: var(--accent); }
 }
 .chip:hover { border-color: var(--ink-3); }
 .chip[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.chip.lesson::before { content: '📗 '; }
-.chip.curso::before { content: '📘 '; }
 .home-foot { color: var(--ink-3); font-size: 14px; margin: 0; }
 .resume { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--rule-strong); border-radius: var(--radius); }
 .resume .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -404,3 +402,35 @@ a { color: var(--accent); }
 .dbar.exercise .ex-head { font-size: 15px; line-height: 1.4; }
 .dbar.exercise .ex-head b { color: var(--amber); }
 .dbar.exercise .why { max-height: none; }
+
+/* Catálogo: qué se puede aprender (en la portada y en el paso Tema). */
+.catalog { width: 100%; max-width: 1080px; display: flex; flex-direction: column; gap: 12px; }
+.catalog-head h2 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.catalog-head p { color: var(--ink-2); margin: 4px 0 10px; max-width: 70ch; }
+.catalog-search { width: 100%; max-width: 520px; min-height: 44px; font: inherit; padding: 8px 12px; border: 1px solid var(--rule-strong); border-radius: var(--radius); background: var(--sheet); color: var(--ink); }
+.catalog h3 { font-size: 16px; margin: 10px 0 0; }
+.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.lesson-card { display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule-strong); border-radius: var(--radius); padding: 12px 14px 12px 18px; cursor: pointer; box-shadow: inset 4px 0 0 var(--teal); }
+.lesson-card.curso { box-shadow: inset 4px 0 0 var(--hl-type); }
+.lesson-card:hover { border-color: var(--ink-3); }
+.lesson-card[aria-pressed='true'] { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -2px; }
+.lesson-card .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--teal); }
+.lesson-card.curso .kind { color: var(--hl-type); }
+.lesson-card .t { font-weight: 700; line-height: 1.25; }
+.lesson-card .d { color: var(--ink-2); font-size: 14px; line-height: 1.35; }
+.lesson-card .meta { color: var(--ink-3); font-size: 13px; margin-top: auto; padding-top: 4px; }
+.area-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; align-items: start; }
+.area { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); }
+.area-head { width: 100%; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; text-align: left; font: inherit; color: var(--ink); background: none; border: 0; padding: 12px 14px; min-height: 44px; cursor: pointer; border-radius: var(--radius); }
+.area-head .t { font-weight: 700; }
+.area-head .n { color: var(--ink-3); font-size: 14px; white-space: nowrap; }
+.area-head .peek { flex-basis: 100%; color: var(--ink-2); font-size: 14px; line-height: 1.35; }
+.area .chips { padding: 0 12px 12px; }
+.chip .badge { margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--teal-bg); color: var(--teal); vertical-align: 1px; }
+.chip[aria-pressed='true'] .badge { background: var(--accent-ink); }
+@media (max-width: 599px) {
+  .catalog-head h2 { font-size: 20px; }
+  .lesson-grid { grid-template-columns: 1fr; gap: 8px; }
+  .lesson-card { padding: 10px 12px 10px 16px; }
+  .area-grid { grid-template-columns: 1fr; gap: 8px; }
+}

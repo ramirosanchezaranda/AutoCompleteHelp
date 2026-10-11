@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LEARN_TOPICS, TOPIC_KINDS } from '@core/learnCatalog';
 import {
   LearnLevel,
   LearnSize,
@@ -20,6 +19,7 @@ import { useApp } from '../store/app';
 import { MissingKeyError, hasAI, llm } from '../lib/ai';
 import { createFromLesson, createProject } from '../lib/projects';
 import { Markdown } from './Markdown';
+import { LearnCatalog } from './LearnCatalog';
 
 type K = 'learn' | 'recommend';
 
@@ -52,34 +52,7 @@ export function TopicStep() {
       {f.text.trim() && (
         <p className="help">{match ? `Se usa la semilla del catálogo: ${match.nombre} (${match.stack}).` : 'No está en el catálogo: la IA lo diseña desde cero.'} En el paso Proyecto eliges cómo aprenderlo: con un proyecto, o con teoría y ejercicios.</p>
       )}
-      <div className="group-title">Teoría y ejercicios sin IA</div>
-      <div className="chips">
-        {LESSONS.filter((l) => l.tipo === 'curso').map((l) => (
-          <button key={l.id} className="chip curso" aria-pressed={f.text === l.tema && f.modo === 'curso'} onClick={() => pick(l.tema, 'curso')} title={l.titulo}>
-            {l.tema}
-          </button>
-        ))}
-      </div>
-      <div className="group-title">Proyectos sin IA</div>
-      <div className="chips">
-        {LESSONS.filter((l) => l.tipo !== 'curso').map((l) => (
-          <button key={l.id} className="chip lesson" aria-pressed={f.text === l.tema && f.modo !== 'curso'} onClick={() => pick(l.tema, 'proyecto')} title={l.titulo}>
-            {l.tema}: {l.titulo}
-          </button>
-        ))}
-      </div>
-      {TOPIC_KINDS.map((k) => (
-        <div key={k.tipo}>
-          <div className="group-title">{k.titulo}</div>
-          <div className="chips" style={{ marginTop: 6 }}>
-            {LEARN_TOPICS.filter((t) => t.tipo === k.tipo).map((t) => (
-              <button key={t.id} className="chip" aria-pressed={match?.id === t.id && f.text === t.nombre} onClick={() => pick(t.nombre)} title={t.stack}>
-                {t.nombre}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+      <LearnCatalog selected={{ text: f.text, modo: f.modo }} onPick={pick} />
     </>
   );
 }
