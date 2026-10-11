@@ -228,6 +228,13 @@ export const LEARN_TOPICS: LearnTopic[] = [
     notas: CREATIVO + ' Comprobar soporte (navigator.gpu) y explicar qué navegadores lo tienen; adaptador, dispositivo, pipeline y buffers, cada uno en su paso.'
   },
   {
+    id: 'shaders-capas', nombre: 'Efectos WebGPU por capas (librería Shaders)', tipo: 'creativo',
+    palabras: ['shaders.com', 'shader effects', 'libreria shaders', 'efectos webgpu', 'shaders webgpu', 'flowinggradient', 'fractalnoise', 'createshader', 'efectos de shader', 'fondos animados'],
+    stack: 'Shaders 4.0.4 (WebGPU) + Vite + TypeScript + Vitest', arquitectura: 'componentes',
+    ideas: ['un fondo vivo por capas para una landing', 'hero con degradado líquido que sigue al mouse', 'transición entre secciones con un efecto de la librería'],
+    notas: CREATIVO + ' Librería «shaders» (npm, Shader Effects, Inc.), MIT desde la 4: fijar "shaders": "4.0.4" (las 2.x y 3.x tenían licencia propietaria y la API cambia rápido). Es SOLO WebGPU, sin respaldo WebGL: sin soporte el lienzo queda transparente y no avisa, así que primero getWebGPUSupport() (de "shaders/js") y siempre un degradado de CSS debajo del lienzo. En JS vanilla: createShader(canvas, { components: [{ type, id, props }] }, { disableTelemetry: true, onError }); la escena (lista de capas) va en un módulo puro con tests. Props comunes de capa: blendMode, opacity, visible, maskSource (id de otra capa) y maskType (alpha, luminance…). update(id, props) cambia uniforms sin recompilar; destroy() al salir. Animar sin código: { type: "auto-animate", … } o { type: "mouse-position", smoothing } en una prop. Efecto propio: defineShader + wgsl de "shaders/std" (uv, aspect y las props existen en el cuerpo). prefers-reduced-motion no lo maneja la librería: speed y twinkle en 0 y sin capas de cursor. Funciona en Chrome/Edge 113+, Safari 26 y Firefox en Windows, solo en https o localhost. El editor visual y los presets de shaders.com no son código abierto: no los uses en el plan.'
+  },
+  {
     id: 'svg-animacion', nombre: 'SVG e ilustración animada', tipo: 'creativo',
     palabras: ['svg', 'animar svg', 'ilustracion animada', 'path', 'morphing', 'trazos'],
     stack: 'SVG + GSAP 3 + Vite + TypeScript', arquitectura: 'componentes',

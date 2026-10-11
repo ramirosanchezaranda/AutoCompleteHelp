@@ -83,6 +83,44 @@ No hace falta: es una página estática.
 - Mover el sol con el mouse (un uniform más)
 - Reproducir un shader de Shadertoy línea por línea`;
 
+const SHADERS_GUIA = `## Qué vas a construir
+Un fondo vivo para una página: un degradado, una seda líquida, puntos que titilan, un halo de luz que sigue al mouse y la estela del cursor. Lo dibuja la GPU con la librería Shaders, capa por capa. Un control cambia el ángulo en vivo.
+
+## Qué vas a aprender
+- pensar una escena como capas (generadores y efectos), como en Figma
+- uniforms: cambiar valores en vivo sin recompilar
+- tiempo, coordenadas uv, ruido y fBm, modos de mezcla y máscaras
+- detectar WebGPU y dejar un respaldo de CSS
+- accesibilidad: prefers-reduced-motion y el fondo como decoración
+- escribir un efecto propio en WGSL con defineShader
+
+## Antes de empezar
+- Node.js 22 LTS y un navegador con WebGPU: Chrome o Edge actuales, Safari 26, o Firefox en Windows. La página tiene que abrirse en https o en localhost.
+- \`npm install shaders@4.0.4 && npm install -D vite typescript vitest\`.
+- La versión va fija: desde la 4 la librería es MIT (las 2.x y 3.x tenían licencia propietaria) y su API todavía cambia rápido.
+
+## Cómo está organizado
+escena.ts arma la escena como datos (una lista de capas) con funciones puras y testeadas; halo.ts es el efecto propio en WGSL; main.ts es el único que toca la GPU: pregunta por WebGPU, crea el shader y conecta el control.
+
+## Paso a paso
+1. package.json y tsconfig.json: el proyecto, con la versión de Shaders fija.
+2. notas/01-capas.md e index.html: qué es una escena por capas, y la página con su respaldo de CSS.
+3. notas/02-uniforms.md, src/escena.ts y su test: uniforms, ruido y máscaras, y la escena como datos.
+4. notas/03-wgsl.md y src/halo.ts: tu propio efecto en WGSL.
+5. src/main.ts y npx vite: verlo, mover el mouse y el control, y variar un valor por vez.
+
+## Tests
+\`npx vitest run\` prueba el control, el orden de las capas, la máscara, el movimiento reducido y los mensajes de soporte, sin GPU. Lo visual se ve en el navegador con \`npx vite\`.
+
+## Docker
+No hace falta: es una página estática.
+
+## Cómo seguir
+- Cambiar FlowingGradient por FractalNoise o Aurora y comparar
+- Animar una prop sin código: { type: "auto-animate", mode: "ping-pong", outputMin: 0.4, outputMax: 1, speed: 0.6 }
+- Probar la misma escena en React con shaders/react: <Shader> y una etiqueta por capa
+- Armar una escena en el editor de shaders.com y comparar el código que exporta`;
+
 export const LESSONS_CREATIVAS: Lesson[] = [
   {
     id: 'gsap-tarjetas',
@@ -815,6 +853,517 @@ requestAnimationFrame(dibujar);`)
       'notas/02-uniforms.md': ['uniforms'],
       'src/webgl.ts': ['webgl2', 'compilar shaders'],
       'src/main.ts': ['requestAnimationFrame', 'uniforms']
+    }
+  },
+  {
+    id: 'shaders-fondo-vivo',
+    tema: 'Efectos WebGPU por capas (Shaders)',
+    topicId: 'shaders-capas',
+    titulo: 'Un fondo vivo con Shaders',
+    dificultad: 'media',
+    duracion: '2 horas',
+    proyecto: 'un fondo animado por capas con la librería Shaders (WebGPU): degradado, seda líquida, puntos con máscara, un halo propio en WGSL y la estela del cursor; explica cada capa, los uniforms y el respaldo sin WebGPU',
+    stack: { resumen: 'Shaders 4.0.4 (WebGPU) + Vite + TypeScript + Vitest', lenguaje: 'TypeScript 5', framework: 'Shaders 4 + Vite 6', tests: 'Vitest' },
+    convenciones: ['ES modules', 'la escena como datos en src/escena.ts, pura y testeada', 'solo src/main.ts toca la GPU', 'versión fija de shaders (4.0.4)', 'detectar WebGPU y dejar un respaldo de CSS', 'respetar prefers-reduced-motion'],
+    arquitectura: 'componentes',
+    objetivos: ['escenas por capas', 'uniforms y tiempo', 'máscaras y modos de mezcla', 'respaldo sin WebGPU', 'un efecto propio en WGSL'],
+    entorno: {
+      instalar: [{ comando: 'npm install shaders@4.0.4 && npm install -D vite typescript vitest', explicacion: 'Shaders dibuja con WebGPU; Vite sirve la página y recarga al guardar; TypeScript y Vitest para escribir y probar.' }],
+      ejecutar: { comando: 'npx vite', explicacion: 'Abre http://localhost:5173 en Chrome, Edge o Safari 26 y mueve el mouse.' },
+      testear: { comando: 'npx vitest run', explicacion: 'Prueba la escena y los mensajes, sin GPU.' }
+    },
+    plan: [
+      { paso: 'Manifiesto del proyecto', tipo: 'config', archivo: 'package.json', concepto: 'versión fija de una librería' },
+      { paso: 'Configurar TypeScript', tipo: 'config', archivo: 'tsconfig.json', concepto: 'modo estricto con Vite' },
+      { paso: 'Apunte: capas y WebGPU', tipo: 'teoria', archivo: 'notas/01-capas.md', concepto: 'escenas por capas' },
+      { paso: 'La página y su respaldo', tipo: 'codigo', archivo: 'index.html', concepto: 'respaldo de CSS sin WebGPU' },
+      { paso: 'Apunte: uniforms, ruido y máscaras', tipo: 'teoria', archivo: 'notas/02-uniforms.md', concepto: 'uniforms' },
+      { paso: 'La escena como datos', tipo: 'codigo', archivo: 'src/escena.ts', concepto: 'capas, máscaras y movimiento reducido' },
+      { paso: 'Tests de la escena', tipo: 'test', archivo: 'src/escena.test.ts', concepto: 'testear sin GPU', verificar: 'npx vitest run' },
+      { paso: 'Apunte: tu efecto en WGSL', tipo: 'teoria', archivo: 'notas/03-wgsl.md', concepto: 'WGSL' },
+      { paso: 'El halo en WGSL', tipo: 'codigo', archivo: 'src/halo.ts', concepto: 'defineShader y smoothstep' },
+      { paso: 'Conectar la página con la GPU', tipo: 'codigo', archivo: 'src/main.ts', concepto: 'createShader y update' },
+      { paso: 'Verlo y variar un valor', tipo: 'comando', comando: 'npx vite', explicacion: 'Se ve el degradado con la seda, los puntos y el halo que sigue al mouse. Mueve el control del ángulo. Si dice «WebGPU: no», ves el respaldo de CSS: prueba en Chrome, Edge o Safari 26. Después cambia un valor por vez en src/escena.ts y compara.' }
+    ],
+    guia: SHADERS_GUIA,
+    archivos: {
+      'package.json': L(`
+// Abre el manifiesto. En JSON los comentarios no van: se quitan al guardar.
+{
+  // El nombre del proyecto.
+  "name": "fondo-vivo-con-shaders",
+  // La versión del proyecto.
+  "version": "1.0.0",
+  // "module": los archivos usan import y export.
+  "type": "module",
+  // Abre los scripts: atajos que se corren con npm run.
+  "scripts": {
+    // npm run dev abre la página con Vite y recarga al guardar.
+    "dev": "vite",
+    // npm run build arma la versión final para publicar.
+    "build": "vite build",
+    // npm test corre los tests una vez.
+    "test": "vitest run"
+  // Cierra los scripts.
+  },
+  // Abre las dependencias: lo que la página necesita para funcionar.
+  "dependencies": {
+    // Shaders, versión fija: desde la 4 es MIT y la API todavía cambia rápido.
+    "shaders": "4.0.4"
+  // Cierra las dependencias.
+  },
+  // Abre las dependencias de desarrollo: herramientas para escribir y probar.
+  "devDependencies": {
+    // TypeScript, para los tipos.
+    "typescript": "^5.9.3",
+    // Vite, el servidor de desarrollo.
+    "vite": "^6.4.4",
+    // Vitest, el corredor de tests.
+    "vitest": "^3.2.7"
+  // Cierra las dependencias de desarrollo.
+  }
+// Cierra el manifiesto.
+}`),
+      'tsconfig.json': L(`
+// Abre la configuración del compilador. tsconfig sí admite comentarios.
+{
+  // Abre las opciones del compilador.
+  "compilerOptions": {
+    // target: qué versión de JavaScript se genera.
+    "target": "ES2022",
+    // module: los archivos son módulos con import y export.
+    "module": "ESNext",
+    // moduleResolution: Bundler, como resuelve los imports Vite (también "shaders/js").
+    "moduleResolution": "Bundler",
+    // lib: conoce el JavaScript moderno y el DOM (la página).
+    "lib": ["ES2022", "DOM"],
+    // strict: el modo más estricto, el que más errores atrapa.
+    "strict": true,
+    // skipLibCheck: no revisa los tipos de las librerías, solo los tuyos.
+    "skipLibCheck": true,
+    // noEmit: solo revisa los tipos; Vite arma el código.
+    "noEmit": true
+  // Cierra las opciones.
+  },
+  // include: revisa los archivos de src.
+  "include": ["src"]
+// Cierra la configuración.
+}`),
+      'notas/01-capas.md': L(`
+> Apunte 1. Qué es Shaders y cómo piensa una escena. Todo se escribe, también las explicaciones.
+## Shaders: efectos por capas
+> Shaders (paquete npm "shaders", de Shader Effects, Inc.) trae unos 200 efectos listos que dibuja la GPU. Desde la versión 4 es código abierto, con licencia MIT.
+Shaders: unos 200 efectos que dibuja la GPU.
+> Un shader es un programa chico que corre una vez POR PÍXEL, todos a la vez, en la placa de video. Por eso puede animar millones de píxeles sin trabarse.
+Un shader corre una vez por píxel.
+> La segunda idea: las capas.
+## Capas, como en Figma
+> Un lienzo, varias capas. La primera queda al fondo y cada una se dibuja encima de la anterior.
+La primera capa queda al fondo.
+> Hay dos tipos: los generadores dibujan algo (un degradado, puntos); los efectos cambian lo que ya está dibujado (una distorsión, un desenfoque).
+Generadores dibujan; efectos modifican.
+\`\`\`js
+// Crea el shader en un lienzo, con una lista de capas.
+const shader = await createShader(lienzo, {
+  // Abre la lista de capas, de abajo hacia arriba.
+  components: [
+    // La base: un degradado del azul noche al violeta.
+    { type: "LinearGradient", id: "degrade", props: { colorA: "#0f172a", colorB: "#7c3aed" } },
+    // Encima: la estela que deja el mouse.
+    { type: "CursorTrail", id: "estela", props: {} },
+  // Cierra la lista.
+  ],
+// Cierra la llamada.
+});
+\`\`\`
+> La tercera idea: solo WebGPU.
+## Solo WebGPU
+> La librería usa únicamente WebGPU: no tiene plan B con WebGL. Sin WebGPU el lienzo queda transparente y no avisa nada.
+Sin WebGPU, el lienzo queda transparente.
+> Por eso siempre: primero preguntas si hay WebGPU, y debajo del lienzo dejas un degradado de CSS de respaldo.
+Primero preguntar; siempre un respaldo de CSS.
+> WebGPU funciona en Chrome y Edge actuales, en Safari 26 y en Firefox de Windows, y solo en páginas https o en localhost.
+Chrome, Edge, Safari 26, Firefox en Windows; https.`),
+      'index.html': L(`
+<!-- Cómo empezar: primero la página y su texto. El fondo animado es decoración: sin él, todo se lee igual. -->
+<!doctype html>
+<!-- El documento, en español. -->
+<html lang="es">
+  <!-- La cabecera: datos de la página que no se ven. -->
+  <head>
+    <!-- utf-8: para que las tildes y la ñ se vean bien. -->
+    <meta charset="utf-8">
+    <!-- viewport: el ancho de la página es el de la pantalla (celulares). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- El título de la pestaña. -->
+    <title>Un fondo vivo con Shaders</title>
+    <!-- Estilos: el lienzo detrás, el texto encima y un degradado CSS de respaldo. -->
+    <style>
+      /* El cuerpo: sin márgenes, letra del sistema y texto claro. */
+      body { margin: 0; font-family: system-ui, sans-serif; color: #f5f3ff; background: #0f172a; }
+      /* El escenario: llena la pantalla. Su degradado CSS es el respaldo si no hay WebGPU. */
+      .escenario { position: relative; min-height: 100vh; display: grid; place-items: center; overflow: hidden; background: linear-gradient(135deg, #0f172a, #7c3aed); }
+      /* El lienzo: cubre el escenario. Si no dibuja queda transparente y se ve el respaldo. */
+      #fondo { position: absolute; inset: 0; width: 100%; height: 100%; }
+      /* El contenido: encima del lienzo, en una caja oscura para que el texto contraste. */
+      .contenido { position: relative; max-width: 30rem; margin: 1rem; padding: 1.5rem; border-radius: 16px; background: rgb(15 23 42 / 0.65); }
+      /* El estado: más chico y suave. */
+      #estado { font-size: 0.9rem; opacity: 0.85; }
+      /* Cierra los estilos: la etiqueta de abajo termina el CSS. */
+    </style>
+  <!-- Cierra la cabecera. -->
+  </head>
+  <!-- El cuerpo: lo que se ve. -->
+  <body>
+    <!-- main: el escenario con el fondo y el contenido. -->
+    <main class="escenario">
+      <!-- El lienzo donde dibuja la GPU. aria-hidden: es decoración, un lector de pantalla no lo anuncia. -->
+      <canvas id="fondo" aria-hidden="true"></canvas>
+      <!-- El contenido, encima del fondo. -->
+      <section class="contenido">
+        <!-- El título. -->
+        <h1>Un fondo vivo</h1>
+        <!-- Qué es lo que se ve. -->
+        <p>Capas que dibuja la GPU, una encima de otra, como en Figma. Mueve el mouse.</p>
+        <!-- La etiqueta del control: dice qué cambia. -->
+        <label for="angulo">Ángulo del degradado</label>
+        <!-- El control: de 0 a 100; main.ts lo convierte en grados. -->
+        <input id="angulo" type="range" min="0" max="100" value="25">
+        <!-- El estado de WebGPU: main.ts escribe acá si dibuja o por qué no. -->
+        <p id="estado">Buscando WebGPU…</p>
+      <!-- Cierra el contenido. -->
+      </section>
+    <!-- Cierra el escenario. -->
+    </main>
+    <!-- type="module": Vite carga main.ts y recarga al guardar. -->
+    <script type="module" src="/src/main.ts"></script>
+  <!-- Cierra el cuerpo. -->
+  </body>
+<!-- Cierra el documento. -->
+</html>`),
+      'notas/02-uniforms.md': L(`
+> Apunte 2. Qué pasa por dentro: uniforms, tiempo, coordenadas, ruido y máscaras.
+## Uniforms
+> Un uniform es un valor que la GPU lee en cada cuadro, igual para todos los píxeles: como una variable de CSS que el shader puede ver.
+Uniform: un valor que la GPU lee en cada cuadro.
+> Cambiar un uniform es barato: no se recompila nada. Por eso un control puede mover el ángulo en vivo.
+\`\`\`js
+// Cambia solo el ángulo de la capa "degrade": la GPU no recompila.
+shader.update("degrade", { angle: 90 });
+\`\`\`
+> El tiempo también es un uniform: cada efecto animado lo lee para moverse. La prop speed lo multiplica; en 0, la capa queda quieta.
+speed en 0: la capa queda quieta.
+> La segunda idea: dónde está cada píxel.
+## Coordenadas uv
+> Cada píxel sabe dónde está con uv: x e y van de 0 a 1 a lo ancho y a lo alto del lienzo (y crece hacia abajo).
+uv: de 0 a 1, de borde a borde.
+> El centro del lienzo es { x: 0.5, y: 0.5 }. Así se ubican centros, focos y máscaras.
+El centro es x 0.5, y 0.5.
+> La tercera idea: el ruido.
+## Ruido y fBm
+> El ruido es azar suave: valores que cambian de a poco. FlowingGradient y FractalNoise lo usan para parecer naturales.
+Ruido: azar suave.
+> fBm (movimiento browniano fraccional) suma varias capas de ruido, cada una con el doble de detalle y la mitad de fuerza. Así nacen nubes, humo y seda.
+fBm: ruido sobre ruido, cada vez más fino y más débil.
+> La cuarta idea: cómo se juntan las capas.
+## Mezcla y máscaras
+> blendMode dice cómo se mezcla una capa con lo de abajo: softLight suaviza, screen aclara, multiply oscurece.
+blendMode: cómo se mezcla con lo de abajo.
+> Una máscara usa otra capa para decidir dónde se ve esta: con luminance, se ve más donde la otra es clara.
+\`\`\`js
+// Los puntos se ven según el brillo de la capa "degrade".
+{ type: "DotGrid", id: "puntos", props: { maskSource: "degrade", maskType: "luminance" } }
+\`\`\`
+> La última: cuidar a quien mira.
+## Accesibilidad y rendimiento
+> Si el sistema pide reducir el movimiento (prefers-reduced-motion), la escena va quieta. La librería no lo hace sola: lo haces tú.
+Movimiento reducido: la escena va quieta.
+> Cada máscara o efecto que mira a sus vecinos suma una pasada más. Para ocultar una capa, visible: false; con opacity en 0 se sigue dibujando.
+Ocultar con visible false, no con opacity 0.`),
+      'src/escena.ts': L(`
+// Cómo empezar: la escena son DATOS. createShader recibe una lista de capas
+// (objetos comunes), así que se arma con funciones puras y se testea sin GPU.
+
+// Una capa: qué componente es, su nombre (id) y sus valores (props).
+export interface Capa {
+  // type: el componente de la librería, con su nombre exacto (FlowingGradient).
+  type: string;
+  // id: el nombre de la capa, para cambiarla después o usarla de máscara.
+  id: string;
+  // props: los valores de la capa (colores, velocidad, modo de mezcla).
+  props: Record<string, unknown>;
+// Cierra la interfaz Capa.
+}
+// ↑ Capa: la forma de cada capa de la escena.
+
+// La paleta en un solo lugar: noche, violeta y coral.
+export const COLORES = { noche: "#0f172a", violeta: "#7c3aed", coral: "#ff6b6b" };
+
+// Declara anguloDesdeSlider: el control va de 0 a 100; el degradado usa grados.
+export function anguloDesdeSlider(valor: number): number {
+  // Si llega algo fuera de 0..100, lo recorta: Math.min y Math.max.
+  const recortado = Math.min(100, Math.max(0, valor));
+  // 100 pasos son 360 grados: cada paso vale 3.6. Redondea para no tener decimales.
+  return Math.round(recortado * 3.6);
+// Cierra la función anguloDesdeSlider.
+}
+// ↑ anguloDesdeSlider: convierte la posición del control en grados.
+
+// Las opciones de la escena: el ángulo inicial y si la persona pidió menos movimiento.
+export interface Opciones {
+  // angulo: en grados, de 0 a 360.
+  angulo: number;
+  // reducido: true si el sistema tiene activado "reducir movimiento".
+  reducido: boolean;
+// Cierra la interfaz Opciones.
+}
+// ↑ Opciones: lo que decide cómo se arma la escena.
+
+// Declara capas: devuelve la escena, de abajo hacia arriba (la primera queda al fondo).
+export function capas(opciones: Opciones): Capa[] {
+  // Con movimiento reducido, todo lo que se mueve va en 0: la escena queda quieta.
+  const movimiento = opciones.reducido ? 0 : 1;
+  // Arma la lista de capas, en orden.
+  const lista: Capa[] = [
+    // Capa 1, la base: un degradado lineal. Su ángulo es un uniform: cambiarlo no recompila.
+    { type: "LinearGradient", id: "degrade", props: { colorA: COLORES.noche, colorB: COLORES.violeta, angle: opciones.angulo, colorSpace: "oklch" } },
+    // Capa 2: seda líquida encima. softLight la mezcla con la base en vez de taparla.
+    { type: "FlowingGradient", id: "seda", props: { speed: 0.6 * movimiento, distortion: 0.5, blendMode: "softLight", opacity: 0.8 } },
+    // Capa 3: puntos que titilan. La máscara usa el brillo del degradado: se ven más donde es claro.
+    { type: "DotGrid", id: "puntos", props: { color: "#ffffff", density: 40, dotSize: 0.12, twinkle: 0.8 * movimiento, maskSource: "degrade", maskType: "luminance" } },
+    // Capa 4: el halo (lo escribimos en WGSL). Con movimiento sigue al mouse; si no, queda en el centro.
+    { type: "Halo", id: "halo", props: { color: COLORES.coral, radius: 0.35, blendMode: "screen", center: opciones.reducido ? { x: 0.5, y: 0.5 } : { type: "mouse-position", smoothing: 0.1 } } },
+  // Cierra la lista.
+  ];
+  // Con movimiento reducido no agrega la estela del cursor: es puro movimiento.
+  if (!opciones.reducido) {
+    // Capa 5, arriba de todo: la estela que deja el mouse.
+    lista.push({ type: "CursorTrail", id: "estela", props: { colorA: COLORES.coral, colorB: COLORES.violeta, length: 0.6 } });
+  // Cierra el if.
+  }
+  // Devuelve la escena.
+  return lista;
+// Cierra la función capas.
+}
+// ↑ capas: la escena como datos; con movimiento reducido, quieta y sin estela.
+
+// Los motivos por los que no dibuja, explicados para la persona (no para la máquina).
+const MOTIVOS: Record<string, string> = {
+  // El navegador no trae WebGPU.
+  unsupported: "este navegador no tiene WebGPU. Prueba Chrome o Edge actuales, o Safari 26.",
+  // Hay WebGPU pero no se consiguió la placa de video.
+  "no-adapter": "WebGPU existe pero no dio acceso a la placa de video (aceleración por hardware apagada o driver bloqueado).",
+  // Se consiguió la placa, pero no el dispositivo.
+  "no-device": "la placa de video no aceptó crear el dispositivo de WebGPU.",
+// Cierra los motivos.
+};
+// ↑ MOTIVOS: cada código de error de la librería, en palabras.
+
+// Declara mensajeSoporte: convierte el resultado de getWebGPUSupport en una frase.
+export function mensajeSoporte(info: { supported: boolean; reason?: string }): string {
+  // Si hay soporte, lo dice y listo.
+  if (info.supported) return "WebGPU: sí. El fondo lo dibuja la GPU.";
+  // Busca el motivo; si no lo conoce, muestra el código tal cual.
+  const motivo = MOTIVOS[info.reason ?? ""] ?? \`no se pudo dibujar (\${info.reason ?? "motivo desconocido"}).\`;
+  // Arma la frase: se ve el degradado de respaldo y no es un error del código.
+  return \`WebGPU: no — \${motivo} Ves el degradado de respaldo: no es un error de tu código.\`;
+// Cierra la función mensajeSoporte.
+}
+// ↑ mensajeSoporte: explica si dibuja la GPU o por qué se ve el respaldo.`),
+      'src/escena.test.ts': L(`
+// Cómo empezar: probamos los datos de la escena, sin GPU ni navegador.
+import { describe, expect, it } from "vitest";
+// Trae lo que vamos a probar.
+import { anguloDesdeSlider, capas, mensajeSoporte } from "./escena";
+
+// describe agrupa los tests del control.
+describe("anguloDesdeSlider", () => {
+  // Los dos extremos y el medio: 0 → 0°, 50 → 180°, 100 → 360°.
+  it("convierte 0..100 en 0..360 grados", () => {
+    // toEqual compara la lista entera.
+    expect([0, 50, 100].map(anguloDesdeSlider)).toEqual([0, 180, 360]);
+  // Cierra el caso.
+  });
+  // El borde: lo que se pasa de rango se recorta.
+  it("recorta lo que queda fuera de rango", () => {
+    // -10 queda en 0 y 150 en 360.
+    expect([anguloDesdeSlider(-10), anguloDesdeSlider(150)]).toEqual([0, 360]);
+  // Cierra el caso.
+  });
+// Cierra el grupo del control.
+});
+// ↑ anguloDesdeSlider: el centro y los bordes.
+
+// describe agrupa los tests de la escena.
+describe("capas", () => {
+  // El orden importa: la primera capa queda al fondo.
+  it("arma las capas de abajo hacia arriba", () => {
+    // Pide la escena con movimiento.
+    const escena = capas({ angulo: 90, reducido: false });
+    // Compara solo los ids, en orden.
+    expect(escena.map((c) => c.id)).toEqual(["degrade", "seda", "puntos", "halo", "estela"]);
+  // Cierra el caso.
+  });
+  // La máscara apunta a una capa que existe: si no, la librería la ignora.
+  it("la máscara de los puntos usa el degradado", () => {
+    // Busca la capa de los puntos.
+    const puntos = capas({ angulo: 0, reducido: false }).find((c) => c.id === "puntos");
+    // La fuente de la máscara es el degradado y se usa su brillo.
+    expect([puntos?.props.maskSource, puntos?.props.maskType]).toEqual(["degrade", "luminance"]);
+  // Cierra el caso.
+  });
+  // Accesibilidad: con movimiento reducido, nada se mueve.
+  it("con movimiento reducido queda quieta y sin estela", () => {
+    // Pide la escena con movimiento reducido.
+    const escena = capas({ angulo: 0, reducido: true });
+    // Junta la velocidad de la seda, el titileo de los puntos y si existe la estela.
+    const valores = [escena[1].props.speed, escena[2].props.twinkle, escena.some((c) => c.id === "estela")];
+    // Todo en 0 y sin estela.
+    expect(valores).toEqual([0, 0, false]);
+  // Cierra el caso.
+  });
+// Cierra el grupo de la escena.
+});
+// ↑ capas: el orden, la máscara y el movimiento reducido.
+
+// describe agrupa los tests del mensaje.
+describe("mensajeSoporte", () => {
+  // Con soporte, avisa que dibuja la GPU.
+  it("con WebGPU dice que dibuja la GPU", () => {
+    // toContain busca un pedazo del texto.
+    expect(mensajeSoporte({ supported: true })).toContain("WebGPU: sí");
+  // Cierra el caso.
+  });
+  // Sin soporte, explica el motivo y aclara que no es un error del código.
+  it("sin WebGPU explica el motivo", () => {
+    // Arma el mensaje para un navegador sin WebGPU.
+    const texto = mensajeSoporte({ supported: false, reason: "unsupported" });
+    // Tiene que nombrar el navegador y aclarar que no es tu código.
+    expect([texto.includes("Chrome"), texto.includes("no es un error de tu código")]).toEqual([true, true]);
+  // Cierra el caso.
+  });
+  // Un motivo desconocido se muestra tal cual, para poder buscarlo.
+  it("un motivo desconocido aparece tal cual", () => {
+    // gpu-error no está en la lista.
+    expect(mensajeSoporte({ supported: false, reason: "gpu-error" })).toContain("gpu-error");
+  // Cierra el caso.
+  });
+// Cierra el grupo del mensaje.
+});
+// ↑ mensajeSoporte: con soporte, sin soporte y con un motivo desconocido.`),
+      'notas/03-wgsl.md': L(`
+> Apunte 3. Escribir tu propio efecto en WGSL, el lenguaje de los shaders de WebGPU.
+## defineShader
+> defineShader crea un componente propio: un nombre, sus props y un cuerpo que dice de qué color pinta cada píxel.
+defineShader: nombre, props y cuerpo.
+> El cuerpo se escribe en WGSL dentro de wgsl\`…\`. Ahí ya existen uv, aspect (ancho dividido alto) y cada prop por su nombre.
+En el cuerpo existen uv, aspect y las props.
+> La segunda idea: las herramientas.
+## length, smoothstep y vec4f
+> length mide la distancia de un punto al origen. Restando el centro, mide la distancia al centro.
+\`\`\`wgsl
+// La distancia del píxel al centro.
+let d = length(uv - center);
+\`\`\`
+> smoothstep(a, b, x) da 0 antes de a, 1 después de b y una subida suave en el medio: bordes sin serrucho.
+smoothstep: un borde suave entre a y b.
+> vec4f(r, g, b, a) es un color con transparencia: a en 1 es opaco, en 0 invisible.
+vec4f: rojo, verde, azul y transparencia.
+> La tercera idea: por qué aspect.
+## El círculo que no es óvalo
+> uv va de 0 a 1 en los dos ejes aunque el lienzo sea ancho: sin corregir, un círculo sale estirado.
+uv estira en un lienzo ancho.
+> Multiplicar x por aspect devuelve las proporciones reales: el círculo vuelve a ser círculo.
+x por aspect: el círculo vuelve a ser círculo.`),
+      'src/halo.ts': L(`
+// Cómo empezar: un componente propio. defineShader le da nombre y props,
+// y el cuerpo en WGSL dice de qué color pinta CADA píxel.
+import { defineShader, transformColor, transformPosition, wgsl } from "shaders/std";
+
+// Declara el componente Halo: un círculo de luz con borde suave.
+export const Halo = defineShader({
+  // name: con este nombre se usa en la escena ({ type: "Halo" }).
+  name: "Halo",
+  // Abre las props: los valores que se pueden cambiar desde afuera.
+  props: {
+    // color: el color de la luz; transformColor acepta "#ffd166" o "coral".
+    color: { default: "#ffd166", transform: transformColor },
+    // center: el centro, en coordenadas uv (0 a 1). Puede seguir al mouse.
+    center: { default: { x: 0.5, y: 0.5 }, transform: transformPosition },
+    // radius: el tamaño, en proporción de la altura del lienzo.
+    radius: { default: 0.35 },
+  // Cierra las props.
+  },
+  // paint: el cuerpo en WGSL. Corre una vez por píxel; uv, aspect y las props ya existen.
+  paint: wgsl\`
+    // d: la distancia del píxel al centro, dividida por el radio (1 = el borde).
+    // Se multiplica x por aspect para que en un lienzo ancho sea un círculo y no un óvalo.
+    let d = length((uv - center) * vec2f(aspect, 1.0)) / radius;
+    // Devuelve el color con transparencia: opaco adentro y se apaga suave entre 0.8 y 1.
+    return vec4f(color.rgb, 1.0 - smoothstep(0.8, 1.0, d));
+    // Cierra el cuerpo en WGSL: la comilla invertida de abajo termina el texto.
+  \`,
+// Cierra la definición.
+});
+// ↑ Halo: un círculo de luz que se dibuja píxel por píxel en la GPU.`),
+      'src/main.ts': L(`
+// Cómo empezar: main.ts conecta la página con la GPU. Primero pregunta si hay
+// WebGPU; recién después crea el shader. Sin WebGPU, queda el respaldo de CSS.
+import { createShader, getWebGPUSupport } from "shaders/js";
+// Trae la escena (datos) y las funciones que ya probaste.
+import { anguloDesdeSlider, capas, mensajeSoporte } from "./escena";
+// Trae el componente propio escrito en WGSL.
+import { Halo } from "./halo";
+
+// El lienzo donde dibuja la GPU.
+const lienzo = document.querySelector<HTMLCanvasElement>("#fondo")!;
+// El control del ángulo.
+const control = document.querySelector<HTMLInputElement>("#angulo")!;
+// El párrafo donde se avisa si hay WebGPU.
+const estado = document.querySelector<HTMLElement>("#estado")!;
+// true si la persona pidió menos movimiento en su sistema.
+const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Declara arrancar: async porque preguntar por la GPU y crear el shader llevan tiempo.
+async function arrancar(): Promise<void> {
+  // Pregunta si hay WebGPU de verdad (no solo si existe navigator.gpu).
+  const soporte = await getWebGPUSupport();
+  // Muestra el resultado en la página.
+  estado.textContent = mensajeSoporte(soporte);
+  // Sin WebGPU no crea nada: se ve el degradado de CSS.
+  if (!soporte.supported) return;
+  // La escena inicial, con el ángulo que tiene el control.
+  const escena = capas({ angulo: anguloDesdeSlider(Number(control.value)), reducido });
+  // Crea el shader: el lienzo, las capas y las opciones.
+  const shader = await createShader(lienzo, { components: escena }, {
+    // components: los componentes propios que usa la escena (el Halo).
+    components: [Halo],
+    // disableTelemetry: sin esto, en 1 de cada 20 visitas manda a shaders.com el rendimiento, el dominio y el navegador.
+    disableTelemetry: true,
+    // onError: si la GPU falla después de arrancar, lo cuenta en la página.
+    onError: (motivo) => { estado.textContent = mensajeSoporte({ supported: false, reason: motivo }); },
+  // Cierra las opciones y la llamada.
+  });
+  // Al mover el control, cambia solo el ángulo: es un uniform, la GPU no recompila.
+  control.addEventListener("input", () => shader.update("degrade", { angle: anguloDesdeSlider(Number(control.value)) }));
+  // Al irse de la página, libera la memoria de la GPU.
+  window.addEventListener("pagehide", () => shader.destroy());
+// Cierra la función arrancar.
+}
+// ↑ arrancar: comprueba WebGPU, crea el shader y conecta el control.
+
+// Arranca. Si algo falla, lo muestra en la página en vez de dejarla en blanco.
+arrancar().catch((error) => { estado.textContent = \`No se pudo arrancar: \${error}\`; });`)
+    },
+    conceptos: {
+      'notas/01-capas.md': ['escenas por capas', 'webgpu'],
+      'index.html': ['respaldo sin webgpu', 'aria-hidden'],
+      'notas/02-uniforms.md': ['uniforms', 'coordenadas uv', 'fbm', 'mascaras'],
+      'src/escena.ts': ['capas', 'mascaras', 'prefers-reduced-motion'],
+      'src/escena.test.ts': ['tests'],
+      'notas/03-wgsl.md': ['wgsl', 'smoothstep'],
+      'src/halo.ts': ['defineShader', 'wgsl', 'smoothstep'],
+      'src/main.ts': ['createShader', 'uniforms', 'getWebGPUSupport']
     }
   }
 ];

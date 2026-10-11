@@ -409,7 +409,8 @@ const pkgCfg = JSON.parse(require('fs').readFileSync(__dirname + '/../package.js
 eq('ajuste de línea al completar juntos: activado por defecto', pkgCfg['autocompletehelp.dictation.wordWrap'].default, true);
 eq('el prompt pide comentarios que entren en la pantalla', P2.buildDictationSystemPrompt('', false).includes('80 caracteres'), true);
 // Diseño, animación y shaders
-eq('catálogo: 55 temas en 10 áreas, con diseño y fundamentos', [L.LEARN_TOPICS.length, L.TOPIC_KINDS.length, L.TOPIC_KINDS.some((k) => k.tipo === 'creativo'), L.TOPIC_KINDS[0].tipo], [55, 10, true, 'fundamentos']);
+eq('catálogo: 56 temas en 10 áreas, con diseño y fundamentos', [L.LEARN_TOPICS.length, L.TOPIC_KINDS.length, L.TOPIC_KINDS.some((k) => k.tipo === 'creativo'), L.TOPIC_KINDS[0].tipo], [56, 10, true, 'fundamentos']);
+eq('librería Shaders: tema propio, gana a «shaders» genérico, y su lección', [L.matchTopic('quiero aprender la librería shaders de shaders.com')?.id, L.matchTopic('efectos webgpu para mi landing')?.id, L.matchTopic('shaders con glsl')?.id, LS.lessonsForTopic('shaders-capas').map((l) => l.id)], ['shaders-capas', 'shaders-capas', 'shaders-glsl', ['shaders-fondo-vivo']]);
 eq('temas creativos por lo que escribe la persona', ['quiero aprender gsap', 'shaders', 'arte generativo con p5', 'teoría del color', 'webgpu', 'framer motion'].map((t) => L.matchTopic(t)?.id), ['gsap', 'shaders-glsl', 'creative-coding', 'composicion-diseno', 'webgpu', 'motion-react']);
 eq('lecciones sin IA de GSAP y de shaders', [LS.lessonsForTopic('gsap').map((l) => l.id), LS.lessonsForTopic('shaders-glsl').map((l) => l.id)], [['gsap-tarjetas'], ['shader-atardecer']]);
 const I2 = require(out + 'instructions.js');

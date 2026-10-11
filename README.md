@@ -61,9 +61,10 @@ Reglas que siguen todos los proyectos de aprendizaje:
 
 Se estudia como se estudia diseño, y siempre escribiendo: **observar** una referencia, **reproducirla** escribiéndola, **variar** un valor por vez y **crear** una pieza propia. Cada principio (timing, easing, stagger, composición, color, coordenadas de un shader) tiene antes su apunte de teoría, que también se escribe. La matemática y los números de cada animación van en funciones puras con tests; lo visual se comprueba en el navegador con Vite. Los shaders van en archivos `.frag`/`.vert`/`.wgsl` propios, comentados como cualquier código.
 
-Dos lecciones sin IA para empezar, probadas en el navegador:
+Tres lecciones sin IA para empezar, probadas en el navegador:
 - **Tarjetas que entran en escena** (GSAP): timing, easing, stagger, timelines y movimiento reducido.
 - **Tu primer shader: un atardecer animado** (GLSL + WebGL2): coordenadas, `mix`, `smoothstep`, `distance`, uniforms y el bucle de dibujo.
+- **Un fondo vivo con Shaders** (la librería [`shaders`](https://github.com/shader-effects-inc/shaders) 4.0.4, WebGPU, MIT): una escena por capas (degradado, seda líquida, puntos con máscara, estela del cursor), uniforms en vivo, respaldo de CSS sin WebGPU, movimiento reducido y un efecto propio en WGSL con `defineShader`.
 
 ## 🧭 Cómo se construye un proyecto con AutoCompleteHelp
 

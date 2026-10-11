@@ -41,3 +41,5 @@ npm run build
 ## Pendiente (fases 3 y 4 del PRD)
 
 Python/pytest en el navegador (Pyodide), cuenta y sincronización, publicar a GitHub, modo docente. «Depurar como color» en shaders.
+
+**WebGPU en la vista previa:** si el proyecto dibuja con WebGPU (la librería Shaders, TypeGPU, archivos `.wgsl` o `navigator.gpu`), la vista previa dice si este navegador puede usarlo y, si no, por qué. Así un lienzo vacío no se confunde con un error del código.

@@ -1698,7 +1698,7 @@ export function fibonacci(n) {
 // ---------------------------------------------------------------------------
 
 const DISENO_GUIA = `## Qué vas a aprender
-Los fundamentos del diseño gráfico escritos como código: jerarquía con una escala tipográfica modular, grilla de columnas, color en HSL y contraste legible (WCAG). Al final, un póster en canvas que usa todo.
+Los fundamentos del diseño gráfico escritos como código: jerarquía con una escala tipográfica modular, grilla de columnas, color en HSL, contraste legible (WCAG) y la matemática que usan los shaders (mix, smoothstep, distancia con aspecto y fBm). Al final, un póster en canvas que usa todo.
 
 ## Cómo funciona
 Cada principio tiene su apunte (teoría que escribes), sus tests y un ejercicio: una función pura que calcula los números del diseño (tamaños, posiciones, colores). El canvas solo dibuja lo que calculan. Así se estudia diseño: entender el principio, escribirlo y después variar un valor por vez.
@@ -1708,7 +1708,8 @@ Cada principio tiene su apunte (teoría que escribes), sus tests y un ejercicio:
 2. Grilla: columnas, abarcar
 3. Color: complementario, paleta
 4. Contraste: hexARgb, luminancia, contraste, esLegible
-5. El póster: index.html y src/main.js, y verlo con \`npx vite\`
+5. Matemática de shaders: mezclar, suavizar, distanciaAlCentro, amplitudesFbm, mezclarColor
+6. El póster: index.html y src/main.js, y verlo con \`npx vite\`
 
 ## Tests
 \`npx vitest run\` prueba los números sin pantalla. Lo visual se mira en la vista previa: cambia la razón de la escala, la cantidad de columnas o el tono, y compara.
@@ -1716,6 +1717,7 @@ Cada principio tiene su apunte (teoría que escribes), sus tests y un ejercicio:
 ## Cómo seguir
 - Tipografía cinética con GSAP
 - Paletas en OKLCH
+- Efectos WebGPU por capas: la lección «Un fondo vivo con Shaders» usa esta misma matemática en la GPU
 - Creative coding con p5.js`;
 
 const DISENO: Lesson = {
@@ -1726,11 +1728,11 @@ const DISENO: Lesson = {
   titulo: 'Diseño con JavaScript: teoría y ejercicios',
   dificultad: 'media',
   duracion: '3 horas',
-  proyecto: 'curso de diseño con JavaScript: jerarquía, grilla, color y contraste como funciones puras con tests, y un póster en canvas; explica cada principio de diseño y por qué cada valor',
+  proyecto: 'curso de diseño con JavaScript: jerarquía, grilla, color, contraste y la matemática de los shaders como funciones puras con tests, y un póster en canvas; explica cada principio de diseño y por qué cada valor',
   stack: { resumen: 'JavaScript (ES modules) + Canvas 2D + Vite + Vitest', lenguaje: 'JavaScript', framework: 'Canvas 2D + Vite', tests: 'Vitest' },
   convenciones: ['ES modules (import/export)', 'los números del diseño en ejercicios/, puros y testeados', 'src/main.js solo dibuja', 'apuntes en notas/'],
   arquitectura: 'componentes',
-  objetivos: ['jerarquía y escala modular', 'grilla de columnas', 'color en HSL', 'contraste legible'],
+  objetivos: ['jerarquía y escala modular', 'grilla de columnas', 'color en HSL', 'contraste legible', 'mix, smoothstep y fBm'],
   entorno: {
     instalar: [{ comando: 'npm install -D vite vitest', explicacion: 'Vite sirve la página y recarga al guardar; Vitest prueba los números del diseño.' }],
     ejecutar: { comando: 'npx vite', explicacion: 'Abre http://localhost:5173 y mira el póster.' },
@@ -1750,6 +1752,9 @@ const DISENO: Lesson = {
     { paso: 'Apunte: contraste', tipo: 'teoria', archivo: 'notas/04-contraste.md', concepto: 'contraste WCAG' },
     { paso: 'Tests: contraste', tipo: 'test', archivo: 'ejercicios/04-contraste.test.js', concepto: 'toBeCloseTo', verificar: 'npx vitest run ejercicios/04' },
     { paso: 'Ejercicio: contraste', tipo: 'ejercicio', archivo: 'ejercicios/04-contraste.js', concepto: 'luminancia relativa', verificar: 'npx vitest run ejercicios/04' },
+    { paso: 'Apunte: la matemática de los shaders', tipo: 'teoria', archivo: 'notas/05-shaders.md', concepto: 'mix, smoothstep y fBm' },
+    { paso: 'Tests: matemática de shaders', tipo: 'test', archivo: 'ejercicios/05-shaders.test.js', concepto: 'bordes y puntos calculados a mano', verificar: 'npx vitest run ejercicios/05' },
+    { paso: 'Ejercicio: matemática de shaders', tipo: 'ejercicio', archivo: 'ejercicios/05-shaders.js', concepto: 'mix y smoothstep', verificar: 'npx vitest run ejercicios/05' },
     { paso: 'La página con el lienzo', tipo: 'codigo', archivo: 'index.html', concepto: 'canvas a pantalla completa' },
     { paso: 'Dibujar el póster', tipo: 'codigo', archivo: 'src/main.js', concepto: 'el canvas solo dibuja' },
     { paso: 'Verlo y variar un valor', tipo: 'comando', comando: 'npx vite', explicacion: 'Un póster con título, bloques de color en la grilla y un subtítulo. Cambia la razón de la escala, la cantidad de columnas o el tono, guarda y compara: así se estudia diseño.' }
@@ -2172,6 +2177,188 @@ export function esLegible(texto, fondo) {
 // Cierra la función esLegible.
 }
 // ↑ esLegible: aprueba los pares de colores con contraste de 4.5 o más.`),
+    'notas/05-shaders.md': L(`
+> Apunte 5. La matemática de los shaders: las mismas cuentas que hace la GPU, una vez por píxel, ahora escritas en JavaScript.
+## Mezclar: mix
+> mix (o lerp) mezcla dos valores: con t en 0 da el primero, con t en 1 el segundo y en el medio, algo entre los dos.
+mix(a, b, t) = a + (b - a) * t
+\`\`\`js
+// Mitad de camino entre 10 y 20: 15.
+10 + (20 - 10) * 0.5;
+\`\`\`
+> La segunda herramienta.
+## Bordes suaves: smoothstep
+> smoothstep(borde0, borde1, x) da 0 antes del primer borde, 1 después del segundo, y en el medio sube con una curva suave.
+smoothstep: 0, una subida suave y 1.
+> La curva es t * t * (3 - 2 * t), con t recortado entre 0 y 1. Así un círculo no tiene borde de serrucho.
+t * t * (3 - 2 * t)
+> La tercera.
+## Distancia con aspecto
+> Las coordenadas uv van de 0 a 1 en los dos ejes, aunque el lienzo sea más ancho que alto. Si no se corrige, un círculo sale estirado.
+Multiplicar x por el aspecto (ancho / alto) corrige el estiramiento.
+> La cuarta: el ruido fractal.
+## fBm: ruido sobre ruido
+> fBm suma varias capas (octavas) de ruido. Cada octava tiene el doble de detalle y la mitad de fuerza: 1, 0.5, 0.25…
+Cada octava: la mitad de fuerza que la anterior.
+> La última: mezclar colores.
+## Mezclar colores
+> Un color RGB son tres números. Mezclar dos colores es aplicar mix a cada canal por separado.
+Mezclar colores: mix en rojo, verde y azul.`),
+    'ejercicios/05-shaders.test.js': L(`
+// Cómo empezar: cada función se prueba en sus bordes (t en 0 y en 1) y en un
+// punto del medio que se calcula a mano.
+// describe, it y expect: las tres piezas de un test, desde Vitest.
+import { describe, it, expect } from "vitest";
+// Las funciones que vas a programar en el ejercicio.
+import { mezclar, suavizar, distanciaAlCentro, amplitudesFbm, mezclarColor } from "./05-shaders.js";
+
+// describe agrupa los tests de mezclar.
+describe("mezclar", () => {
+  // Los bordes y el medio: 0 da el primero, 1 el segundo y 0.5 la mitad.
+  it("con t en 0, 0.5 y 1", () => {
+    // De 10 a 20: 10, 15 y 20.
+    expect([mezclar(10, 20, 0), mezclar(10, 20, 0.5), mezclar(10, 20, 1)]).toEqual([10, 15, 20]);
+  // Cierra el caso.
+  });
+// Cierra el grupo de mezclar.
+});
+// ↑ mezclar: los dos bordes y la mitad.
+
+// describe agrupa los tests de suavizar.
+describe("suavizar", () => {
+  // Antes del primer borde es 0 y después del segundo es 1.
+  it("recorta fuera de los bordes", () => {
+    // 0.1 está antes de 0.2; 0.9 está después de 0.8.
+    expect([suavizar(0.2, 0.8, 0.1), suavizar(0.2, 0.8, 0.9)]).toEqual([0, 1]);
+  // Cierra el caso.
+  });
+  // En el medio exacto, la curva pasa por 0.5; a un cuarto, por 0.15625.
+  it("sube con la curva t * t * (3 - 2 * t)", () => {
+    // 0.5 está en el medio de 0 y 1.
+    expect(suavizar(0, 1, 0.5)).toBeCloseTo(0.5);
+    // 0.25 * 0.25 * (3 - 0.5) es 0.15625.
+    expect(suavizar(0, 1, 0.25)).toBeCloseTo(0.15625);
+  // Cierra el caso.
+  });
+// Cierra el grupo de suavizar.
+});
+// ↑ suavizar: los recortes y dos puntos de la curva.
+
+// describe agrupa los tests de distanciaAlCentro.
+describe("distanciaAlCentro", () => {
+  // En un lienzo cuadrado (aspecto 1), es la distancia de siempre.
+  it("en un lienzo cuadrado", () => {
+    // De (0.5, 0.5) a (0.8, 0.9): 0.3 y 0.4, distancia 0.5.
+    expect(distanciaAlCentro(0.8, 0.9, 0.5, 0.5, 1)).toBeCloseTo(0.5);
+  // Cierra el caso.
+  });
+  // En un lienzo el doble de ancho, la x cuenta el doble.
+  it("con aspecto 2, la x pesa el doble", () => {
+    // 0.25 en x por 2 es 0.5; en y no hay diferencia.
+    expect(distanciaAlCentro(0.75, 0.5, 0.5, 0.5, 2)).toBeCloseTo(0.5);
+  // Cierra el caso.
+  });
+// Cierra el grupo de distanciaAlCentro.
+});
+// ↑ distanciaAlCentro: sin aspecto y con aspecto 2.
+
+// describe agrupa los tests del ruido y del color.
+describe("fBm y color", () => {
+  // Cada octava, la mitad de la anterior.
+  it("amplitudesFbm parte a la mitad en cada octava", () => {
+    // Cuatro octavas: 1, 0.5, 0.25 y 0.125.
+    expect(amplitudesFbm(4)).toEqual([1, 0.5, 0.25, 0.125]);
+  // Cierra el caso.
+  });
+  // Mezclar negro y blanco a la mitad da gris (redondeado).
+  it("mezclarColor mezcla cada canal y redondea", () => {
+    // 0 y 255 a la mitad es 127.5: redondea a 128.
+    expect(mezclarColor([0, 0, 0], [255, 255, 255], 0.5)).toEqual([128, 128, 128]);
+    // Con t en 0 queda el primer color.
+    expect(mezclarColor([124, 58, 237], [255, 107, 107], 0)).toEqual([124, 58, 237]);
+  // Cierra el caso.
+  });
+// Cierra el grupo del ruido y el color.
+});
+// ↑ fBm y color: las amplitudes de cuatro octavas y una mezcla de colores.`),
+    'ejercicios/05-shaders.js': L(`
+// Ejercicio 1: mezclar(a, b, t) devuelve a + (b - a) * t (el mix de los shaders).
+// Ejercicio 2: suavizar(borde0, borde1, x) es smoothstep: 0, una subida suave y 1.
+// Ejercicio 3: distanciaAlCentro(u, v, cx, cy, aspecto) mide la distancia corrigiendo x.
+// Ejercicio 4: amplitudesFbm(octavas) devuelve la fuerza de cada octava: 1, 0.5, 0.25…
+// Ejercicio 5: mezclarColor(c1, c2, t) mezcla dos colores [r, g, b] y redondea.
+// Corre los tests: cuando pasen en verde, lo resolviste.
+
+// Pista: es una sola cuenta. La distancia de a a b es (b - a); avanza t de ese camino.
+
+// Declara mezclar: recibe los dos valores y cuánto avanzar (t, de 0 a 1).
+export function mezclar(a, b, t) {
+  // Parte de a y avanza la parte t del camino hasta b.
+  return a + (b - a) * t;
+// Cierra la función mezclar.
+}
+// ↑ mezclar: un punto entre a y b según t.
+
+// Pista: primero calcula t = (x - borde0) / (borde1 - borde0) y recórtalo entre 0
+// y 1 con Math.min y Math.max. Después aplica t * t * (3 - 2 * t).
+
+// Declara suavizar: recibe los dos bordes y el valor.
+export function suavizar(borde0, borde1, x) {
+  // Dónde está x entre los bordes, recortado entre 0 y 1.
+  const t = Math.min(1, Math.max(0, (x - borde0) / (borde1 - borde0)));
+  // La curva suave: empieza y termina despacio.
+  return t * t * (3 - 2 * t);
+// Cierra la función suavizar.
+}
+// ↑ suavizar: recorta t y le aplica la curva suave.
+
+// Pista: la diferencia en x se multiplica por el aspecto. Después, Math.hypot(dx, dy)
+// da la distancia (la raíz de dx² + dy²).
+
+// Declara distanciaAlCentro: recibe el punto (u, v), el centro (cx, cy) y el aspecto.
+export function distanciaAlCentro(u, v, cx, cy, aspecto) {
+  // La diferencia en x, corregida por el aspecto del lienzo.
+  const dx = (u - cx) * aspecto;
+  // La diferencia en y.
+  const dy = v - cy;
+  // La distancia: la hipotenusa del triángulo dx, dy.
+  return Math.hypot(dx, dy);
+// Cierra la función distanciaAlCentro.
+}
+// ↑ distanciaAlCentro: corrige la x y mide la distancia.
+
+// Pista: empieza en 1 y en cada vuelta guarda la amplitud y la divide por 2.
+
+// Declara amplitudesFbm: recibe cuántas octavas.
+export function amplitudesFbm(octavas) {
+  // La lista de amplitudes, vacía al empezar.
+  const lista = [];
+  // La primera octava tiene toda la fuerza.
+  let amplitud = 1;
+  // Una vuelta por octava.
+  for (let i = 0; i < octavas; i++) {
+    // Guarda la amplitud de esta octava.
+    lista.push(amplitud);
+    // La siguiente tiene la mitad de fuerza.
+    amplitud = amplitud / 2;
+  // Cierra el for.
+  }
+  // Devuelve las amplitudes.
+  return lista;
+// Cierra la función amplitudesFbm.
+}
+// ↑ amplitudesFbm: la fuerza de cada octava, cada una la mitad de la anterior.
+
+// Pista: map recorre los tres canales de c1; con el índice tomas el mismo canal de
+// c2. Usa mezclar y Math.round.
+
+// Declara mezclarColor: recibe dos colores [r, g, b] y t.
+export function mezclarColor(c1, c2, t) {
+  // Mezcla cada canal con el mismo canal del otro color y redondea.
+  return c1.map((canal, i) => Math.round(mezclar(canal, c2[i], t)));
+// Cierra la función mezclarColor.
+}
+// ↑ mezclarColor: aplica mezclar a rojo, verde y azul.`),
     'index.html': L(`
 <!doctype html>
 <!-- El documento, en español. -->
@@ -2280,6 +2467,9 @@ ctx.fillText("Escala, grilla, color y contraste", cols[0].x, alinearA(330, 8));`
     'notas/04-contraste.md': ['contraste WCAG'],
     'ejercicios/04-contraste.test.js': ['toBeCloseTo'],
     'ejercicios/04-contraste.js': ['contraste WCAG', 'luminancia'],
+    'notas/05-shaders.md': ['mix', 'smoothstep', 'fbm'],
+    'ejercicios/05-shaders.test.js': ['toBeCloseTo'],
+    'ejercicios/05-shaders.js': ['mix', 'smoothstep', 'distancia con aspecto', 'fbm'],
     'index.html': ['canvas'],
     'src/main.js': ['canvas 2D', 'jerarquía']
   }

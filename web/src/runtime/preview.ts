@@ -12,6 +12,8 @@ export interface PreviewBuild {
   errors: { path: string; line?: number; message: string }[];
   /** No hay nada para mostrar (sin index.html ni src/main). */
   empty: boolean;
+  /** El proyecto dibuja con WebGPU: la vista previa avisa si el navegador lo tiene. */
+  webgpu: boolean;
 }
 
 /** Mensajes que manda el iframe. */
@@ -19,6 +21,7 @@ export type PreviewMessage =
   | { ach: 'log'; level: 'log' | 'warn' | 'error'; text: string }
   | { ach: 'error'; message: string; file?: string; line?: number }
   | { ach: 'shader'; source: string; log: string }
+  | { ach: 'gpu'; ok: boolean; reason: string; adapter: string }
   | { ach: 'ready' };
 
 const BRIDGE = String.raw`
@@ -70,6 +73,34 @@ const BRIDGE = String.raw`
 })();
 `;
 
+/**
+ * WebGPU dentro de la vista previa: si el navegador no lo tiene, librerías como
+ * Shaders dejan el lienzo transparente sin avisar. Se pregunta en el iframe
+ * (que es donde corre el código) y la app muestra el resultado.
+ */
+const GPU_PROBE = String.raw`
+(function () {
+  var post = function (m) { try { parent.postMessage(m, '*'); } catch (e) {} };
+  var done = function (ok, reason, adapter) { post({ ach: 'gpu', ok: ok, reason: reason, adapter: adapter || '' }); };
+  if (!window.isSecureContext) return done(false, 'insecure');
+  if (!navigator.gpu) return done(false, 'unsupported');
+  navigator.gpu.requestAdapter().then(function (a) {
+    if (!a) return done(false, 'no-adapter');
+    var i = a.info || {};
+    done(true, '', [i.vendor, i.architecture].filter(Boolean).join(' '));
+  }, function (e) { done(false, 'error: ' + (e && e.message)); });
+})();
+`;
+
+/** ¿El proyecto usa WebGPU? (shaders WGSL, la librería Shaders, TypeGPU, Three.js con WebGPU o la API directa). */
+export function usesWebGPU(files: Record<string, string>): boolean {
+  return Object.entries(files).some(
+    ([path, text]) =>
+      path.endsWith('.wgsl') ||
+      (/\.(m?[jt]sx?|html)$/.test(path) && /navigator\.gpu|from\s+["'](shaders(\/[\w-]+)?|typegpu|three\/webgpu|three\/tsl)["']/.test(text))
+  );
+}
+
 function safeJson(v: unknown): string {
   return JSON.stringify(v).replace(/</g, '\\u003c').replace(/[\u2028\u2029]/g, (c) => (c === '\u2028' ? '\\u2028' : '\\u2029'));
 }
@@ -82,7 +113,7 @@ export async function buildPreview(files: Record<string, string>, speed = 1): Pr
   const entryGuess = ['src/main.ts', 'src/main.js', 'src/main.tsx', 'main.js', 'main.ts', 'script.js', 'js/main.js'].find((p) => p in files);
   const htmlPath = ['index.html', 'public/index.html'].find((p) => p in files);
   if (!htmlPath && !entryGuess) {
-    return { html: '', errors: [], empty: true };
+    return { html: '', errors: [], empty: true, webgpu: false };
   }
   let html = htmlPath ? files[htmlPath] : defaultHtml(entryGuess!);
   // Una instrucción «ach:» sin código debajo todavía: la página aún no existe.
@@ -112,7 +143,8 @@ export async function buildPreview(files: Record<string, string>, speed = 1): Pr
   });
 
   const { graph, externals, errors } = await buildGraph(files, entries);
-  const head = `<script>${BRIDGE}\n${LOADER_SOURCE}</script>`;
+  const webgpu = usesWebGPU(files);
+  const head = `<script>${BRIDGE}\n${webgpu ? GPU_PROBE : ''}\n${LOADER_SOURCE}</script>`;
   const boot = `<script type="module">
 const urls = ${safeJson(externals)};
 const graph = ${safeJson(graph)};
@@ -138,7 +170,7 @@ ${speed !== 1 ? `window.postMessage({ ach: 'speed', value: ${speed} }, '*');` : 
   else html = head + html;
   if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, `${boot}\n</body>`);
   else html += boot;
-  return { html, errors, empty: false };
+  return { html, errors, empty: false, webgpu };
 }
 
 /**

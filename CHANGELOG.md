@@ -2,6 +2,24 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.14.0] — 2026-10-11
+
+### Añadido
+
+- **Tema nuevo en «Quiero aprender»: Efectos WebGPU por capas** con la librería
+  [`shaders`](https://github.com/shader-effects-inc/shaders) (Shader Effects, Inc., MIT desde la 4).
+  La IA arma el plan con la versión fija (4.0.4), detecta WebGPU antes de dibujar,
+  deja un respaldo de CSS, maneja `prefers-reduced-motion` y apaga la telemetría.
+- **Lección sin IA: Un fondo vivo con Shaders.** Tres apuntes (capas, uniforms y
+  ruido, WGSL), la escena como datos con 8 tests, un halo propio en WGSL con
+  `defineShader` y la página. Verificada con tsc, Vitest y vite build; en el
+  navegador, el WGSL que arma la librería compila y, sin WebGPU, se ve el respaldo.
+- **Vista previa:** si el proyecto usa WebGPU, dice si este navegador lo tiene y,
+  si no, por qué (página no segura, sin WebGPU, sin acceso a la placa de video).
+- **Curso de Diseño, tema 5: la matemática de los shaders.** mezclar (mix),
+  suavizar (smoothstep), distancia con aspecto, amplitudes de fBm y mezcla de colores,
+  con apunte, tests y ejercicio.
+
 ## [0.13.0] — 2026-10-10
 
 ### Cambiado

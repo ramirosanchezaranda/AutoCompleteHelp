@@ -247,6 +247,9 @@ a { color: var(--accent); }
 .callout { border-left: 3px solid var(--amber); background: var(--amber-bg); padding: 10px 12px; border-radius: 0 var(--radius-s) var(--radius-s) 0; }
 .callout.info { border-left-color: var(--teal); background: var(--teal-bg); }
 .callout.bad { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.gpu-status { font-size: 14px; color: var(--ink-2); padding: 4px 10px; }
+.gpu-status.ok { color: var(--teal); }
+.callout.gpu-status { color: inherit; font-size: inherit; padding: 10px 12px; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; }
 .facts dt { color: var(--ink-2); }
 .facts dd { margin: 0; }
