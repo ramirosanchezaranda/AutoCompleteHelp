@@ -271,9 +271,14 @@
               "config",
               "docker",
               "comando",
-              "ejercicio"
+              "ejercicio",
+              "arreglar"
             ],
-            "description": "Qué tipo de paso es."
+            "description": "Qué tipo de paso es. «arreglar»: el archivo nace con código que tiene errores y la persona los corrige hasta que los tests pasen."
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Solo en pasos «arreglar» diseñados por la IA: el archivo con los errores, tal cual."
           },
           "comando": {
             "type": "string",

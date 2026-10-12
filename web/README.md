@@ -43,3 +43,5 @@ npm run build
 Python/pytest en el navegador (Pyodide), cuenta y sincronización, publicar a GitHub, modo docente. «Depurar como color» en shaders.
 
 **WebGPU en la vista previa:** si el proyecto dibuja con WebGPU (la librería Shaders, TypeGPU, archivos `.wgsl` o `navigator.gpu`), la vista previa dice si este navegador puede usarlo y, si no, por qué. Así un lienzo vacío no se confunde con un error del código.
+
+**Arreglá esto y tests automáticos:** además de ejercicios, cada curso trae un «arreglá esto»: código con errores cuyos comentarios dicen lo que tendría que hacer. Mientras resolvés, los tests corren solos cada vez que cambiás el archivo y el paso se marca al quedar en verde.

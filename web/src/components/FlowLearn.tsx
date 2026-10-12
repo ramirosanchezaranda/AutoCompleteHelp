@@ -379,7 +379,7 @@ export function DesignStep({ k }: { k: K }) {
           <dt>Stack</dt><dd>{lesson.stack.resumen}</dd>
           {arch && (<><dt>Arquitectura</dt><dd>{arch.nombre}: {arch.resumen}</dd></>)}
           {lesson.tipo === 'curso' ? (
-            <><dt>Contenido</dt><dd>{lesson.plan.filter((s) => s.tipo === 'teoria').length} apuntes, {lesson.plan.filter((s) => s.tipo === 'ejercicio').length} ejercicios con sus tests · {lesson.duracion}</dd></>
+            <><dt>Contenido</dt><dd>{lesson.plan.filter((s) => s.tipo === 'teoria').length} apuntes, {lesson.plan.filter((s) => s.tipo === 'ejercicio').length} ejercicios con sus tests{lesson.plan.some((s) => s.tipo === 'arreglar') ? ` y ${lesson.plan.filter((s) => s.tipo === 'arreglar').length} «arreglá esto»` : ''} · {lesson.duracion}</dd></>
           ) : (
             <><dt>Pasos</dt><dd>{lesson.plan.length} ({tests} de tests) · {lesson.duracion}</dd></>
           )}
@@ -426,7 +426,7 @@ export function DesignStep({ k }: { k: K }) {
             <dt>Stack</dt><dd>{p.stack.resumen ?? Object.values(p.stack).join(', ')}</dd>
             {arch && (<><dt>Arquitectura</dt><dd>{arch.nombre}. Por qué: {arch.resumen} {arch.cuandoSi[0]}.</dd></>)}
             {idea.modo === 'curso' ? (
-              <><dt>Contenido</dt><dd>{p.plan.filter((s) => s.tipo === 'teoria').length} apuntes, {p.plan.filter((s) => s.tipo === 'ejercicio').length} ejercicios con sus tests</dd></>
+              <><dt>Contenido</dt><dd>{p.plan.filter((s) => s.tipo === 'teoria').length} apuntes, {p.plan.filter((s) => s.tipo === 'ejercicio').length} ejercicios con sus tests{p.plan.some((s) => s.tipo === 'arreglar') ? ` y ${p.plan.filter((s) => s.tipo === 'arreglar').length} «arreglá esto»` : ''}</dd></>
             ) : (
               <><dt>Pasos</dt><dd>{p.plan.length} ({p.plan.filter((s) => s.tipo === 'test').length} de tests){p.entorno?.docker ? ' · con Docker' : ''}</dd></>
             )}

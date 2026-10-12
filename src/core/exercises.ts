@@ -150,6 +150,10 @@ export function starterFor(project: ProjectFile | undefined, step: PlanStep): st
   if (given) {
     return given.join('\n') + '\n';
   }
+  // «Arreglá esto» de la IA: el código con errores viene en el plan.
+  if (step.tipo === 'arreglar' && step.codigo) {
+    return step.codigo;
+  }
   const solution = lesson?.archivos[path];
   if (solution) {
     return exerciseStarter(solution.join('\n'), path);
@@ -161,6 +165,26 @@ export function starterFor(project: ProjectFile | undefined, step: PlanStep): st
 export function hintsFor(project: ProjectFile | undefined, path: string): string[] {
   const solution = getLesson(project?.leccion)?.archivos[path];
   return solution ? exerciseHints(solution.join('\n'), path) : [];
+}
+
+/**
+ * El comando de tests en «modo vigía»: queda mirando y vuelve a correr al
+ * guardar. Vitest lo hace sin «run»; si el comando no tiene modo vigía, nada.
+ */
+export function watchCommand(verificar: string): string | undefined {
+  const v = verificar.trim();
+  if (/^npx vitest run\b/.test(v)) return v.replace(/^npx vitest run\b/, 'npx vitest');
+  if (/^npx vitest\b/.test(v)) return v;
+  if (/^npm (run )?test$/.test(v)) return 'npx vitest';
+  return undefined;
+}
+
+/** Filtros de archivo de un comando de tests («npx vitest run ejercicios/01» → ["ejercicios/01"]). */
+export function testFilter(verificar: string): string[] {
+  return verificar
+    .trim()
+    .split(/\s+/)
+    .filter((w, i, all) => !w.startsWith('-') && !(i < 3 && ['npx', 'vitest', 'run', 'npm', 'test'].includes(w)) && all[0] === 'npx');
 }
 
 /** Instrucción para escribir la solución guiada (dictada por la IA). */

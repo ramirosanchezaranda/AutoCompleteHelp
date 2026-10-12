@@ -31,15 +31,23 @@ describe('cursos de teoría y ejercicios, en el cargador de la web', () => {
   for (const l of LESSONS.filter((x) => x.tipo === 'curso')) {
     const solution = Object.fromEntries(Object.entries(l.archivos).map(([p, lines]) => [p, lines.join('\n') + '\n']));
     const starter = Object.fromEntries(
-      Object.entries(solution).map(([p, t]) => [p, l.plan.find((s) => s.archivo === p)?.tipo === 'ejercicio' ? exerciseStarter(t, p) : t])
+      Object.entries(solution).map(([p, t]) => {
+        const tipo = l.plan.find((s) => s.archivo === p)?.tipo;
+        return [p, tipo === 'ejercicio' ? exerciseStarter(t, p) : tipo === 'arreglar' ? l.enunciados![p].join('\n') + '\n' : t];
+      })
     );
     it(`${l.id}: con las soluciones todo en verde`, async () => {
       const r = await run(solution);
       expect(r.length).toBeGreaterThan(10);
       expect(r.every(Boolean)).toBe(true);
     });
-    it(`${l.id}: con los enunciados todo en rojo`, async () => {
-      expect((await run(starter)).some(Boolean)).toBe(false);
+    it(`${l.id}: con los enunciados, los ejercicios en rojo; el código para arreglar falla en cada función`, async () => {
+      const ex = Object.fromEntries(Object.entries(starter).filter(([p]) => !p.includes('arreglar')));
+      expect((await run(ex)).some(Boolean)).toBe(false);
+      const arr = Object.fromEntries(Object.entries(starter).filter(([p]) => p.includes('arreglar')));
+      const r = await run(arr);
+      // 3 funciones con 2 casos cada una: al menos un caso rojo por función.
+      expect([r.length, [0, 2, 4].every((i) => !r[i] || !r[i + 1])]).toEqual([6, true]);
     });
   }
 });

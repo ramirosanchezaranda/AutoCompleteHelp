@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PlanStep, environmentSteps } from '@core/project';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { PlanStep, environmentSteps, isExercise } from '@core/project';
 import { findStepLine, stepFileContent, stepInstruction } from '@core/instructions';
 import { detectInstruction } from '@core/context';
 import { Ledger, applyReview, dueConcepts, knownIn, progressMarkdown, reviewAdvanced, reviewInstruction, reviewLanguage, withAccepted } from '@core/concepts';
 import { buildErrorSystemPrompt } from '@core/errors';
 import { formatProjectForPrompt, parseProjectFile, PROJECT_FILE } from '@core/project';
-import { buildHintSystemPrompt, buildHintUserPrompt, hintsFor, solutionInstruction, starterFor } from '@core/exercises';
+import { buildHintSystemPrompt, buildHintUserPrompt, hintsFor, solutionInstruction, starterFor, testFilter } from '@core/exercises';
 import { getLesson } from '@core/lessons';
 import { useApp } from '../store/app';
 import { useWidth } from '../lib/hooks';
@@ -21,7 +21,7 @@ import { Terminal, TerminalHandle } from './Terminal';
 import { Preview } from './Preview';
 import { Markdown } from './Markdown';
 import { Dialog } from './Dialog';
-import type { TestSummary } from '../runtime/runner';
+import { runTests, type TestSummary } from '../runtime/runner';
 
 type Tab = 'plan' | 'code' | 'terminal' | 'guide' | 'preview';
 
@@ -42,7 +42,7 @@ interface Finished {
   review?: { advanced: boolean };
 }
 
-const KIND_LABEL: Record<string, string> = { teoria: 'teoría', codigo: 'código', test: 'test', config: 'configuración', docker: 'Docker', comando: 'comando' };
+const KIND_LABEL: Record<string, string> = { teoria: 'teoría', codigo: 'código', test: 'test', config: 'configuración', docker: 'Docker', comando: 'comando', ejercicio: 'ejercicio', arreglar: 'arreglá esto' };
 const SENTINEL = ' ';
 const LEDGER = 'ledger';
 
@@ -77,6 +77,22 @@ export function Workspace() {
   const liveRef = useRef<Live | undefined>(undefined);
   liveRef.current = live;
   const pRef = useRef<StoredProject | undefined>(undefined);
+  const [watch, setWatch] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ach:tests-auto') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const toggleWatch = (on: boolean) => {
+    setWatch(on);
+    try {
+      localStorage.setItem('ach:tests-auto', on ? '1' : '0');
+    } catch {
+      /* sin almacenamiento: vale para esta sesión */
+    }
+  };
+  const [watchState, setWatchState] = useState<{ file: string; running: boolean; passed: number; total: number; red: number } | undefined>();
   pRef.current = p;
   const started = useRef(new Set<string>());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -308,7 +324,8 @@ export function Workspace() {
     const file = step.archivo;
     const existing = p.files[file];
     // Ejercicio: el archivo nace con el enunciado y se resuelve escribiendo libre.
-    if (step.tipo === 'ejercicio') {
+    // «Arreglá esto»: nace con código que tiene errores, para encontrarlos.
+    if (isExercise(step)) {
       if (liveRef.current) {
         notify('Termina el dictado (o Esc › opciones) antes de abrir otro paso.', 'warn');
         return;
@@ -480,6 +497,7 @@ export function Workspace() {
   // Tests, errores, estructura, entorno, repaso
   // -------------------------------------------------------------------------
 
+  const warnedRef = useRef('');
   const onTests = (s: TestSummary) => {
     const errs: Record<string, LineError[]> = {};
     for (const r of s.results) if (!r.ok && r.line) (errs[r.file] ??= []).push({ line: r.line, message: r.error ?? 'falló' });
@@ -489,8 +507,8 @@ export function Workspace() {
     const current = pRef.current;
     const pj = current && parseProjectFile(current.files[PROJECT_FILE] ?? '');
     pj?.plan?.forEach((st, i) => {
-      if (st.tipo !== 'ejercicio' || st.hecho || !st.verificar || !st.archivo) return;
-      const filter = st.verificar.split(/\s+/).slice(3).filter((w) => !w.startsWith('-'));
+      if (!isExercise(st) || st.hecho || !st.verificar || !st.archivo) return;
+      const filter = testFilter(st.verificar);
       const mine = s.results.filter((r) => (filter.length ? filter.some((f) => r.file.includes(f)) : true));
       if (!mine.length || !mine.every((r) => r.ok)) return;
       // Verde no alcanza: cada línea de la solución lleva su comentario arriba.
@@ -498,13 +516,17 @@ export function Workspace() {
       if (missing.length) {
         for (const line of missing) (errs[st.archivo] ??= []).push({ line, message: 'Falta el comentario de esta línea: arriba, en una línea, qué hace.' });
         setLineErrors({ ...errs });
+        // Con los tests automáticos esto se repite en cada cambio: se avisa una vez por estado.
+        const key = `${st.archivo}:${missing.join(',')}`;
+        if (warnedRef.current === key) return;
+        warnedRef.current = key;
         notify(`Los tests pasan, pero ${missing.length === 1 ? 'a 1 línea le falta' : `a ${missing.length} líneas les falta`} su comentario arriba (línea ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}). Escríbelo y vuelve a correr los tests.`, 'warn');
         return;
       }
       update((prev) => markStep(prev, i, true), true);
       const concepts = getLesson(pj.leccion)?.conceptos[st.archivo] ?? (st.concepto ? [st.concepto] : []);
       saveLedger(withAccepted(ledgerRef.current, concepts, 'dictado'));
-      notify(`✓ Ejercicio resuelto: ${st.paso.replace(/^Ejercicio:\s*/, '')}. Lo escribiste tú.`);
+      notify(st.tipo === 'arreglar' ? `✓ Arreglado: ${st.paso.replace(/^Arreglá esto:\s*/, '')}. Encontraste los errores.` : `✓ Ejercicio resuelto: ${st.paso.replace(/^Ejercicio:\s*/, '')}. Lo escribiste tú.`);
     });
   };
 
@@ -585,6 +607,30 @@ export function Workspace() {
     void begin({ path: `repaso/${conceptId}.${ext}`, content, insertAt: content.length, instruction, reviewConcept: conceptId, gapRatio: 0.5 });
   };
 
+  // ------------------- Tests automáticos (modo vigía) --------------------
+  // Mientras se resuelve un ejercicio, los tests corren solos cada vez que
+  // cambia el archivo (como rustlings): el verde aparece apenas se logra.
+  const exStep = path ? plan.find((st) => isExercise(st) && st.archivo === path) : undefined;
+  const exText = exStep?.archivo ? files[exStep.archivo] : undefined;
+  useEffect(() => {
+    if (!watch || live || !exStep?.verificar || !exStep.archivo || exText === undefined) return;
+    const file = exStep.archivo;
+    const filter = testFilter(exStep.verificar);
+    let alive = true;
+    const t = setTimeout(async () => {
+      setWatchState((w) => ({ ...(w?.file === file ? w : { passed: 0, total: 0, red: 0 }), file, running: true }));
+      const s = await runTests(pRef.current?.files ?? {}, {}, filter.length ? filter : undefined);
+      if (!alive) return;
+      const red = s.failed + s.fileErrors + s.compileErrors.length;
+      setWatchState({ file, running: false, passed: s.passed, total: s.passed + red, red });
+      onTests(s);
+    }, 900);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [watch, !!live, exStep?.archivo, exText]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!p) {
     return <div className="empty">Cargando el proyecto…</div>;
   }
@@ -593,7 +639,7 @@ export function Workspace() {
   const due = dueConcepts(ledger);
   const practiced = Object.entries(ledger).filter(([, s]) => s.practiced > 0);
   const finishedStep = finished?.stepIndex !== undefined ? plan[finished.stepIndex] : undefined;
-  const exIdx = path ? plan.findIndex((st) => st.tipo === 'ejercicio' && st.archivo === path) : -1;
+  const exIdx = path ? plan.findIndex((st) => isExercise(st) && st.archivo === path) : -1;
   const guide = files['docs/APRENDER.md'] ?? files['docs/STACK.md'] ?? '';
 
   // ------------------------------- Paneles -------------------------------
@@ -734,7 +780,7 @@ export function Workspace() {
             {finished.summary && <span className="sum" style={{ color: 'var(--teal)' }}>↑ {finished.summary}</span>}
             <div className="row">
               {finishedStep?.verificar && (
-                <button className="btn" onClick={() => verify(finishedStep)}>{finishedStep.tipo === 'test' || finishedStep.tipo === 'ejercicio' ? 'Correr los tests' : 'Comprobarlo'}</button>
+                <button className="btn" onClick={() => verify(finishedStep)}>{finishedStep.tipo === 'test' || isExercise(finishedStep) ? 'Correr los tests' : 'Comprobarlo'}</button>
               )}
               {finished.stepIndex !== undefined && !plan[finished.stepIndex]?.hecho && (
                 <button
@@ -758,8 +804,39 @@ export function Workspace() {
       {!live && !finished && exIdx >= 0 && (
         <div className="dbar exercise">
           <div className="ex-head">
-            <b>{plan[exIdx].hecho ? '✓ Resuelto' : 'Ejercicio'}:</b> {plan[exIdx].paso.replace(/^Ejercicio:\s*/, '')}. Escribe tu solución en el archivo y corre los tests: en verde, está resuelto.
+            {plan[exIdx].tipo === 'arreglar' ? (
+              <>
+                <b>{plan[exIdx].hecho ? '✓ Arreglado' : 'Arreglá esto'}:</b> {plan[exIdx].paso.replace(/^Arreglá esto:\s*/, '')}. El código tiene errores: los comentarios dicen lo que tendría que hacer cada línea y los tests, dónde falla.
+              </>
+            ) : (
+              <>
+                <b>{plan[exIdx].hecho ? '✓ Resuelto' : 'Ejercicio'}:</b> {plan[exIdx].paso.replace(/^Ejercicio:\s*/, '')}. Escribe tu solución en el archivo: en verde, está resuelto.
+              </>
+            )}
           </div>
+          {plan[exIdx].verificar && (
+            <div className="watch" role="status">
+              {watch && watchState && watchState.file === plan[exIdx].archivo ? (
+                <>
+                  <span className="meter" aria-hidden="true">
+                    <i className={watchState.total && !watchState.red ? 'ok' : ''} style={{ width: `${watchState.total ? (100 * watchState.passed) / watchState.total : 0}%` }} />
+                  </span>
+                  <span>
+                    {watchState.running && !watchState.total
+                      ? 'Corriendo los tests…'
+                      : watchState.total
+                        ? `${watchState.passed} de ${watchState.total} tests en verde${watchState.running ? ' · corriendo…' : ''}`
+                        : 'Todavía no hay tests para este archivo.'}
+                  </span>
+                </>
+              ) : (
+                <span>{watch ? 'Los tests corren solos cada vez que cambias el archivo.' : 'Tests automáticos apagados: córrelos con el botón.'}</span>
+              )}
+              <button className="chip" aria-pressed={watch} onClick={() => toggleWatch(!watch)} title="Correr los tests solos al cambiar el archivo">
+                Automáticos: {watch ? 'sí' : 'no'}
+              </button>
+            </div>
+          )}
           {(hints[plan[exIdx].archivo!] ?? []).map((h, n) => (
             <div key={n} className="why">
               <b>Pista {n + 1}:</b> {h}
@@ -809,12 +886,33 @@ export function Workspace() {
   const previewPanel = <Preview files={files} version={previewVersion} onShaderErrors={setShaderErrors} />;
 
   const tabsFor: Tab[] = cols === 1 ? ['plan', 'code', 'terminal', 'guide', 'preview'] : ['code', 'terminal', 'guide', 'preview'];
-  const TAB_LABEL: Record<Tab, string> = { plan: 'Plan', code: 'Código', terminal: 'Terminal', guide: 'Guía', preview: 'Vista previa' };
+  const TAB_LABEL: Record<Tab, ReactNode> = {
+    plan: 'Plan',
+    code: 'Código',
+    terminal: 'Terminal',
+    guide: 'Guía',
+    preview: (
+      <>
+        <span className="full">Vista previa</span>
+        <span className="short">Vista</span>
+      </>
+    )
+  };
   const activeTab = cols === 2 && tab === 'plan' ? 'code' : tab;
   const subtabs = (list: Tab[], current: Tab, set: (t: Tab) => void) => (
     <div className="subtabs" role="tablist">
       {list.map((t) => (
-        <button key={t} role="tab" className="subtab" aria-selected={current === t} onClick={() => set(t)}>
+        <button
+          key={t}
+          role="tab"
+          className="subtab"
+          aria-selected={current === t}
+          aria-label={t === 'preview' ? 'Vista previa' : undefined}
+          onClick={(e) => {
+            set(t);
+            e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+          }}
+        >
           {TAB_LABEL[t]}
           {t === 'code' && live && cols === 1 && <span className="badge">{view?.pct}%</span>}
         </button>

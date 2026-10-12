@@ -434,3 +434,49 @@ a { color: var(--accent); }
   .lesson-card { padding: 10px 12px 10px 16px; }
   .area-grid { grid-template-columns: 1fr; gap: 8px; }
 }
+
+/* Tests automáticos del ejercicio. */
+.watch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; color: var(--ink-2); }
+.watch .meter { width: 90px; height: 8px; border-radius: 999px; background: var(--rule); overflow: hidden; flex: none; }
+.watch .meter i { display: block; height: 100%; background: var(--amber); transition: width 0.25s; }
+.watch .meter i.ok { background: var(--ok); }
+.watch .chip { margin-left: auto; }
+
+/* ---------- Ajustes para pantallas chicas ---------- */
+.subtab .short { display: none; }
+@media (max-width: 420px) {
+  .subtab { padding: 9px 8px 7px; font-size: 14px; }
+  .subtab .full { display: none; }
+  .subtab .short { display: inline; }
+  .steptab { padding: 10px 8px 8px; font-size: 14px; }
+}
+/* El pie del recorrido: el número del paso y, debajo, qué falta (sin cortarse). */
+.bottombar .where { display: flex; flex-direction: column; align-items: center; white-space: normal; line-height: 1.25; }
+.bottombar .where .todo { font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+@media (min-width: 700px) {
+  .bottombar .where { flex-direction: row; justify-content: center; gap: 6px; }
+  .bottombar .where .n::after { content: ' ·'; }
+  .bottombar .where .todo { font-size: 14px; color: var(--ink-2); }
+}
+/* Dedos: blancos de toque de al menos 40 px. */
+@media (pointer: coarse) {
+  .chip { min-height: 40px; padding: 8px 14px; }
+  .btn.small { min-height: 40px; }
+}
+/* Celular apaisado (poca altura): barras más bajas para que quede lugar al contenido. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .topbar { padding-top: 4px; padding-bottom: 4px; }
+  .steptab { padding: 6px 8px 5px; }
+  .bottombar { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .panel { padding: 10px 16px 14px; }
+  .panel h2 { font-size: 19px; }
+  .subtab { padding: 6px 10px 5px; }
+  .home { padding-top: 10px; }
+  .home h1 { font-size: 24px; }
+  .toast { top: 48px; }
+  .dbar .why, .dbar .sum { max-height: 3.2em; overflow: auto; }
+}
+@media (max-width: 380px) {
+  .subtab { padding: 9px 6px 7px; }
+  .subtab .badge { margin-left: 2px; padding: 0 4px; }
+}

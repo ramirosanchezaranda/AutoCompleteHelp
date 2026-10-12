@@ -66,6 +66,7 @@ Cada tema tiene tres pasos, y todos se completan escribiendo:
 2. Condicionales: clasificarEdad(edad), maximo(a, b)
 3. Bucles: sumarHasta(n), contarVocales(texto)
 4. Listas y objetos: promedio(numeros), soloPares(numeros), totalCarrito(items)
+5. Arreglá esto: precioFinal, esMayor y contarAprobados tienen un error cada una; encuéntralos con los tests
 
 ## Tests
 \`npx vitest run\` corre todos; \`npx vitest run ejercicios/02\` solo los del tema 2.
@@ -104,6 +105,8 @@ const FUNDAMENTOS: Lesson = {
     { paso: 'Apunte: listas y objetos', tipo: 'teoria', archivo: 'notas/04-listas.md', concepto: 'arreglos y objetos' },
     { paso: 'Tests: promedio, pares y carrito', tipo: 'test', archivo: 'ejercicios/04-listas.test.js', concepto: 'toEqual', verificar: 'npx vitest run ejercicios/04' },
     { paso: 'Ejercicio: promedio, pares y carrito', tipo: 'ejercicio', archivo: 'ejercicios/04-listas.js', concepto: 'filter y recorrer objetos', verificar: 'npx vitest run ejercicios/04' },
+    { paso: 'Tests: arreglá esto', tipo: 'test', archivo: 'ejercicios/05-arreglar.test.js', concepto: 'los tests encuentran errores', verificar: 'npx vitest run ejercicios/05-arreglar' },
+    { paso: 'Arreglá esto: tres errores', tipo: 'arreglar', archivo: 'ejercicios/05-arreglar.js', concepto: 'leer código y encontrar errores', verificar: 'npx vitest run ejercicios/05-arreglar', explicacion: 'El archivo tiene tres errores, uno por función. Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla. Corrígelo hasta que pasen en verde.' },
     curso('Correr todos los tests', 'npx vitest run')
   ],
   guia: FUND_GUIA,
@@ -572,9 +575,152 @@ export function totalCarrito(items) {
   return total;
 // Cierra la función totalCarrito.
 }
-// ↑ totalCarrito: suma lo que cuesta cada ítem según su cantidad.`)
+// ↑ totalCarrito: suma lo que cuesta cada ítem según su cantidad.`),
+    'ejercicios/05-arreglar.test.js': L(`
+// Cómo empezar: estos tests ya pasan con el código correcto. Con el código
+// que tiene errores, cada uno señala qué función falla y con qué valores.
+// describe, it y expect: las tres piezas de un test, desde Vitest.
+import { describe, it, expect } from "vitest";
+// Las funciones del archivo que vas a arreglar.
+import { precioFinal, esMayor, contarAprobados } from "./05-arreglar.js";
+
+// describe agrupa los tests de precioFinal.
+describe("precioFinal", () => {
+  // Caso: 3 unidades de 200 son 600.
+  it("3 unidades de 200 son 600", () => {
+    // 200 por 3 es 600.
+    expect(precioFinal(200, 3)).toBe(600);
+  // Cierra el caso.
+  });
+  // Caso: una unidad cuesta su precio.
+  it("una unidad cuesta su precio", () => {
+    // 150 por 1 es 150.
+    expect(precioFinal(150, 1)).toBe(150);
+  // Cierra el caso.
+  });
+// Cierra el grupo de precioFinal.
+});
+// ↑ precioFinal: 2 casos.
+
+// describe agrupa los tests de esMayor.
+describe("esMayor", () => {
+  // Caso: 18 ya es mayor de edad.
+  it("18 ya es mayor de edad", () => {
+    // El borde: justo 18.
+    expect(esMayor(18)).toBe(true);
+  // Cierra el caso.
+  });
+  // Caso: 17 todavía no.
+  it("17 todavía no", () => {
+    // Uno menos que el borde.
+    expect(esMayor(17)).toBe(false);
+  // Cierra el caso.
+  });
+// Cierra el grupo de esMayor.
+});
+// ↑ esMayor: 2 casos.
+
+// describe agrupa los tests de contarAprobados.
+describe("contarAprobados", () => {
+  // Caso: cuenta las notas de 6 o más.
+  it("cuenta las notas de 6 o más", () => {
+    // 6 y 9 aprueban: son 2.
+    expect(contarAprobados([4, 6, 9, 5])).toBe(2);
+  // Cierra el caso.
+  });
+  // Caso: sin notas, nadie aprobó.
+  it("sin notas, nadie aprobó", () => {
+    // Una lista vacía: 0.
+    expect(contarAprobados([])).toBe(0);
+  // Cierra el caso.
+  });
+// Cierra el grupo de contarAprobados.
+});
+// ↑ contarAprobados: 2 casos.`),
+    'ejercicios/05-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Pista: precioFinal mira el total de una compra. ¿Qué operación da el total de varias unidades?
+
+// Declara precioFinal: recibe el precio de una unidad y la cantidad.
+export function precioFinal(precio, cantidad) {
+  // Multiplica el precio por la cantidad y devuelve el total.
+  return precio * cantidad;
+// Cierra la función precioFinal.
+}
+// ↑ precioFinal: el total de una compra.
+
+// Pista: esMayor dice si alguien de 18 años ya es mayor. Mira el comparador con 18.
+
+// Declara esMayor: recibe una edad.
+export function esMayor(edad) {
+  // true si la edad es 18 o más.
+  return edad >= 18;
+// Cierra la función esMayor.
+}
+// ↑ esMayor: 18 o más es mayor de edad.
+
+// Pista: contarAprobados empieza a contar desde algún número. ¿Con cuántos aprobados arranca?
+
+// Declara contarAprobados: recibe una lista de notas.
+export function contarAprobados(notas) {
+  // El contador arranca en 0: todavía no se contó nada.
+  let aprobados = 0;
+  // Recorre cada nota de la lista.
+  for (const nota of notas) {
+    // Si la nota es 6 o más, suma un aprobado.
+    if (nota >= 6) aprobados++;
+  // Cierra el for.
+  }
+  // Devuelve cuántos aprobaron.
+  return aprobados;
+// Cierra la función contarAprobados.
+}
+// ↑ contarAprobados: cuenta las notas de 6 o más.`)
+  },
+  enunciados: {
+    'ejercicios/05-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Declara precioFinal: recibe el precio de una unidad y la cantidad.
+export function precioFinal(precio, cantidad) {
+  // Multiplica el precio por la cantidad y devuelve el total.
+  return precio + cantidad;
+// Cierra la función precioFinal.
+}
+// ↑ precioFinal: el total de una compra.
+
+// Declara esMayor: recibe una edad.
+export function esMayor(edad) {
+  // true si la edad es 18 o más.
+  return edad > 18;
+// Cierra la función esMayor.
+}
+// ↑ esMayor: 18 o más es mayor de edad.
+
+// Declara contarAprobados: recibe una lista de notas.
+export function contarAprobados(notas) {
+  // El contador arranca en 0: todavía no se contó nada.
+  let aprobados = 1;
+  // Recorre cada nota de la lista.
+  for (const nota of notas) {
+    // Si la nota es 6 o más, suma un aprobado.
+    if (nota >= 6) aprobados++;
+  // Cierra el for.
+  }
+  // Devuelve cuántos aprobaron.
+  return aprobados;
+// Cierra la función contarAprobados.
+}
+// ↑ contarAprobados: cuenta las notas de 6 o más.`)
   },
   conceptos: {
+    'ejercicios/05-arreglar.test.js': ['tests'],
+    'ejercicios/05-arreglar.js': ['encontrar errores', 'leer comentarios contra código'],
     'notas/01-valores.md': ['variables', 'funciones'],
     'ejercicios/01-valores.test.js': ['tests'],
     'ejercicios/01-valores.js': ['funciones', 'return'],
@@ -605,6 +751,7 @@ Cada tema: el apunte (teoría que escribes), los tests (la especificación) y el
 2. Negar condiciones: dentroDeRango, fueraDeRango, puedeEntrar
 3. Reglas con excepciones: esBisiesto(anio), diasDelMes(mes, anio)
 4. Casos y su orden: fizzBuzz(n), todosPositivos(numeros)
+5. Arreglá esto: puedeConducir, esFinDeSemana y tieneTexto tienen un error lógico cada una
 
 ## Tests
 \`npx vitest run\` corre todos; \`npx vitest run ejercicios/03\` solo el tema 3.
@@ -643,6 +790,8 @@ const LOGICA: Lesson = {
     { paso: 'Apunte: casos y su orden', tipo: 'teoria', archivo: 'notas/04-casos.md', concepto: 'el orden de los casos' },
     { paso: 'Tests: FizzBuzz y todos positivos', tipo: 'test', archivo: 'ejercicios/04-casos.test.js', concepto: 'verdad vacía', verificar: 'npx vitest run ejercicios/04' },
     { paso: 'Ejercicio: FizzBuzz y todos positivos', tipo: 'ejercicio', archivo: 'ejercicios/04-casos.js', concepto: 'casos específicos primero', verificar: 'npx vitest run ejercicios/04' },
+    { paso: 'Tests: arreglá esto', tipo: 'test', archivo: 'ejercicios/05-arreglar.test.js', concepto: 'los tests encuentran errores', verificar: 'npx vitest run ejercicios/05-arreglar' },
+    { paso: 'Arreglá esto: tres errores', tipo: 'arreglar', archivo: 'ejercicios/05-arreglar.js', concepto: 'leer código y encontrar errores', verificar: 'npx vitest run ejercicios/05-arreglar', explicacion: 'El archivo tiene tres errores, uno por función. Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla. Corrígelo hasta que pasen en verde.' },
     curso('Correr todos los tests', 'npx vitest run')
   ],
   guia: LOGICA_GUIA,
@@ -1125,9 +1274,136 @@ export function todosPositivos(numeros) {
   return true;
 // Cierra la función todosPositivos.
 }
-// ↑ todosPositivos: busca un contraejemplo; si no lo hay, todos cumplen.`)
+// ↑ todosPositivos: busca un contraejemplo; si no lo hay, todos cumplen.`),
+    'ejercicios/05-arreglar.test.js': L(`
+// Cómo empezar: estos tests ya pasan con el código correcto. Con el código
+// que tiene errores, cada uno señala qué función falla y con qué valores.
+// describe, it y expect: las tres piezas de un test, desde Vitest.
+import { describe, it, expect } from "vitest";
+// Las funciones del archivo que vas a arreglar.
+import { puedeConducir, esFinDeSemana, tieneTexto } from "./05-arreglar.js";
+
+// describe agrupa los tests de puedeConducir.
+describe("puedeConducir", () => {
+  // Caso: con 18 y licencia, sí.
+  it("con 18 y licencia, sí", () => {
+    // Las dos condiciones se cumplen.
+    expect(puedeConducir(18, true)).toBe(true);
+  // Cierra el caso.
+  });
+  // Caso: sin licencia, no.
+  it("sin licencia, no", () => {
+    // Falta una: no alcanza.
+    expect(puedeConducir(30, false)).toBe(false);
+  // Cierra el caso.
+  });
+// Cierra el grupo de puedeConducir.
+});
+// ↑ puedeConducir: 2 casos.
+
+// describe agrupa los tests de esFinDeSemana.
+describe("esFinDeSemana", () => {
+  // Caso: el domingo es fin de semana.
+  it("el domingo es fin de semana", () => {
+    // Uno de los dos días.
+    expect(esFinDeSemana("domingo")).toBe(true);
+  // Cierra el caso.
+  });
+  // Caso: el lunes no.
+  it("el lunes no", () => {
+    // Ninguno de los dos.
+    expect(esFinDeSemana("lunes")).toBe(false);
+  // Cierra el caso.
+  });
+// Cierra el grupo de esFinDeSemana.
+});
+// ↑ esFinDeSemana: 2 casos.
+
+// describe agrupa los tests de tieneTexto.
+describe("tieneTexto", () => {
+  // Caso: una palabra tiene texto.
+  it("una palabra tiene texto", () => {
+    // No está vacío.
+    expect(tieneTexto("hola")).toBe(true);
+  // Cierra el caso.
+  });
+  // Caso: el texto vacío no.
+  it("el texto vacío no", () => {
+    // Está vacío.
+    expect(tieneTexto("")).toBe(false);
+  // Cierra el caso.
+  });
+// Cierra el grupo de tieneTexto.
+});
+// ↑ tieneTexto: 2 casos.`),
+    'ejercicios/05-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Pista: para conducir hacen falta las DOS cosas a la vez. ¿Qué operador pide que se cumplan ambas?
+
+// Declara puedeConducir: recibe la edad y si tiene licencia.
+export function puedeConducir(edad, tieneLicencia) {
+  // true solo si tiene 18 o más Y además tiene licencia.
+  return edad >= 18 && tieneLicencia;
+// Cierra la función puedeConducir.
+}
+// ↑ puedeConducir: las dos condiciones a la vez.
+
+// Pista: un día no puede ser sábado y domingo a la vez. ¿Qué operador alcanza con que se cumpla una?
+
+// Declara esFinDeSemana: recibe el nombre del día.
+export function esFinDeSemana(dia) {
+  // true si el día es sábado O domingo.
+  return dia === "sábado" || dia === "domingo";
+// Cierra la función esFinDeSemana.
+}
+// ↑ esFinDeSemana: alcanza con que sea uno de los dos.
+
+// Pista: el comentario dice «NO está vacío». ¿Qué le falta al código para decir que no?
+
+// Declara tieneTexto: recibe un texto.
+export function tieneTexto(texto) {
+  // true si el texto NO está vacío: ! da vuelta la comparación.
+  return !(texto === "");
+// Cierra la función tieneTexto.
+}
+// ↑ tieneTexto: la negación de «está vacío».`)
+  },
+  enunciados: {
+    'ejercicios/05-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Declara puedeConducir: recibe la edad y si tiene licencia.
+export function puedeConducir(edad, tieneLicencia) {
+  // true solo si tiene 18 o más Y además tiene licencia.
+  return edad >= 18 || tieneLicencia;
+// Cierra la función puedeConducir.
+}
+// ↑ puedeConducir: las dos condiciones a la vez.
+
+// Declara esFinDeSemana: recibe el nombre del día.
+export function esFinDeSemana(dia) {
+  // true si el día es sábado O domingo.
+  return dia === "sábado" && dia === "domingo";
+// Cierra la función esFinDeSemana.
+}
+// ↑ esFinDeSemana: alcanza con que sea uno de los dos.
+
+// Declara tieneTexto: recibe un texto.
+export function tieneTexto(texto) {
+  // true si el texto NO está vacío: ! da vuelta la comparación.
+  return (texto === "");
+// Cierra la función tieneTexto.
+}
+// ↑ tieneTexto: la negación de «está vacío».`)
   },
   conceptos: {
+    'ejercicios/05-arreglar.test.js': ['tests'],
+    'ejercicios/05-arreglar.js': ['encontrar errores', 'leer comentarios contra código'],
     'notas/01-booleanos.md': ['booleanos', 'tablas de verdad'],
     'ejercicios/01-booleanos.test.js': ['tests'],
     'ejercicios/01-booleanos.js': ['operadores lógicos', 'xor'],
@@ -1158,6 +1434,7 @@ Cada tema: el apunte (teoría que escribes), los tests (la especificación, con 
 2. Porcentajes y redondeo: redondear, aplicarDescuento, porcentajeDe
 3. Primos y MCD: esPrimo, mcd
 4. Potencias y sucesiones: potencia, factorial, fibonacci
+5. Arreglá esto: esPar, aplicarDescuento y sumarDigitos tienen una cuenta mal cada una
 
 ## Tests
 \`npx vitest run\` corre todos. Los decimales se comparan con toBeCloseTo, porque las computadoras guardan los decimales con pequeños errores.
@@ -1196,6 +1473,8 @@ const MATEMATICAS: Lesson = {
     { paso: 'Apunte: potencias y sucesiones', tipo: 'teoria', archivo: 'notas/04-sucesiones.md', concepto: 'sucesiones' },
     { paso: 'Tests: potencia, factorial y Fibonacci', tipo: 'test', archivo: 'ejercicios/04-sucesiones.test.js', concepto: 'casos base', verificar: 'npx vitest run ejercicios/04' },
     { paso: 'Ejercicio: potencia, factorial y Fibonacci', tipo: 'ejercicio', archivo: 'ejercicios/04-sucesiones.js', concepto: 'bucles que acumulan', verificar: 'npx vitest run ejercicios/04' },
+    { paso: 'Tests: arreglá esto', tipo: 'test', archivo: 'ejercicios/05-arreglar.test.js', concepto: 'los tests encuentran errores', verificar: 'npx vitest run ejercicios/05-arreglar' },
+    { paso: 'Arreglá esto: tres errores', tipo: 'arreglar', archivo: 'ejercicios/05-arreglar.js', concepto: 'leer código y encontrar errores', verificar: 'npx vitest run ejercicios/05-arreglar', explicacion: 'El archivo tiene tres errores, uno por función. Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla. Corrígelo hasta que pasen en verde.' },
     curso('Correr todos los tests', 'npx vitest run')
   ],
   guia: MATE_GUIA,
@@ -1675,9 +1954,156 @@ export function fibonacci(n) {
   return a;
 // Cierra la función fibonacci.
 }
-// ↑ fibonacci: avanza de a dos términos y devuelve el que quedó en el lugar n.`)
+// ↑ fibonacci: avanza de a dos términos y devuelve el que quedó en el lugar n.`),
+    'ejercicios/05-arreglar.test.js': L(`
+// Cómo empezar: estos tests ya pasan con el código correcto. Con el código
+// que tiene errores, cada uno señala qué función falla y con qué valores.
+// describe, it y expect: las tres piezas de un test, desde Vitest.
+import { describe, it, expect } from "vitest";
+// Las funciones del archivo que vas a arreglar.
+import { esPar, aplicarDescuento, sumarDigitos } from "./05-arreglar.js";
+
+// describe agrupa los tests de esPar.
+describe("esPar", () => {
+  // Caso: 8 es par.
+  it("8 es par", () => {
+    // 8 dividido 2 da resto 0.
+    expect(esPar(8)).toBe(true);
+  // Cierra el caso.
+  });
+  // Caso: 7 no es par.
+  it("7 no es par", () => {
+    // 7 dividido 2 da resto 1.
+    expect(esPar(7)).toBe(false);
+  // Cierra el caso.
+  });
+// Cierra el grupo de esPar.
+});
+// ↑ esPar: 2 casos.
+
+// describe agrupa los tests de aplicarDescuento.
+describe("aplicarDescuento", () => {
+  // Caso: un 20% de 1000 deja 800.
+  it("un 20% de 1000 deja 800", () => {
+    // Se descuentan 200.
+    expect(aplicarDescuento(1000, 20)).toBe(800);
+  // Cierra el caso.
+  });
+  // Caso: sin descuento, el mismo precio.
+  it("sin descuento, el mismo precio", () => {
+    // 0% no cambia nada.
+    expect(aplicarDescuento(500, 0)).toBe(500);
+  // Cierra el caso.
+  });
+// Cierra el grupo de aplicarDescuento.
+});
+// ↑ aplicarDescuento: 2 casos.
+
+// describe agrupa los tests de sumarDigitos.
+describe("sumarDigitos", () => {
+  // Caso: los dígitos de 123 suman 6.
+  it("los dígitos de 123 suman 6", () => {
+    // 1 + 2 + 3.
+    expect(sumarDigitos(123)).toBe(6);
+  // Cierra el caso.
+  });
+  // Caso: un solo dígito es él mismo.
+  it("un solo dígito es él mismo", () => {
+    // Solo el 7.
+    expect(sumarDigitos(7)).toBe(7);
+  // Cierra el caso.
+  });
+// Cierra el grupo de sumarDigitos.
+});
+// ↑ sumarDigitos: 2 casos.`),
+    'ejercicios/05-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Pista: un número par deja resto 0 al dividirlo por 2. Mira con qué se compara el resto.
+
+// Declara esPar: recibe un número entero.
+export function esPar(n) {
+  // Par: el resto de dividir por 2 es 0.
+  return n % 2 === 0;
+// Cierra la función esPar.
+}
+// ↑ esPar: resto 0 al dividir por 2.
+
+// Pista: el código calcula cuánto se descuenta, pero la función tiene que devolver cuánto se paga.
+
+// Declara aplicarDescuento: recibe el precio y el porcentaje de descuento.
+export function aplicarDescuento(precio, porcentaje) {
+  // Al precio le resta su parte del porcentaje: lo que queda por pagar.
+  return precio - (precio * porcentaje) / 100;
+// Cierra la función aplicarDescuento.
+}
+// ↑ aplicarDescuento: el precio menos el descuento.
+
+// Pista: antes de sumar dígitos, la suma tiene que arrancar vacía. Mira el valor inicial.
+
+// Declara sumarDigitos: recibe un número entero positivo.
+export function sumarDigitos(n) {
+  // La suma arranca en 0.
+  let suma = 0;
+  // Mientras queden dígitos...
+  while (n > 0) {
+    // ...suma el último dígito (el resto de dividir por 10)...
+    suma += n % 10;
+    // ...y lo saca: divide por 10 y redondea para abajo.
+    n = Math.floor(n / 10);
+  // Cierra el while.
+  }
+  // Devuelve la suma de los dígitos.
+  return suma;
+// Cierra la función sumarDigitos.
+}
+// ↑ sumarDigitos: saca el último dígito hasta que no quede ninguno.`)
+  },
+  enunciados: {
+    'ejercicios/05-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Declara esPar: recibe un número entero.
+export function esPar(n) {
+  // Par: el resto de dividir por 2 es 0.
+  return n % 2 === 1;
+// Cierra la función esPar.
+}
+// ↑ esPar: resto 0 al dividir por 2.
+
+// Declara aplicarDescuento: recibe el precio y el porcentaje de descuento.
+export function aplicarDescuento(precio, porcentaje) {
+  // Al precio le resta su parte del porcentaje: lo que queda por pagar.
+  return (precio * porcentaje) / 100;
+// Cierra la función aplicarDescuento.
+}
+// ↑ aplicarDescuento: el precio menos el descuento.
+
+// Declara sumarDigitos: recibe un número entero positivo.
+export function sumarDigitos(n) {
+  // La suma arranca en 0.
+  let suma = n;
+  // Mientras queden dígitos...
+  while (n > 0) {
+    // ...suma el último dígito (el resto de dividir por 10)...
+    suma += n % 10;
+    // ...y lo saca: divide por 10 y redondea para abajo.
+    n = Math.floor(n / 10);
+  // Cierra el while.
+  }
+  // Devuelve la suma de los dígitos.
+  return suma;
+// Cierra la función sumarDigitos.
+}
+// ↑ sumarDigitos: saca el último dígito hasta que no quede ninguno.`)
   },
   conceptos: {
+    'ejercicios/05-arreglar.test.js': ['tests'],
+    'ejercicios/05-arreglar.js': ['encontrar errores', 'leer comentarios contra código'],
     'notas/01-division.md': ['resto de la división', 'división entera'],
     'ejercicios/01-division.test.js': ['tests'],
     'ejercicios/01-division.js': ['resto de la división', 'while'],
@@ -1709,7 +2135,8 @@ Cada principio tiene su apunte (teoría que escribes), sus tests y un ejercicio:
 3. Color: complementario, paleta
 4. Contraste: hexARgb, luminancia, contraste, esLegible
 5. Matemática de shaders: mezclar, suavizar, distanciaAlCentro, amplitudesFbm, mezclarColor
-6. El póster: index.html y src/main.js, y verlo con \`npx vite\`
+6. Arreglá esto: escalar, centrar y limitar tienen un error cada una
+7. El póster: index.html y src/main.js, y verlo con \`npx vite\`
 
 ## Tests
 \`npx vitest run\` prueba los números sin pantalla. Lo visual se mira en la vista previa: cambia la razón de la escala, la cantidad de columnas o el tono, y compara.
@@ -1755,6 +2182,8 @@ const DISENO: Lesson = {
     { paso: 'Apunte: la matemática de los shaders', tipo: 'teoria', archivo: 'notas/05-shaders.md', concepto: 'mix, smoothstep y fBm' },
     { paso: 'Tests: matemática de shaders', tipo: 'test', archivo: 'ejercicios/05-shaders.test.js', concepto: 'bordes y puntos calculados a mano', verificar: 'npx vitest run ejercicios/05' },
     { paso: 'Ejercicio: matemática de shaders', tipo: 'ejercicio', archivo: 'ejercicios/05-shaders.js', concepto: 'mix y smoothstep', verificar: 'npx vitest run ejercicios/05' },
+    { paso: 'Tests: arreglá esto', tipo: 'test', archivo: 'ejercicios/06-arreglar.test.js', concepto: 'los tests encuentran errores', verificar: 'npx vitest run ejercicios/06-arreglar' },
+    { paso: 'Arreglá esto: tres errores', tipo: 'arreglar', archivo: 'ejercicios/06-arreglar.js', concepto: 'leer código y encontrar errores', verificar: 'npx vitest run ejercicios/06-arreglar', explicacion: 'El archivo tiene tres errores, uno por función. Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla. Corrígelo hasta que pasen en verde.' },
     { paso: 'La página con el lienzo', tipo: 'codigo', archivo: 'index.html', concepto: 'canvas a pantalla completa' },
     { paso: 'Dibujar el póster', tipo: 'codigo', archivo: 'src/main.js', concepto: 'el canvas solo dibuja' },
     { paso: 'Verlo y variar un valor', tipo: 'comando', comando: 'npx vite', explicacion: 'Un póster con título, bloques de color en la grilla y un subtítulo. Cambia la razón de la escala, la cantidad de columnas o el tono, guarda y compara: así se estudia diseño.' }
@@ -2452,9 +2881,136 @@ ctx.fillText("Diseño con código", cols[0].x, alinearA(96, 8));
 // La letra del subtítulo: un tamaño chico de la escala.
 ctx.font = tamanos[1] + "px system-ui";
 // Escribe el subtítulo, también en la primera columna.
-ctx.fillText("Escala, grilla, color y contraste", cols[0].x, alinearA(330, 8));`)
+ctx.fillText("Escala, grilla, color y contraste", cols[0].x, alinearA(330, 8));`),
+    'ejercicios/06-arreglar.test.js': L(`
+// Cómo empezar: estos tests ya pasan con el código correcto. Con el código
+// que tiene errores, cada uno señala qué función falla y con qué valores.
+// describe, it y expect: las tres piezas de un test, desde Vitest.
+import { describe, it, expect } from "vitest";
+// Las funciones del archivo que vas a arreglar.
+import { escalar, centrar, limitar } from "./06-arreglar.js";
+
+// describe agrupa los tests de escalar.
+describe("escalar", () => {
+  // Caso: el paso 0 es la base.
+  it("el paso 0 es la base", () => {
+    // Elevado a 0 es 1.
+    expect(escalar(16, 1.5, 0)).toBe(16);
+  // Cierra el caso.
+  });
+  // Caso: el paso 2 multiplica dos veces.
+  it("el paso 2 multiplica dos veces", () => {
+    // 16 por 1.5 por 1.5 es 36.
+    expect(escalar(16, 1.5, 2)).toBe(36);
+  // Cierra el caso.
+  });
+// Cierra el grupo de escalar.
+});
+// ↑ escalar: 2 casos.
+
+// describe agrupa los tests de centrar.
+describe("centrar", () => {
+  // Caso: en 1000 un elemento de 400 empieza en 300.
+  it("en 1000 un elemento de 400 empieza en 300", () => {
+    // Sobran 600: 300 de cada lado.
+    expect(centrar(1000, 400)).toBe(300);
+  // Cierra el caso.
+  });
+  // Caso: si ocupa todo, empieza en 0.
+  it("si ocupa todo, empieza en 0", () => {
+    // No sobra nada.
+    expect(centrar(500, 500)).toBe(0);
+  // Cierra el caso.
+  });
+// Cierra el grupo de centrar.
+});
+// ↑ centrar: 2 casos.
+
+// describe agrupa los tests de limitar.
+describe("limitar", () => {
+  // Caso: un valor adentro no cambia.
+  it("un valor adentro no cambia", () => {
+    // 5 ya está entre 0 y 10.
+    expect(limitar(5, 0, 10)).toBe(5);
+  // Cierra el caso.
+  });
+  // Caso: los bordes recortan.
+  it("los bordes recortan", () => {
+    // -3 sube a 0 y 15 baja a 10.
+    expect([limitar(-3, 0, 10), limitar(15, 0, 10)]).toEqual([0, 10]);
+  // Cierra el caso.
+  });
+// Cierra el grupo de limitar.
+});
+// ↑ limitar: 2 casos.`),
+    'ejercicios/06-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Pista: en una escala modular cada paso MULTIPLICA por la razón otra vez. ¿Qué operador es «elevar a»?
+
+// Declara escalar: recibe el tamaño base, la razón y el paso de la escala.
+export function escalar(base, razon, paso) {
+  // La base por la razón elevada al paso (** es «elevado a»).
+  return base * razon ** paso;
+// Cierra la función escalar.
+}
+// ↑ escalar: un tamaño de la escala modular.
+
+// Pista: la resta tiene que hacerse ANTES de dividir. ¿Qué hace falta para forzar ese orden?
+
+// Declara centrar: recibe el ancho del contenedor y el del elemento.
+export function centrar(contenedor, elemento) {
+  // El espacio que sobra, repartido en dos: primero resta, después divide.
+  return (contenedor - elemento) / 2;
+// Cierra la función centrar.
+}
+// ↑ centrar: dónde empieza un elemento centrado.
+
+// Pista: Math.max sube lo que quedó por debajo del mínimo y Math.min baja lo que se pasó del máximo. Fíjate quién va con quién.
+
+// Declara limitar: recibe un valor y el mínimo y el máximo permitidos.
+export function limitar(valor, min, max) {
+  // Primero sube al mínimo (Math.max) y después baja al máximo (Math.min).
+  return Math.min(max, Math.max(min, valor));
+// Cierra la función limitar.
+}
+// ↑ limitar: deja el valor entre el mínimo y el máximo.`)
+  },
+  enunciados: {
+    'ejercicios/06-arreglar.js': L(`
+// Arreglá esto: hay 3 errores, uno en cada función.
+// Los comentarios dicen lo que tendría que hacer cada línea; los tests, dónde falla.
+// Corre los tests: cuando pasen en verde, lo arreglaste.
+
+// Declara escalar: recibe el tamaño base, la razón y el paso de la escala.
+export function escalar(base, razon, paso) {
+  // La base por la razón elevada al paso (** es «elevado a»).
+  return base * razon * paso;
+// Cierra la función escalar.
+}
+// ↑ escalar: un tamaño de la escala modular.
+
+// Declara centrar: recibe el ancho del contenedor y el del elemento.
+export function centrar(contenedor, elemento) {
+  // El espacio que sobra, repartido en dos: primero resta, después divide.
+  return contenedor - elemento / 2;
+// Cierra la función centrar.
+}
+// ↑ centrar: dónde empieza un elemento centrado.
+
+// Declara limitar: recibe un valor y el mínimo y el máximo permitidos.
+export function limitar(valor, min, max) {
+  // Primero sube al mínimo (Math.max) y después baja al máximo (Math.min).
+  return Math.max(max, Math.min(min, valor));
+// Cierra la función limitar.
+}
+// ↑ limitar: deja el valor entre el mínimo y el máximo.`)
   },
   conceptos: {
+    'ejercicios/06-arreglar.test.js': ['tests'],
+    'ejercicios/06-arreglar.js': ['encontrar errores', 'leer comentarios contra código'],
     'notas/01-jerarquia.md': ['jerarquía', 'escala modular'],
     'ejercicios/01-escala.test.js': ['toEqual'],
     'ejercicios/01-escala.js': ['escala modular', 'línea base'],

@@ -121,6 +121,7 @@ export function buildCourseSystemPrompt(req: LearnRequest): string {
     '  2. tipo "test", archivo ejercicios/NN-tema.test.js con los tests de las funciones de ese tema (2 o 3 funciones): caso normal, borde y, si aplica, error. "verificar": "npx vitest run ejercicios/NN".',
     '  3. tipo "ejercicio", archivo ejercicios/NN-tema.js, con el mismo "verificar". En "explicacion" va el ENUNCIADO completo: el nombre exacto de cada función exportada, sus parámetros, qué devuelve y un ejemplo con su resultado. Tiene que coincidir con lo que importan y esperan los tests.',
     '- REGLA DE LOS COMENTARIOS: cada línea de código (tests, solución y ejemplos de los apuntes) lleva justo arriba su comentario que dice qué hace; la persona también lo escribe. Un ejercicio está resuelto cuando los tests pasan Y cada línea de su solución tiene su comentario.',
+    '- «ARREGLÁ ESTO»: cada 2 o 3 temas, después de su paso "test", agrega un paso tipo "arreglar" (en vez de "ejercicio") sobre el mismo archivo ejercicios/NN-tema.js. Lleva el campo "codigo": el archivo COMPLETO con 2 o 3 errores chicos y realistas (un operador al revés, un borde mal tomado, un return que falta). Cada línea conserva su comentario correcto, que dice lo que TENDRÍA que hacer: así se encuentra el error comparando comentario y código. Arriba, un comentario "Arreglá esto: hay N errores. Los comentarios dicen qué tendría que hacer cada línea; los tests, dónde falla." Los tests del paso anterior tienen que fallar con ese código y pasar al corregirlo.',
     '- Lenguaje: JavaScript con ES modules y Vitest (corre en el navegador), salvo que el tema sea de otro lenguaje: entonces su equivalente (Python con pytest: tests/test_NN_tema.py y ejercicios/NN_tema.py).',
     '- Ejercicios de lo simple a lo complejo; cada uno usa la teoría de su apunte y lo que ya se vio. Funciones puras con nombres en español: reciben datos y devuelven un resultado, sin leer el teclado ni imprimir, para que los tests las comprueben.',
     '- Si el tema es teórico (arquitectura, nube, patrones, IA), los ejercicios modelan sus ideas con funciones chicas (por ejemplo, calcular un costo, validar una regla, decidir una ruta).',
@@ -135,7 +136,7 @@ export function buildCourseSystemPrompt(req: LearnRequest): string {
     '  "stack": { "resumen": "frase corta", "lenguaje": "nombre", "tests": "framework de tests" },',
     '  "convenciones": ["3 a 5 convenciones concretas"],',
     '  "entorno": { "instalar": [ { "comando": "…", "explicacion": "…" } ], "testear": { "comando": "…", "explicacion": "…" } },',
-    '  "plan": [ { "paso": "qué se escribe", "tipo": "teoria|test|ejercicio|config|codigo|comando", "archivo": "ruta/relativa.ext", "concepto": "concepto", "verificar": "comando (tests y ejercicios)", "explicacion": "enunciado (ejercicios) o qué hace (comandos)", "comando": "solo en pasos tipo comando" } ]',
+    '  "plan": [ { "paso": "qué se escribe", "tipo": "teoria|test|ejercicio|arreglar|config|codigo|comando", "archivo": "ruta/relativa.ext", "concepto": "concepto", "verificar": "comando (tests, ejercicios y arreglar)", "explicacion": "enunciado (ejercicios y arreglar) o qué hace (comandos)", "codigo": "solo en pasos arreglar: el archivo con los errores", "comando": "solo en pasos tipo comando" } ]',
     '}',
     '```',
     ...seed

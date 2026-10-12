@@ -18,9 +18,16 @@ export interface StackInfo {
 /**
  * teoria: apuntes en notas/*.md que también se completan escribiendo, antes del código que los usa.
  * ejercicio: un archivo con el enunciado que resuelve la persona; sus tests dicen si está bien.
+ * arreglar: un archivo con código que tiene errores; la persona los encuentra y
+ *   los corrige. Los comentarios dicen lo que tendría que hacer; los tests, dónde falla.
  */
-export type StepKind = 'teoria' | 'codigo' | 'test' | 'config' | 'docker' | 'comando' | 'ejercicio';
-export const STEP_KINDS: StepKind[] = ['teoria', 'codigo', 'test', 'config', 'docker', 'comando', 'ejercicio'];
+export type StepKind = 'teoria' | 'codigo' | 'test' | 'config' | 'docker' | 'comando' | 'ejercicio' | 'arreglar';
+export const STEP_KINDS: StepKind[] = ['teoria', 'codigo', 'test', 'config', 'docker', 'comando', 'ejercicio', 'arreglar'];
+
+/** Pasos que se resuelven escribiendo libre y se comprueban con tests: ejercicios y «arreglá esto». */
+export function isExercise(step: { tipo?: StepKind } | undefined): boolean {
+  return step?.tipo === 'ejercicio' || step?.tipo === 'arreglar';
+}
 
 export interface PlanStep {
   paso: string;
@@ -34,6 +41,8 @@ export interface PlanStep {
   explicacion?: string;
   /** Comando que comprueba el paso al terminarlo (ej: npm test). */
   verificar?: string;
+  /** Pasos «arreglar» diseñados por la IA: el archivo con los errores, tal cual. */
+  codigo?: string;
   hecho?: boolean;
 }
 
@@ -166,6 +175,7 @@ export function parseStep(s: any): PlanStep | undefined {
   if (str(s.comando)) step.comando = str(s.comando);
   if (str(s.explicacion)) step.explicacion = str(s.explicacion);
   if (str(s.verificar)) step.verificar = str(s.verificar);
+  if (tipo === 'arreglar' && typeof s.codigo === 'string' && s.codigo.trim()) step.codigo = s.codigo.replace(/\s+$/, '') + '\n';
   return step;
 }
 

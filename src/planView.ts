@@ -12,7 +12,8 @@ import {
 import { findStepLine, insertInstruction, stepFileContent, stepInstruction } from './instructions';
 import { buildHere } from './dictation';
 import { writeCommand } from './terminal';
-import { starterFor } from './core/exercises';
+import { starterFor, watchCommand } from './core/exercises';
+import { isExercise } from './core/project';
 
 /**
  * Panel «Plan del proyecto» en el explorador. Convierte la guía
@@ -29,7 +30,8 @@ const KIND_ICON: Record<StepKind, string> = {
   config: 'gear',
   docker: 'package',
   comando: 'terminal',
-  ejercicio: 'pencil'
+  ejercicio: 'pencil',
+  arreglar: 'debug'
 };
 const KIND_LABEL: Record<StepKind, string> = {
   teoria: 'teoría',
@@ -38,7 +40,8 @@ const KIND_LABEL: Record<StepKind, string> = {
   config: 'configuración',
   docker: 'Docker',
   comando: 'comando',
-  ejercicio: 'ejercicio'
+  ejercicio: 'ejercicio',
+  arreglar: 'arreglá esto'
 };
 
 class StepItem extends vscode.TreeItem {
@@ -173,17 +176,28 @@ async function openStep(index: number): Promise<void> {
 
   const uri = vscode.Uri.joinPath(root, step.archivo);
   // Ejercicio: el archivo nace con el enunciado y se resuelve escribiendo libre.
-  if (step.tipo === 'ejercicio') {
+  // «Arreglá esto»: nace con código que tiene errores, para encontrarlos.
+  if (isExercise(step)) {
     if (!(await exists(uri))) {
       await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
       await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(starterFor(getProject(), step)));
     }
     await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
+    const WATCH = 'Tests automáticos al guardar';
+    const RUN = 'Correr los tests una vez';
     const action = await vscode.window.showInformationMessage(
-      `Ejercicio ${index + 1}: ${step.paso}. Resuélvelo tú; los tests dicen si está bien. Si te trabas, escribe «// ach: solución» + Enter al final y la escribimos juntos, línea por línea.`,
-      ...(step.verificar ? ['Correr los tests'] : [])
+      step.tipo === 'arreglar'
+        ? `Arreglá esto ${index + 1}: ${step.paso}. El código tiene errores: los comentarios dicen lo que tendría que hacer cada línea y los tests, dónde falla. Corrígelo tú.`
+        : `Ejercicio ${index + 1}: ${step.paso}. Resuélvelo tú; los tests dicen si está bien. Si te trabas, escribe «// ach: solución» + Enter al final y la escribimos juntos, línea por línea.`,
+      ...(step.verificar ? [...(watchCommand(step.verificar) ? [WATCH] : []), RUN] : [])
     );
-    if (action && step.verificar) {
+    if (action === WATCH && step.verificar) {
+      // vitest sin «run» queda mirando: vuelve a correr los tests cada vez que guardas.
+      writeCommand(
+        { comando: watchCommand(step.verificar)!, explicacion: '' },
+        'Queda mirando el archivo: cada vez que guardas, los tests vuelven a correr solos. Ctrl+C lo detiene.'
+      );
+    } else if (action === RUN && step.verificar) {
       writeCommand({ comando: step.verificar, explicacion: '' }, 'Si pasa en verde, marca el ejercicio como hecho en el plan.');
     }
     return;

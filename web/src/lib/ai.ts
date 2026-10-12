@@ -66,7 +66,7 @@ export function activeAI(s: AISettings): { provider: ProviderInfo; model: string
 
 export function aiLabel(s: AISettings): string {
   if (!s.chosen) {
-    return 'sin elegir todavía';
+    return 'sin elegir';
   }
   const { provider, model } = activeAI(s);
   if (provider.kind === 'ninguna') {

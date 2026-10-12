@@ -1,4 +1,4 @@
-import type { ProjectFile } from './project';
+import { isExercise, type ProjectFile } from './project';
 import { StackProfile, packageName } from './stackProfiles';
 import { stepFileContent } from './instructions';
 import { starterFor } from './exercises';
@@ -46,8 +46,13 @@ export function scaffoldEntries(
       entries.push({
         archivo,
         // Los ejercicios nacen con su enunciado: se resuelven escribiendo libre.
-        contenido: step.tipo === 'ejercicio' ? starterFor(project, step) : stepFileContent(archivo, step),
-        motivo: step.tipo === 'ejercicio' ? `ejercicio «${step.paso}»: el enunciado, para resolverlo tú` : `paso «${step.paso}»: vacío, con su instrucción ach:`
+        contenido: isExercise(step) ? starterFor(project, step) : stepFileContent(archivo, step),
+        motivo:
+          step.tipo === 'arreglar'
+            ? `arreglá esto «${step.paso}»: el código con errores, para que los encuentres tú`
+            : step.tipo === 'ejercicio'
+              ? `ejercicio «${step.paso}»: el enunciado, para resolverlo tú`
+              : `paso «${step.paso}»: vacío, con su instrucción ach:`
       });
     }
   }

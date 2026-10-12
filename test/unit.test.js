@@ -439,6 +439,18 @@ console.log('— cursos de teoría y ejercicios');
   const cursos = LS.LESSONS.filter((l) => l.tipo === 'curso');
   eq('cuatro cursos sin IA: fundamentos, lógica, matemáticas y diseño', cursos.map((l) => l.topicId), ['fundamentos-programacion', 'logica', 'matematicas', 'composicion-diseno']);
   eq('temas por palabra clave', ['quiero aprender lógica', 'matemáticas para programar', 'fundamentos de programación'].map((x) => L.matchTopic(x)?.id), ['logica', 'matematicas', 'fundamentos-programacion']);
+  {
+    const P = require(out + 'core/project.js');
+    const arr = cursos.map((l) => l.plan.find((st) => st.tipo === 'arreglar'));
+    eq('«Arreglá esto» en los cuatro cursos, después de su test', cursos.map((l, i) => { const k = l.plan.indexOf(arr[i]); return !!arr[i] && l.plan[k - 1].tipo === 'test' && P.isExercise(arr[i]); }), cursos.map(() => true));
+    const st0 = EX.starterFor(LS.lessonProjectFile(cursos[0]), arr[0]);
+    eq('arreglar: arranca con el código roto (comentarios correctos, código con errores) y no regala pistas', [st0.includes('return precio + cantidad;'), st0.includes('// Multiplica el precio por la cantidad'), st0.includes('Pista'), EX.hintsFor(LS.lessonProjectFile(cursos[0]), arr[0].archivo).length], [true, true, false, 3]);
+    const C2 = require(out + 'core/comments.js');
+    eq('arreglar: el código roto también tiene un comentario por línea', cursos.map((l) => Object.entries(l.enunciados).every(([f, ls]) => C2.uncommentedLines(ls.join('\n'), f).length === 0)), cursos.map(() => true));
+    const ai = P.parseStep({ paso: 'Arreglá', tipo: 'arreglar', archivo: 'ejercicios/05.js', codigo: '// suma\nexport const f = (a, b) => a - b;\n\n' });
+    eq('arreglar de la IA: el código roto viene en el plan y es el archivo inicial', [ai.tipo, EX.starterFor(undefined, ai)], ['arreglar', '// suma\nexport const f = (a, b) => a - b;\n']);
+    eq('modo vigía: vitest sin run; sin modo vigía, nada', [EX.watchCommand('npx vitest run ejercicios/01'), EX.watchCommand('npm test'), EX.watchCommand('pytest')], ['npx vitest ejercicios/01', 'npx vitest', undefined]);
+  }
   eq('cada ejercicio tiene antes su test y su apunte', cursos.map((l) => l.plan.every((st, i) => st.tipo !== 'ejercicio' || (l.plan[i - 1].tipo === 'test' && l.plan[i - 2].tipo === 'teoria'))), cursos.map(() => true));
   const sol = LS.lessonCode('fundamentos-js', 'ejercicios/02-condicionales.js').text;
   const starter = EX.exerciseStarter(sol, 'ejercicios/02-condicionales.js');

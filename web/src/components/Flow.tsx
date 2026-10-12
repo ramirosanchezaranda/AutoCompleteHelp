@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { useApp } from '../store/app';
 import { TopicStep, InterestStep, LevelStep, IdeasStep, DesignStep } from './FlowLearn';
 import { ProjectPromptStep, StackStep, ArchStep } from './FlowProject';
@@ -52,10 +53,15 @@ export function Flow() {
     setStep(kind, i);
   };
   const cur = defs[n] ?? defs[1];
+  // En pantallas angostas la barra de pasos se desplaza: el paso actual queda a la vista.
+  const stepsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    stepsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [n, kind]);
 
   return (
     <div className="flow">
-      <nav className="steps" role="tablist" aria-label="Pasos">
+      <nav className="steps" role="tablist" aria-label="Pasos" ref={stepsRef}>
         {defs.map((d, i) => (
           <button
             key={d.label}
@@ -78,7 +84,8 @@ export function Flow() {
           ← Atrás
         </button>
         <span className="where">
-          Paso {n} de {last} · {cur.done && n < last - 1 ? 'listo' : cur.todo}
+          <span className="n">Paso {n} de {last}</span>
+          <span className="todo">{cur.done && n < last - 1 ? 'listo' : cur.todo}</span>
         </span>
         <button className="btn primary" disabled={!cur.done || (n + 1 === last && !projectId)} onClick={() => goTo(n + 1)}>
           Siguiente →

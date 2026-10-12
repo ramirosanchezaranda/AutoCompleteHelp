@@ -2,6 +2,27 @@
 
 Todos los cambios notables de AutoCompleteHelp se documentan aquí.
 
+## [0.15.0] — 2026-10-12
+
+### Añadido
+
+- **«Arreglá esto»** (tipo de paso `arreglar`, como rustlings): el archivo nace con
+  código que tiene errores. Los comentarios dicen lo que tendría que hacer cada
+  línea y los tests, dónde falla; se corrige hasta verde. Uno por curso (12
+  funciones con un error cada una, verificadas con Vitest: cada error lo detecta
+  al menos un test). La IA también los diseña en los cursos que arma.
+- **Tests automáticos al cambiar el archivo** en ejercicios y «arreglá esto»: se
+  corren solos, la barra muestra «N de M tests en verde» y el paso se marca al
+  quedar en verde. Se puede apagar. En la extensión, «Tests automáticos al
+  guardar» deja `npx vitest` mirando el archivo.
+
+### Corregido
+
+- Responsive: la pestaña del paso actual queda a la vista en celular; el pie del
+  recorrido ya no corta qué falta; «Vista previa» pasa a «Vista» en pantallas
+  angostas y las pestañas entran a 360 px; chips y botones de 40 px en pantallas
+  táctiles; barras más bajas en celular apaisado.
+
 ## [0.14.0] — 2026-10-11
 
 ### Añadido
